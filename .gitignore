@@ -1,0 +1,15 @@
+# ===== 敏感配置（严禁提交到远程仓库）=====
+web/include/db_info.inc.php
+etc/judge.conf
+install/judge.conf
+install/jol.tar.gz
+
+# ===== 运行时数据 / 用户上传 =====
+web/upload/
+web/curl.log
+
+# ===== 编辑器/备份残留 =====
+*.swp
+*.swo
+*.bak
+*~

@@ -1,0 +1,62 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+
+.header{
+    height: 78px;
+    width: 100%;
+}
+
+.logo{
+    float: left;
+    margin-top: 20px;
+    padding-left: 30px;
+}
+
+.title{
+    float: left;
+    display: inline;
+    margin-top: 20px;
+    height: 78px;
+    margin-left: 50px;
+}
+
+.title h1 {
+   height: 50%;
+   color: rgb(0, 0, 0);
+}
+
+.title h2{
+    /* display: inline-block; */
+    height: 50%;
+    padding-top: 5px;
+    margin-left: 5px;
+}
+
+.container{
+   margin-top: 200px;
+}
+
+.container h1{
+    width: 660px;
+    margin: 0 auto;
+}
+
+.container h2{
+    width: 400px;
+    margin: 0 auto;
+    padding-top: 150px;
+}
+.container h2 a{
+    text-decoration: none;
+    color: rgb(0, 0, 0);
+}
+
+.container .in{
+    padding-left: 100px;
+}
+.container .name{
+    padding-top: 250px;
+}
+

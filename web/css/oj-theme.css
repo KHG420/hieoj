@@ -1,0 +1,66 @@
+/* ============================================================
+   HNIEOJ 统一设计令牌（克制风格：无动画、无渐变、扁平卡片）
+   ============================================================ */
+:root {
+  --oj-primary: #2f6ee5;
+  --oj-primary-dark: #1e56c6;
+  --oj-text: #1f2d3d;
+  --oj-muted: #5f6d85;
+  --oj-faint: #8a93a6;
+  --oj-bg: #f4f6fa;
+  --oj-card: #ffffff;
+  --oj-border: #e6ebf2;
+  --oj-head: #f8fafc;
+  --oj-hover: #f6f9ff;
+  --oj-success: #18a058;
+  --oj-danger: #d03050;
+  --oj-warning: #f0a020;
+  --oj-radius: 10px;
+  --oj-shadow: 0 4px 14px rgba(15, 23, 42, .06);
+}
+
+/* 卡片 */
+.oj-card {
+  background: var(--oj-card);
+  border: 1px solid var(--oj-border);
+  border-radius: var(--oj-radius);
+  box-shadow: var(--oj-shadow);
+}
+
+/* 按钮（覆盖页面内联样式的公共类，新页面统一使用） */
+.oj-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.oj-btn-primary { background: var(--oj-primary); color: #fff; }
+.oj-btn-primary:hover { background: var(--oj-primary-dark); color: #fff; }
+.oj-btn-ghost { background: #fff; color: #3a4759; border: 1px solid #d7dee8; }
+.oj-btn-ghost:hover { border-color: var(--oj-primary); color: var(--oj-primary); }
+.oj-btn-green { background: var(--oj-success); color: #fff; }
+.oj-btn-green:hover { color: #fff; opacity: .92; }
+.oj-btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* 空态 */
+.oj-empty { text-align: center; color: var(--oj-faint); padding: 24px 0; font-size: 14px; }
+
+/* 表格（新页面统一使用 .oj-table） */
+.oj-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.oj-table th { background: var(--oj-head); color: #495057; font-weight: 600; padding: 10px 12px; border-bottom: 2px solid #dee2e6; }
+.oj-table td { padding: 10px 12px; border-bottom: 1px solid #e9ecef; color: var(--oj-text); }
+.oj-table tbody tr:hover td { background: var(--oj-hover); }
+
+/* 状态徽章（与 judge_color 的 btn 类共存，统一圆角观感） */
+.ui.table td .btn { border-radius: 6px; }
+
+/* 链接与聚焦态 */
+a { transition: color .15s; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--oj-primary); outline-offset: 2px; }

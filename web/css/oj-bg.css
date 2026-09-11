@@ -1,0 +1,57 @@
+/* ============================================================
+   HNIEOJ 统一背景色（第一步：div/容器/表格背景统一）
+   - 页面底色：#f4f6fa（浅灰蓝）
+   - 卡片/面板/菜单等表面：#ffffff
+   - 表格头：#f8fafc；行 hover：#f6f9ff
+   ============================================================ */
+body {
+  background-color: #f4f6fa;
+}
+
+/* 白色表面：卡片、面板、区块、菜单、下拉、搜索区、表格容器 */
+.ui.segment,
+.ui.card,
+.ui.attached.segment,
+.ui.menu,
+.ui.dropdown .menu,
+.layui-panel,
+.layui-card,
+.syzoj-card,
+.search-section,
+.problems-table-container {
+  background-color: #ffffff !important;
+}
+
+/* 页面级容器跟随页面底色（去掉 #f8f9fa 等杂色） */
+.syzoj-container,
+.problemset-container {
+  background-color: #f4f6fa !important;
+}
+
+/* 用户主页等内联 #f2f2f2 面板 */
+div[style*="background-color: #f2f2f2"] {
+  background-color: #f4f6fa !important;
+}
+
+/* 表格头统一浅色 */
+.ui.table thead th,
+.problems-table thead th,
+.syzoj-table th,
+.layui-table th {
+  background-color: #f8fafc !important;
+}
+
+/* 表格行 hover 统一 */
+.ui.table tbody tr:hover,
+.problems-table tbody tr:hover,
+.syzoj-table tbody tr:hover,
+.layui-table tbody tr:hover {
+  background-color: #f6f9ff;
+}
+
+/* 导航对齐：等高 + 垂直居中 + 统一内边距 */
+.ui.borderless.menu { display: flex; align-items: center; }
+.ui.borderless.menu .item { display: inline-flex !important; align-items: center !important; height: 49px; padding: 0 12px !important; }
+.ui.borderless.menu .header.item { padding: 0 14px !important; }
+.ui.borderless.menu .right.menu { margin-left: auto; }
+.ui.borderless.menu > .ui.container { display: flex; align-items: center; }
