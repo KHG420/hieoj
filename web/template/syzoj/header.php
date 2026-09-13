@@ -61,8 +61,8 @@ if ($OJ_WHITE_BLACK) { ?>
                     class="tasks icon"></i><?php echo $MSG_STATUS?></a>
         <a class="item <?php if ($url=="ranklist.php") echo "active";?>"
            href="<?php echo $path_fix?>ranklist.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="signal icon"></i> <?php echo $MSG_RANKLIST?></a>
-	<a class="item <?php if ($url=="knowledge_graph.html") echo "active";?>"
-           href="<?php echo $path_fix?>knowledge_graph.html"  style="padding: 0 0.82vw 0 0.82vw;"><i class="list icon"></i><?php echo "知识图谱"?> </a>	
+	<a class="item <?php if ($url=="knowledge_graph.php") echo "active";?>"
+	   href="<?php echo $path_fix?>knowledge_graph.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="share alternate icon"></i><?php echo "知识地图"?> </a>
 
 <!-- <a class="item <?php if ($url=="acmerlist.php") echo "active";?>" -->
            <!-- href="<?php echo $path_fix?>acmerlist.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="signal icon"></i> <?php echo "测试"?></a> -->
