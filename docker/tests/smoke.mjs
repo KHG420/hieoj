@@ -25,7 +25,8 @@ const cookies = new Map();
 async function request(path, data) {
     const response = await fetch(base + path, {
         redirect: 'manual', signal: AbortSignal.timeout(15000),
-        headers: {Cookie: [...cookies].map(([k,v]) => `${k}=${v}`).join('; ')},
+        // Recreate deliberately closes the server; don't reuse pre-recreate sockets.
+        headers: {Connection: 'close', Cookie: [...cookies].map(([k,v]) => `${k}=${v}`).join('; ')},
         ...(data ? {method: 'POST', body: new URLSearchParams(data)} : {}),
     });
     for (const cookie of response.headers.getSetCookie()) {
