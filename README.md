@@ -2,6 +2,12 @@
 
 HUSTOJ 在线评测系统（hnieacm.com）源码，从生产服务器 `/home/judge/src` 提取整理。
 
+> 当前生产环境已迁移到 Docker Compose，实际编排目录为
+> `/opt/hnieoj-docker`。仓库中的脱敏部署副本位于
+> [`production-docker/`](production-docker/)，包含 Compose、镜像构建、
+> Nginx/PHP/MariaDB 配置模板、运维脚本以及数据库迁移/回滚脚本；
+> `.env`、备份、运行状态和真实凭据不会入库。
+
 - 部署/维护完整说明见 [`OJ系统说明文档.md`](OJ系统说明文档.md)
 - 系统架构：nginx + php7.3-fpm + MariaDB(jol) + judged 判题守护进程（LNMP）
 
@@ -15,6 +21,7 @@ HUSTOJ 在线评测系统（hnieacm.com）源码，从生产服务器 `/home/jud
 | `docker/` | 容器化方案 | `/home/judge/src/docker` |
 | `deploy/` | 线上生效的部署配置（nginx.conf、hustoj 启停脚本、delete_cache.sh） | `/etc/nginx`、`/etc/init.d` |
 | `etc/` | 判题核心配置模板 + Java 沙箱策略 | `/home/judge/etc` |
+| `production-docker/` | 当前生产 Docker Compose 编排与脱敏配置 | `/opt/hnieoj-docker` |
 
 ## 部署要点（敏感文件需手动创建）
 

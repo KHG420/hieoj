@@ -1,0 +1,10 @@
+# 敏感与生成物不入库
+.env
+backup/
+conf/etc/judge.conf
+conf/etc/judge.pid
+
+# 运行时生成的动态黑名单（本机状态，不入库）
+conf/nginx/conf.d/blocklist.map
+# 运行期状态：回滚开关、写前备份
+run/
