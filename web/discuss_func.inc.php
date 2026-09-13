@@ -7,24 +7,20 @@ if(isset($OJ_BBS)&&!$OJ_BBS){
 }
 ob_start ();
 function problem_exist($pid,$cid){
-    if ($pid=='') $pid=0;
-    if ($cid!='')
-        $cid=intval($cid);
-    else
-        $cid='NULL';
+    $pid=intval($pid);
+    $cid=intval($cid);
     if($pid!=0)
-        if($cid!='NULL')
-            $sql="SELECT 1 FROM `contest_problem` WHERE `contest_id` = $cid AND `problem_id` = '".intval($pid)."'";
+        if($cid!=0)
+            $sql="SELECT 1 FROM `contest_problem` WHERE `contest_id` = $cid AND `problem_id` = $pid";
         else
-            $sql="SELECT 1 FROM `problem` WHERE `problem_id` = ".intval($pid)."";
-    else if($cid!='NULL')
+            $sql="SELECT 1 FROM `problem` WHERE `problem_id` = $pid";
+    else if($cid!=0)
         $sql="SELECT 1 FROM `contest` WHERE `contest_id` = $cid";
     else
         return true;
     $sql.=" LIMIT 1";
-    //echo $sql;
-    $result=pdo_query($sql) or print "db error";
-    return count($result)>0;
+    $result=pdo_query($sql);
+    return is_array($result) && count($result)>0;
 }
 function err_msg($msg){
     $view_errors= "$msg";

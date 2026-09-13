@@ -30,8 +30,8 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
   <div class="oj-card">
     <form class="oj-filter" action="ranklist.php" method="get">
       <div class="f">
-        <label>学院</label>
-        <select name="xy" onchange="this.form.submit()">
+        <label for="rank-xy">学院</label>
+        <select id="rank-xy" name="xy" onchange="this.form.submit()">
           <option value="">全部</option>
           <?php foreach ($xueYuan as $rows) { ?>
             <option value="<?php echo htmlentities($rows[0],ENT_QUOTES,"UTF-8")?>" <?php if($xy==$rows[0]) echo "selected"; ?>><?php echo htmlentities($rows[0],ENT_QUOTES,"UTF-8")?></option>
@@ -39,8 +39,8 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
         </select>
       </div>
       <div class="f">
-        <label>年级</label>
-        <select name="nj" onchange="this.form.submit()">
+        <label for="rank-nj">年级</label>
+        <select id="rank-nj" name="nj" onchange="this.form.submit()">
           <option value="">全部</option>
           <?php foreach ($nianJi as $rows) { ?>
             <option value="<?php echo htmlentities($rows,ENT_QUOTES,"UTF-8")?>" <?php if($nj==strval($rows)) echo "selected"; ?>>20<?php echo htmlentities($rows,ENT_QUOTES,"UTF-8")?></option>
@@ -48,15 +48,15 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
         </select>
       </div>
       <div class="f">
-        <label>专业班级</label>
+        <label for="oj_class_sel">专业班级</label>
         <select name="school" id="oj_class_sel" onchange="this.form.submit()">
           <option value="">全部</option>
           <?php if($school!="" && $school_e!==""){ ?><option value="<?php echo $school_e?>" selected><?php echo $school_e?></option><?php } ?>
         </select>
       </div>
       <div class="f">
-        <label>姓名 / 学号</label>
-        <input type="text" name="prefix" placeholder="关键字" value="<?php echo $prefix_e?>">
+        <label for="rank-prefix">姓名 / 学号</label>
+        <input type="text" id="rank-prefix" name="prefix" placeholder="关键字" value="<?php echo $prefix_e?>">
       </div>
       <div class="f"><button class="btn" type="submit">搜索</button></div>
     </form>

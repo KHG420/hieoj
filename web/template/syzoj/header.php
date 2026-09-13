@@ -1,6 +1,7 @@
 <?php
 $show_title = isset($show_title) ? $show_title : ''; // 若未传递，默认空字符串
 $url=basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+if ($url === '') $url = 'index.php';
 $dir=basename(getcwd());
 if($dir=="discuss3") $path_fix="../";
 else $path_fix="";
@@ -45,8 +46,9 @@ if ($OJ_WHITE_BLACK) { ?>
         }
     </style>
 <?php } ?>
-<body>
-<div class="ui borderless menu" style="position: sticky; top: 0; z-index: 100; height: 49px; font-size: 100%;">
+<body class="oj-desktop oj-page-<?php echo htmlspecialchars(pathinfo($url, PATHINFO_FILENAME), ENT_QUOTES, 'UTF-8'); ?>">
+<a class="oj-skip-link" href="#main_container">跳到主内容</a>
+<div class="ui borderless menu oj-topnav" role="navigation" aria-label="主导航" style="position: sticky; top: 0; z-index: 100; height: 49px; font-size: 100%;">
     <div class="ui container" >
         <a class="header item" href="index.php" style="padding: 0 0.82vw 0 0.82vw;"><span
                     style="font-family: 'Exo 2'; font-size: 1.5em; font-weight: 600;"><?php echo $OJ_NAME?></span></a>
@@ -73,17 +75,11 @@ if ($OJ_WHITE_BLACK) { ?>
         <?php if (isset($OJ_BBS)&& $OJ_BBS){ ?>
             <a class='item <?php if ($url=="discuss.php") echo "active";?>' href="<?php echo $path_fix?>discuss.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="clipboard icon"></i> <?php echo $MSG_BBS?></a>
         <?php }?>
-        <?php if(isset($_GET['cid'])){
-            $cid=intval($_GET['cid']);
-            ?>
-            <a id="back_to_contest" class="item active" href="<?php echo $path_fix?>contest.php?cid=<?php echo $cid?>"><i
-                        class="arrow left icon"></i><?php echo $MSG_CONTEST.$MSG_PROBLEMS.$MSG_LIST?></a>
-        <?php }?>
         <div class="right menu" style="position:relative;">
             <?php if(isset($_SESSION[$OJ_NAME.'_'.'user_id'])) { ?>
                 <!--                <a href="--><?php //echo $path_fix?><!--userinfo.php?user=--><?php //echo $_SESSION[$OJ_NAME.'_'.'user_id']?><!--"-->
                 <!--                    style="color: inherit; ">-->
-                <div class="ui simple dropdown item">
+                <div class="ui simple dropdown item" tabindex="0" aria-label="个人菜单" aria-haspopup="true">
                     <?php echo $_SESSION[$OJ_NAME.'_'.'user_id']; ?>
                     <i class="dropdown icon"></i>
                     <div class="menu">
@@ -128,7 +124,6 @@ if ($OJ_WHITE_BLACK) { ?>
                         </form>
                     </div>
                 </div>
-                </a>
             <?php } else { ?>
 
 
@@ -156,4 +151,15 @@ if ($OJ_WHITE_BLACK) { ?>
     </div>
 </div>
 <div id="marg">
-    <div class="ui main container" id="main_container">
+    <div class="ui main container" id="main_container" tabindex="-1"<?php if ($url !== 'knowledge_graph.php') echo ' role="main"'; ?>>
+<?php if (isset($_GET['cid'])) { ?>
+    <a class="oj-back-link" id="back_to_contest" href="<?php echo $path_fix; ?>contest.php?cid=<?php echo intval($_GET['cid']); ?>"><i class="arrow left icon" aria-hidden="true"></i>返回竞赛题目列表</a>
+<?php } ?>
+<?php
+$desktop_titles = array('index.php'=>'主页', 'problemset.php'=>'题库', 'status.php'=>'提交状态', 'ranklist.php'=>'排名', 'contest.php'=>'竞赛与作业');
+if (isset($desktop_titles[$url]) && !isset($_GET['cid'])) {
+    echo '<div class="oj-page-heading"><h1>'.$desktop_titles[$url].'</h1>';
+    if ($url === 'index.php') echo '<div class="oj-page-actions"><a class="ui primary button" href="problemset.php">开始练习</a><a class="ui basic button" href="knowledge_graph.php">探索知识地图</a></div>';
+    echo '</div>';
+}
+?>

@@ -1,16 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="../../favicon.ico">
-    <link rel="stylesheet" href="./template/sta_sty/layui/css/layui.css">
-    <link rel="stylesheet" href="./css/oj-bg.css">
-    <script src="./template/sta_sty/layui/layui.js"></script>
+<?php $show_title="用户主页 - $OJ_NAME"; include("template/$OJ_TEMPLATE/header.php"); ?>
+<link rel="stylesheet" href="./template/sta_sty/layui/css/layui.css">
+<script src="./template/sta_sty/layui/layui.js"></script>
     <style>
         #main1 {
             height: 30vw;
@@ -36,17 +26,7 @@
             }
         }
     </style>
-    <title>
-        <?php echo $OJ_NAME ?>
-    </title>
-</head>
-
-<body>
-
-<div class="container">
-    <?php include("template/$OJ_TEMPLATE/header.php"); ?>
-</div>
-
+<div class="oj-page-heading"><h1>用户主页</h1></div>
 <?php
 $sql="SELECT COUNT(distinct date_format(time,'%Y-%m-%d')) as days FROM `loginlog` WHERE user_id=?";
 $result = pdo_query( $sql, $user);
@@ -75,14 +55,14 @@ $result = pdo_query($sql, $user);
 $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
 ?>
 
-<div style="background-color: #f2f2f2;">
+<div class="oj-profile">
     <div style="padding: 1px;">
-        <div class="layui-row layui-col-space1">
+        <div class="layui-row layui-col-space16">
             <!--            <div class="layui-col-md12">-->
             <!--                <div style="height: 5px;"></div>-->
             <!--            </div>-->
             <div class="layui-col-md4">
-                <div class="layui-panel">
+                <div class="layui-card">
                     <div class="layui-card-header">用户信息</div>
                     <div class="blurring dimmable image" id="avatar_container" style="float:left;">
                         <?php $default = ""; $grav_url = "/upload/anonymous.png"; ?>
@@ -98,7 +78,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                             $grav_url="https://q1.qlogo.cn/g?b=qq&nk=$qq&s=5";
                         }
                         ?>
-                        <img style="height:85px; margin-left:20px;  margin-right:20px; margin-top: 15px;" src="<?php echo $grav_url; ?>">
+                        <img alt="用户头像" width="85" height="85" style="height:85px; margin-left:20px;  margin-right:20px; margin-top: 15px;" src="<?php echo $grav_url; ?>">
                     </div>
                     <div class="layui-card-body" style="position: relative; padding-bottom: 1px;">
                         学号: <?php echo htmlentities($user, ENT_QUOTES, "UTF-8") ?><br>
@@ -153,7 +133,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                         ."</div>";
                 }
                 ?>
-                <div class="layui-panel" style="margin-top: 16px;">
+                <div class="layui-card" style="margin-top: 16px;">
                     <div class="layui-card-header">提交信息</div>
                     <div class="layui-card-body">
                         <table class="layui-table" lay-even lay-skin="nob">
@@ -227,7 +207,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                 </div>
             </div>
             <div class="layui-col-md8">
-                <div class="layui-panel">
+                <div class="layui-card">
                     <div class="layui-card-header">练习信息</div>
                     <div class="layui-card-body">
                         <button type="button" class="layui-btn layui-btn-primary" id="selmain2"
@@ -299,13 +279,13 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                         </div>
                     </div>
                 </div>
-                <div class="layui-panel" style="margin-top: 16px;">
+                <div class="layui-card" style="margin-top: 16px;">
                     <div class="layui-card-header">尝试过的题目</div>
                     <div class="layui-card-body">
                         <div class="layui-btn-container">
                             <script language='javascript'>
                                 function p(id, c) {
-                                    document.write("<a style='color:#FFFFFF;' href='problem.php?id=" + id + "'>" + "<button type='button' style='width:100px;'  class='layui-btn layui-btn-warm'>" + id + "</button></a>");
+                                    document.write("<span class='oj-solved-item'><a href='problem.php?id=" + id + "'>" + id + "</a></span>");
                                 }
 
                                 var str = "<div style='color:black; font-size:16px; margin:8px;'>暂时没有未完成的题目，快去尝试新的题目吧!</div>";
@@ -324,7 +304,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                         </div>
                     </div>
                 </div>
-                <div class="layui-panel" style="margin-top: 16px;">
+                <div class="layui-card" style="margin-top: 16px;">
                     <div class="layui-card-header">已通过的题目<a href="export_ac_code.php">
                             <button style="float:right; margin: 6px;"
                                     class="layui-btn layui-btn-primary layui-border-blue layui-btn-sm"><i
@@ -335,7 +315,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                         <div class="layui-btn-container">
                             <script language='javascript'>
                                 function p(id, c) {
-                                    document.write("<a style='color:#FFFFFF;' href='problem.php?id=" + id + "'><button type='button' style='width:100px;'  class='layui-btn'>" + id + "<object><a href='status.php?user_id=<?php echo $user?>&problem_id=" + id + "'><span class='layui-badge layui-bg-gray'>" + c + "</span></a></object></button></a>");
+                                    document.write("<span class='oj-solved-item'><a href='problem.php?id=" + id + "'>" + id + "</a><a aria-label='查看题目 " + id + " 的提交记录' href='status.php?user_id=<?php echo urlencode($user)?>&problem_id=" + id + "'>" + c + " 次</a></span>");
                                 }
                                 <?php $sql = "SELECT `problem_id`,count(1) from solution where `user_id`=? and result=4 group by `problem_id` ORDER BY `problem_id` ASC";
                                 if ($result = pdo_query($sql, $user)) {
@@ -344,7 +324,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
 //                                        echo "p(1000,1);";
                                         echo "p($row[0],$row[1]);";
                                 }
-                                echo $user;
+
                                 ?>
                             </script>
                         </div>
@@ -357,6 +337,4 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
         </div>
     </div>
 </div>
-</script>
-</body>
-</html>
+<?php include("template/$OJ_TEMPLATE/footer.php"); ?>

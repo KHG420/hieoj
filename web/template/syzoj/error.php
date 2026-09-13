@@ -14,7 +14,10 @@
       <!-- <p><%= err.details %></p> -->
     <p>
         <!-- <a href="<%= err.nextUrls[text] %>" style="margin-right: 5px; "><%= text %></a> -->
-      <div onclick="back()" style="cursor:pointer; color: #0e90d2">返回上一页</div>
+        <?php if (!isset($_SESSION[$OJ_NAME.'_user_id']) && (strpos($view_errors, 'loginpage.php') !== false || strpos($view_errors, '登录') !== false)) { ?>
+        <a class="ui primary button" href="loginpage.php">登录后继续</a>
+        <?php } ?>
+        <button type="button" class="ui basic button" onclick="back()">返回上一页</button>
     </p>
   </div>
 </div>

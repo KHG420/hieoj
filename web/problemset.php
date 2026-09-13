@@ -44,15 +44,8 @@ else {
 //end of remember page
 
 //Page Setting
-$sql = "select count(`problem_id`) as upid FROM `problem` WHERE `defunct`='N'";
 $page_cnt = 50;  //50 prlblems per page
-$result = mysql_query_cache($sql);
-$row = $result[0];
-$cnt = $row['upid'] / $page_cnt;
 
-if ($row['upid'] % $page_cnt == 0) $cnt = $cnt-1;
-
-$offset = ($page - 1) * $page_cnt;
 
 //all submit
 $sub_arr = Array();
@@ -77,7 +70,6 @@ if (isset($_SESSION[$OJ_NAME.'_'.'user_id'])) {
 if (isset($_GET['search']) && trim($_GET['search'])!="") {
 	$search = "%".($_GET['search'])."%";
 	$filter_sql = " ( title like ? or source like ?)";
-	$limit_sql = " LIMIT 100";
 }else if (isset($_GET['list']) && trim($_GET['list']!="")){
 	$plist= explode(",",$_GET['list']);
 	$pids="0";
@@ -86,55 +78,43 @@ if (isset($_GET['search']) && trim($_GET['search'])!="") {
 		$pids.=",$pid";
 	}
 	$filter_sql = " problem_id in ($pids)";
-	$limit_sql = " LIMIT 100";
 	$search = "";
 }else {
 	$filter_sql = "";
-	$limit_sql = " LIMIT ".$offset.", ".$page_cnt;
 	$search = "";
 }
 
 // Problem Page Navigator
 if ($OJ_FREE_PRACTICE){  // open free practice without limit of contest using
-	$sql = "SELECT count(problem_id) as upid FROM `problem` WHERE defunct='N' ";
-	$result = mysql_query_cache($sql);
-	$row = $result[0];
-	$cnt = $row['upid'] / $page_cnt;
-	if ($row['upid'] % $page_cnt == 0) $cnt = $cnt-1;
-	$sql = "SELECT `problem_id`,`title`,`source`,`submit`,`accepted`,defunct FROM `problem` WHERE defunct='N' ".($filter_sql!=""?"AND ".$filter_sql:"")." ORDER BY `problem_id`".$limit_sql;
+	$where_sql = " WHERE defunct='N' ".($filter_sql!=""?"AND ".$filter_sql:"");
 
 }else if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])) {  //all problems
-	// Reset Page Count
-	$sql = "select count(`problem_id`) as upid FROM `problem`";
-	$result = mysql_query_cache($sql);
-	$row = $result[0];
-	$cnt = $row['upid'] / $page_cnt;
-
-	if ($row['upid'] % $page_cnt == 0) $cnt = $cnt-1;
-
-	$sql = "SELECT `problem_id`,`title`,`source`,`submit`,`accepted`,defunct FROM `problem` ".($filter_sql!=""?"WHERE ".$filter_sql:"")." ORDER BY `problem_id`".$limit_sql;
+	$where_sql = $filter_sql!=""?" WHERE ".$filter_sql:"";
 
 }else {  //page problems (not include in contests period)
 	$now = date("Y-m-d H:i",time());
-	$sql = "SELECT `problem_id`,`title`,`source`,`submit`,`accepted`,defunct FROM `problem` " .
-		"WHERE `defunct`='N' AND `problem_id` NOT IN (
+	$where_sql = " WHERE `defunct`='N' AND `problem_id` NOT IN (
 		SELECT  `problem_id`
 		FROM contest c
 			INNER JOIN  `contest_problem` cp ON c.`contest_id` = cp.`contest_id` ".
 		" AND (c.`defunct` = 'N' AND '$now'<c.`end_time`)" .    // option style show all non-running contest
-		") ".($filter_sql!=""?"AND ".$filter_sql:"")." ORDER BY `problem_id`".$limit_sql;
+		") ".($filter_sql!=""?"AND ".$filter_sql:"");
 }
 // End Page Setting
 
-//echo htmlentities( $sql);
+$query_params = isset($_GET['search']) && trim($_GET['search'])!=='' ? array($search, $search) : array();
+$count_rows = pdo_query("SELECT COUNT(*) AS total FROM problem".$where_sql, ...$query_params);
+$view_total_count = intval($count_rows[0]['total']);
+$view_total_page = max(1, intval(ceil($view_total_count / $page_cnt)));
+$page = min($page, $view_total_page);
+$offset = ($page - 1) * $page_cnt;
+$sql = "SELECT `problem_id`,`title`,`source`,`submit`,`accepted`,defunct FROM problem".$where_sql." ORDER BY problem_id LIMIT ".$offset.", ".$page_cnt;
 if (isset($_GET['search']) && trim($_GET['search'])!="") {
 	$result = pdo_query($sql,$search,$search);
 }
 else {
 	$result = mysql_query_cache($sql);
 }
-
-$view_total_page = intval($cnt+1);
 
 $cnt = 0;
 $view_problemset = Array();

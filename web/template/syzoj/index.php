@@ -119,6 +119,7 @@
     }
 </style>
 
+<?php $has_recent_submissions = array_sum(array_column($chart_days, 'all')) > 0; ?>
 <div class="syzoj-container">
     <div class="ui three column grid">
         <!-- 左侧内容区域 -->
@@ -126,7 +127,7 @@
             <!-- 公告卡片 -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">
-                    <i class="ui info icon"></i>公告
+                    <i class="ui info icon"></i><h2>公告</h2>
                 </div>
                 <div class="syzoj-card-body">
                     <table class="syzoj-table" lay-filter="demo-new">
@@ -167,6 +168,8 @@
                             page: true,
                             skin: "line",
                             limits: [3, 10, 20],
+                            done: function(){document.querySelectorAll('.layui-laypage-skip input').forEach(function(input){input.setAttribute('aria-label','跳转到页码')});
+            document.querySelectorAll('.layui-laypage-limits select').forEach(function(select){select.setAttribute('aria-label','每页条数')});},
                         });
                     });
                     </script>
@@ -176,12 +179,12 @@
             <!-- 近 7 天提交趋势卡片（Excel 风格组合图） -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">
-                    <i class="ui chart line icon"></i>近 7 天提交趋势
+                    <i class="ui chart line icon"></i><h2>近 7 天提交趋势</h2>
                 </div>
                 <div class="syzoj-card-body">
-                    <div style="height:220px;position:relative;">
-                        <canvas id="oj-trend-chart"></canvas>
-                    </div>
+                    <?php if ($has_recent_submissions) { ?><div style="height:220px;position:relative;">
+                        <canvas id="oj-trend-chart" role="img" aria-label="近七天每日提交和通过数量"></canvas>
+                    </div><?php } else { ?><p class="oj-empty">近 7 天暂无提交记录。<a href="problemset.php">开始练习</a>，完成你的下一道题。</p><?php } ?>
                 </div>
             </div>
             
@@ -210,7 +213,7 @@
             <!-- 近期比赛卡片（移至左栏，平衡左右高度） -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">
-                    <i class="ui calendar icon"></i>近期比赛&作业
+                    <i class="ui calendar icon"></i><h2>近期比赛&作业</h2>
                 </div>
                 <div class="syzoj-card-body">
                     <table class="syzoj-table">
@@ -265,6 +268,7 @@
                                 ON problem.problem_id = s.problem_id
                                 WHERE problem.`defunct`='N'";
                             $result_problems = mysql_query_cache( $sql_problems );
+                            if (!$result_problems) echo '<tr><td colspan="2" class="oj-empty">本月暂无提交记录</td></tr>';
                             if ( $result_problems ) {
                                 $i = 1;
                                 foreach ( $result_problems as $row ) {
@@ -283,7 +287,7 @@
             <!-- 上月做题榜卡片 -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">
-                    <i class="ui signal icon"></i>上月做题榜
+                    <i class="ui signal icon"></i><h2>上月做题榜</h2>
                 </div>
                 <div class="syzoj-card-body">
                     <table class="syzoj-table">
@@ -311,6 +315,7 @@
                             on users.user_id=t.user_id
                                         ORDER BY s.`solved` DESC,t.submit,reg_time  LIMIT  3";
                             $result_users = mysql_query_cache( $sql_users );
+                            if (!$result_users) echo '<tr><td colspan="3" class="oj-empty">上月暂无做题记录</td></tr>';
                             if ( $result_users ) {
                                 $i = 1;
                                 foreach ( $result_users as $row ) {
@@ -336,7 +341,7 @@
             </style>
             <div class="syzoj-card">
                 <div class="syzoj-card-header">
-                    <i class="ui linkify icon"></i>友情链接
+                    <i class="ui linkify icon"></i><h2>友情链接</h2>
                 </div>
                 <div class="syzoj-card-body">
                     <div class="oj-friend-links">
@@ -365,6 +370,7 @@ window.addEventListener("DOMContentLoaded", function(){
         }
         ,elem: '#demo' //指定原始表格元素选择器（推荐id选择器）
         ,skin: "line"
+        ,text: {none: "所选月份暂无排名记录"}
         ,limit: 20
         ,id: "query"
         ,height: '' //容器高度
@@ -381,6 +387,8 @@ window.addEventListener("DOMContentLoaded", function(){
         //,…… //更多参数参考右侧目录：基本参数选项
         ,done: function(res){
             $("#query-msg").html(res.message);
+            document.querySelectorAll('.layui-laypage-skip input').forEach(function(input){input.setAttribute('aria-label','跳转到页码')});
+            document.querySelectorAll('.layui-laypage-limits select').forEach(function(select){select.setAttribute('aria-label','每页条数')});
         }
     });
     
@@ -408,7 +416,7 @@ window.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 
-<script defer src="template/<?php echo $OJ_TEMPLATE?>/css/Chart.min.js"></script>
+<?php if ($has_recent_submissions) { ?><script defer src="template/<?php echo $OJ_TEMPLATE?>/css/Chart.min.js"></script>
 <script>
 // 近 7 天提交趋势（Excel 风格：提交折线 + 通过柱状）
 $(function(){
@@ -453,4 +461,5 @@ $(function(){
   });
 });
 </script>
+<?php } ?>
 <?php include("template/$OJ_TEMPLATE/footer.php");?>

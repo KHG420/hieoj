@@ -7,9 +7,9 @@
           <form method=post action=contest.php >
             <div class="ui search" style="width: 280px; height: 28px; margin-top: -5.3px; ">
               <div class="ui left icon input" style="width: 100%; ">
-                <input class="prompt" style="width: 100%; " type="text" value="" placeholder=" 比赛名 …" name="keyword">
+                <input class="prompt" style="width: 100%; " type="text" value="<?php echo htmlspecialchars(isset($_POST['keyword']) ? $_POST['keyword'] : '', ENT_QUOTES, 'UTF-8'); ?>" aria-label="比赛名称" placeholder="搜索比赛或作业名称" name="keyword">
                 <i class="search icon"></i>
-                <button class="ui button" ><?php echo "查找" ?></button>
+                <button class="ui primary button" ><?php echo "查找" ?></button>
               </div>
               <div class="results" style="width: 100%; "></div>
             </div>
@@ -49,7 +49,7 @@
 </div>
 
 </div>
-    <table class="ui very basic center aligned table">
+    <table class="ui very basic center aligned table oj-contest-table">
       <thead>
         <tr>
           <th><?php echo "比赛&作业编号"?></th>

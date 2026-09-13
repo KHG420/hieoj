@@ -208,12 +208,12 @@
         <div class="search-forms">
           <form action="" method="get" class="search-box">
               <i class="search icon search-icon"></i>
-              <input class="prompt" type="text" value="<?php echo htmlspecialchars(isset($_GET['search']) ? $_GET['search'] : ''); ?>" placeholder="<?php echo $MSG_TITLE; ?> …" name="search">
+              <input id="problem-search" aria-label="搜索题目标题或标签" class="prompt" type="search" value="<?php echo htmlspecialchars(isset($_GET['search']) ? $_GET['search'] : ''); ?>" placeholder="搜索题目标题或知识标签" name="search"><button class="ui primary button" type="submit">搜索</button>
           </form>
 
           <form action="problem.php" method="get" class="search-box" style="width: 150px;">
               <i class="search icon search-icon"></i>
-              <input class="prompt" type="text" value="" placeholder="ID" name="id">
+              <input class="prompt" type="number" min="1" aria-label="题目编号" placeholder="题目编号" name="id" required><button class="ui basic button" type="submit">跳转</button>
           </form>
         </div>
 
@@ -226,10 +226,10 @@
               localStorage.setItem('show_tag', '1');
             }
             if (localStorage.getItem('show_tag') === '1') {
-              document.write('<input type="checkbox" checked>');
+              document.write('<input id="show-tags-input" type="checkbox" checked>');
               document.getElementById('show_tag_style').innerHTML = '.show_tag_controled { display: block; }';
             } else {
-              document.write('<input type="checkbox">');
+              document.write('<input id="show-tags-input" type="checkbox">');
               document.getElementById('show_tag_style').innerHTML = '.show_tag_controled { display: none; }';
             }
             </script>
@@ -247,10 +247,10 @@
               });
             });
             </script>
-            <label><?php echo $MSG_SHOW_TAGS;?></label>
+            <label for="show-tags-input"><?php echo $MSG_SHOW_TAGS;?></label>
           </div>
           
-          <a href="category.php" class="ui labeled icon mini green button">
+          <a href="category.php" class="ui labeled icon basic button">
             <i class="tags icon"></i> 
             <?php echo $MSG_SHOW_ALL_TAGS;?>
           </a>
@@ -271,9 +271,9 @@
       if(isset($_GET['list']) && trim($_GET['list'])!="") $ps_extra="&list=".urlencode(trim($_GET['list']));
     ?>
     
-    <div class="pagination-container">
+    <?php if ($view_total_count > 0 && $view_total_page > 1) { ?><div class="pagination-container">
       <div class="ui pagination menu">
-        <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "problemset.php?page=".($page-1).$ps_extra; ?>" id="page_prev">  
+        <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "problemset.php?page=".($page-1).$ps_extra; ?>" id="page_prev" aria-label="上一页">  
           <i class="left chevron icon"></i>
         </a>
         <?php
@@ -281,12 +281,14 @@
             echo "<a class=\"".($page==$i?"active ":"")."item\" href=\"problemset.php?page=".$i.$ps_extra."\">".$i."</a>";
           }
         ?>
-        <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "problemset.php?page=".($page+1).$ps_extra; ?>" id="page_next">
+        <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "problemset.php?page=".($page+1).$ps_extra; ?>" id="page_next" aria-label="下一页">
           <i class="right chevron icon"></i>
         </a>  
       </div>
     </div>
 
+    <?php } ?>
+    <p class="oj-result-summary">共 <?php echo $view_total_count; ?> 道题目<?php if ($view_total_count) echo " · 第 ".$page." / ".$view_total_page." 页"; ?><?php if (!empty($_GET['search'])) { ?> · <a href="problemset.php">清除搜索</a><?php } ?></p>
     <!-- 题目列表 -->
     <div class="problems-table-container">
       <table class="ui very basic table problems-table">
@@ -303,6 +305,7 @@
           </tr>
         </thead>
         <tbody>
+          <?php if (!$result) { ?><tr><td colspan="<?php echo isset($_SESSION[$OJ_NAME.'_user_id']) ? 6 : 5; ?>" class="oj-empty">未找到匹配题目。请尝试其他关键词，或<a href="problemset.php">清除搜索</a>。</td></tr><?php } ?>
           <?php
             $color=array("blue","teal","orange","pink","olive","red","yellow","green","purple");
             $tcolor=0;
@@ -342,7 +345,7 @@
                 $hash_num=hexdec(substr(md5($cat),0,15));
                 $label_theme=$color[$tcolor%count($color)];
                 $tcolor++;
-                echo "<a href=\"problemset.php?search=".htmlentities($cat,ENT_QUOTES,'UTF-8')."\" class=\"ui mini ".$label_theme." label problem-tag\">";
+                echo "<a href=\"problemset.php?search=".htmlentities(urlencode($cat),ENT_QUOTES,'UTF-8')."\" class=\"ui mini ".$label_theme." label problem-tag\">";
                 echo htmlentities($cat,ENT_QUOTES,'UTF-8');
                 echo "</a>";
               }
@@ -371,9 +374,9 @@
     </div>
 
     <!-- 分页器 (底部) -->
-    <div class="pagination-container">
+    <?php if ($view_total_count > 0 && $view_total_page > 1) { ?><div class="pagination-container">
       <div class="ui pagination menu">
-        <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "problemset.php?page=".($page-1).$ps_extra; ?>" id="page_prev">  
+        <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "problemset.php?page=".($page-1).$ps_extra; ?>" aria-label="上一页">  
           <i class="left chevron icon"></i>
         </a>
         <?php
@@ -381,14 +384,14 @@
             echo "<a class=\"".($page==$i?"active ":"")."item\" href=\"problemset.php?page=".$i.$ps_extra."\">".$i."</a>";
           }
         ?>
-        <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "problemset.php?page=".($page+1).$ps_extra; ?>" id="page_next">
+        <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "problemset.php?page=".($page+1).$ps_extra; ?>" aria-label="下一页">
           <i class="right chevron icon"></i>
         </a>  
       </div>
-    </div>
+    </div><?php } ?>
   </div>
 </div>
 
-<script type="text/javascript" src="include/jquery.tablesorter.js"></script>
+
 
 <?php include("template/$OJ_TEMPLATE/footer.php");?>

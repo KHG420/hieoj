@@ -33,6 +33,7 @@
       </label>
       <button type="button" class="kg-control" id="kg-graph-view">关系图</button>
       <button type="button" class="kg-control" id="kg-list-view">列表</button>
+      <button type="button" class="kg-control" id="kg-size-view" aria-pressed="false">放大阅读</button>
       <div class="kg-legend" aria-label="掌握状态图例">
         <span><i class="kg-dot"></i>未开始</span><span><i class="kg-dot learning"></i>学习中</span><span><i class="kg-dot mastered"></i>基本掌握</span><span><i class="kg-dot skilled"></i>熟练</span>
       </div>
@@ -57,7 +58,7 @@
   <script>
   window.KG_DATA = <?php echo json_encode($knowledge_graph_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?>;
   </script>
-  <script src="template/syzoj/js/knowledge-graph.js?v=20260913.4"></script>
+  <script src="template/syzoj/js/knowledge-graph.js?v=20260913.6"></script>
 <?php } ?>
 </div>
 

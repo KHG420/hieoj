@@ -1,6 +1,6 @@
 <?php $show_title="注册 - $OJ_NAME"; ?>
 <?php include("template/$OJ_TEMPLATE/header.php");?>
-<div class="padding">
+<div class="padding oj-registration">
   <h1>注册</h1>
   <div class="ui error message" id="error" data-am-alert hidden>
     <p id="error_info"></p>
@@ -9,20 +9,20 @@
                 <?php require_once('./include/set_post_key.php');?>
                 <div class="field">
                     <label for="username">学号*</label>
-                    <input name="user_id" class="form-control" placeholder="" type="text" maxlength="12" minlength="12" required>
+                    <input id="username" autocomplete="username" name="user_id" class="form-control" placeholder="" type="text" maxlength="12" minlength="12" required>
                 </div>
                 <div class="field">
-                    <label for="username">姓名*</label>
-                    <input name="nick" placeholder="" type="text" required>
+                    <label for="register-name">姓名*</label>
+                    <input id="register-name" autocomplete="name" name="nick" placeholder="" type="text" required>
                 </div>
                 <div class="two fields">
                     <div class="field">
-                    <label class="ui header">密码*</label>
-                      <input name="password" placeholder="" type="password" minlength="6" required>
+                    <label for="register-password">密码*</label>
+                      <input id="register-password" autocomplete="new-password" name="password" placeholder="" type="password" minlength="6" required>
                     </div>
                     <div class="field">
-                      <label class="ui header">确认密码*</label>
-                      <input name="rptpassword" placeholder="" type="password" minlength="6" required>
+                      <label for="register-confirm">确认密码*</label>
+                      <input id="register-confirm" autocomplete="new-password" name="rptpassword" placeholder="" type="password" minlength="6" required>
                     </div>
                 </div>
                 <div class="field">
@@ -43,32 +43,32 @@
                   </select>
                 </div>
               <div class="field">
-                  <label for="email">手机号*</label>
-                  <input name="phone" placeholder="" type="tel" pattern="[1]+[3456789]+\d{9}" maxlength="11" required>
+                  <label for="register-phone">手机号*</label>
+                  <input id="register-phone" autocomplete="tel" name="phone" placeholder="" type="tel" pattern="[1]+[3456789]+\d{9}" maxlength="11" required>
               </div>
               <div class="field">
-                  <label for="email">QQ号码*</label>
-                  <input name="qq" placeholder="" type="text" pattern="[1-9][0-9]{4,14}" required>
+                  <label for="register-qq">QQ号码*</label>
+                  <input id="register-qq" autocomplete="off" name="qq" placeholder="" type="text" pattern="[1-9][0-9]{4,14}" required>
               </div>
                 <div class="three fields">
                     <div class="field">
                         <label for="email">邮箱*</label>
-                        <input name="email" placeholder="" type="email" id="email" required>
+                        <input autocomplete="email" name="email" placeholder="" type="email" id="email" required>
                     </div>
                     <div class="field">
                         <label for="code">验证码*</label>
-                        <input name="code" placeholder="" type="text" required>
+                        <input id="code" autocomplete="one-time-code" name="code" placeholder="" type="text" required>
                     </div>
                     <button type="button" class="ui button" id="sendmail">获取验证码</button>
                 </div>
                 <?php if($OJ_VCODE){?>
                   <div class="field">
-                    <label for="email">验证码*</label>
-                    <input name="vcode" class="form-control" placeholder="" type="text">
+                    <label for="vcode">图片验证码*</label>
+                    <input id="vcode" required name="vcode" class="form-control" placeholder="" type="text">
                     <img alt="click to change" src="vcode.php" onclick="this.src='vcode.php?'+Math.random()" height="30px">
                   </div>
                 <?php }?>
-                <button name="submit" type="submit" class="ui button">注册</button>
+                <button name="submit" type="submit" class="ui primary button">注册</button>
                 <button name="submit" type="reset" class="ui button">重置</button>
             </form>
 </div>

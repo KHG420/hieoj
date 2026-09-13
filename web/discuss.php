@@ -118,7 +118,7 @@ if($sort=="hot") $qs.="&sort=hot";
         <form method="get" action="discuss.php" class="oj-search">
           <?php if(isset($_REQUEST['cid'])&&$_REQUEST['cid']!=''){ ?><input type="hidden" name="cid" value="<?php echo intval($_REQUEST['cid']);?>"><?php } ?>
           <?php if(isset($_REQUEST['pid'])&&$_REQUEST['pid']!=''){ ?><input type="hidden" name="pid" value="<?php echo intval($_REQUEST['pid']);?>"><?php } ?>
-          <input type="text" name="keyword" value="<?php echo htmlspecialchars($keyword,ENT_QUOTES,"UTF-8"); ?>" placeholder="搜索标题 / 学号 / 题号">
+          <input aria-label="搜索讨论标题、学号或题号" type="text" name="keyword" value="<?php echo htmlspecialchars($keyword,ENT_QUOTES,"UTF-8"); ?>" placeholder="搜索标题 / 学号 / 题号">
           <button class="oj-btn oj-btn-ghost oj-btn-sm" type="submit">搜索</button>
         </form>
       </div>

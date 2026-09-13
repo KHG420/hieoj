@@ -11,13 +11,13 @@
         <!-- <form action="" class="ui mini form" method="get" role="form" id="form"> -->
         <form id=simform class="ui mini form" action="status.php" method="get">
             <div class="inline fields" style="margin-bottom: 25px; white-space: nowrap; ">
-                <label style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_PROBLEM_ID?>：</label>
-                <div class="field"><input name="problem_id" style="width: 100px; " type="text" value="<?php echo  htmlspecialchars($problem_id, ENT_QUOTES) ?>"></div>
-                <label style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_USER?>：</label>
-                <div class="field"><input name="user_id" style="width: 100px; " type="text" value="<?php echo  htmlspecialchars($user_id, ENT_QUOTES) ?>"></div>
+                <label for="status-problem_id" style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_PROBLEM_ID?>：</label>
+                <div class="field"><input id="status-problem_id" name="problem_id" style="width: 100px; " type="text" value="<?php echo  htmlspecialchars($problem_id, ENT_QUOTES) ?>"></div>
+                <label for="status-user_id" style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_USER?>：</label>
+                <div class="field"><input id="status-user_id" name="user_id" style="width: 100px; " type="text" value="<?php echo  htmlspecialchars($user_id, ENT_QUOTES) ?>"></div>
 
-                <label style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_LANG?>：</label>
-                <select class="form-control" size="1" name="language" style="width: 110px;font-size: 1em ">
+                <label for="status-language" style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_LANG?>：</label>
+                <select class="form-control" size="1" id="status-language" name="language" style="width: 110px;font-size: 1em ">
                     <option value="-1">All</option>
                     <?php
                     if(isset($_GET['language'])){
@@ -36,8 +36,8 @@
                     }
                     ?>
                 </select>
-                <label style="font-size: 1.2em; margin-right: 1px;margin-left: 10px; ">状态：</label>
-                <select class="form-control" size="1" name="jresult" style="width: 110px;">
+                <label for="status-jresult" style="font-size: 1.2em; margin-right: 1px;margin-left: 10px; ">状态：</label>
+                <select class="form-control" size="1" id="status-jresult" name="jresult" style="width: 110px;">
                     <?php if (isset($_GET['jresult'])) $jresult_get=intval($_GET['jresult']);
                     else $jresult_get=-1;
                     if ($jresult_get>22||$jresult_get<0) $jresult_get=-1;
@@ -50,7 +50,7 @@
                     }
                     // 新增状态码 12-22（测试运行、提交过相同代码等）
                     for ($i=12;$i<23;$i++){
-                        $label=($i<count($jresult))?$jresult[$i]:("状态".$i);
+                        $label=($i<count($jresult))?$jresult[$i]:(array(20=>$jresult[0],21=>$jresult[3],22=>"提交过相同代码")[$i] ?? ("其他结果（".$i."）"));
                         if ($i==$jresult_get) echo "<option value='".strval($i)."' selected>".$label."</option>";
                         else echo "<option value='".strval($i)."'>".$label."</option>";
                     }
@@ -63,7 +63,7 @@
                             $showsim=0;
                         echo "<label style=\"font-size: 1.2em; margin-right: 1px;margin-left: 10px; \">相似度：</label>";
                         echo "
-          <select id=\"appendedInputButton\" class=\"form-control\" name=showsim onchange=\"document.getElementById('simform').submit();\" style=\"width: 110px;\">
+          <select aria-label=\"相似度\" id=\"appendedInputButton\" class=\"form-control\" name=showsim onchange=\"document.getElementById('simform').submit();\" style=\"width: 110px;\">
           <option value=0 ".($showsim==0?'selected':'').">All</option>
           <option value=50 ".($showsim==50?'selected':'').">50</option>
           <option value=60 ".($showsim==60?'selected':'').">60</option>
@@ -74,7 +74,7 @@
           </select>";
                     }
                     ?>
-                    <button class="ui labeled icon mini button" type="submit" style="margin-left: 20px;">
+                    <button class="ui primary labeled icon button" type="submit" style="margin-left: 20px;">
                         <i class="search icon"></i>
                         <?php echo $MSG_SEARCH;?>
                     </button>
@@ -85,7 +85,7 @@
         <?php if(count($view_status)==0){ ?>
         <div class="oj-empty" style="text-align:center;color:#8a93a6;padding:24px 0;">暂无提交记录</div>
         <?php } ?>
-        <table id="result-tab" class="ui very basic center aligned table" style=" table-layout: fixed;" id="table">
+        <table id="result-tab" class="ui very basic center aligned table" style=" table-layout: fixed;">
             <thead>
             <tr>
                 <th style="word-wrap: break-word; width: 6%;"><?php echo $MSG_RUNID?></th>
@@ -117,13 +117,13 @@
                 echo "<tr>";
                 foreach($row as $table_cell){
                     if($i>3&&$i!=8||$i==2) {
-                        if ($i == 5) echo "<td class='hidden-xs'; style='text-align:left; vertical-align:middle;'><b>";
-                        else echo "<td class='hidden-xs' style='vertical-align:middle;'><b>";
+                        if ($i == 5) echo "<td class='hidden-xs'; style='text-align:left; vertical-align:middle;'>";
+                        else echo "<td class='hidden-xs' style='vertical-align:middle;'>";
                     }
                     else
-                        echo "<td style='vertical-align:middle;'><b>";
+                        echo "<td style='vertical-align:middle;'>";
                     echo $table_cell;
-                    echo "</b></td>";
+                    echo "</td>";
                     $i++;
                 }
                 echo "</tr>\n";
@@ -136,20 +136,16 @@
 
             <div style="text-align: center; ">
                 <div class="ui pagination menu" style="box-shadow: none; ">
-                    <a class="icon item" href="<?php echo "status.php?".$str2;?>" id="page_prev">
-                        Top
-                    </a>
+                    <a class="icon item" href="<?php echo "status.php?".$str2;?>" id="page_prev">首页</a>
                     <?php
                     if (isset($_GET['prevtop']))
-                        echo "<a class=\"item\" href=\"status.php?".$str2."&top=".intval($_GET['prevtop'])."\">Prev</a>";
+                        echo "<a class=\"item\" href=\"status.php?".$str2."&top=".intval($_GET['prevtop'])."\">上一页</a>";
                     else
-                        echo "<a class=\"item\" href=\"status.php?".$str2."&top=".($top+20)."\">Prev</a>";
+                        echo "<a class=\"item\" href=\"status.php?".$str2."&top=".($top+20)."\">上一页</a>";
 
                     ?>
 
-                    <a class="icon item" href="<?php echo "status.php?".$str2."&top=".$bottom."&prevtop=$top"; ?>" id="page_next">
-                        Next
-                    </a>
+                    <a class="icon item" href="<?php echo "status.php?".$str2."&top=".$bottom."&prevtop=$top"; ?>" id="page_next">下一页</a>
                 </div>
             </div>
         </div>
