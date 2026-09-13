@@ -3,6 +3,8 @@
 一套源码，一个部署入口：**根目录 `compose.yaml`**。
 Web 来自 `web/`，判题程序从 `core/` 编译；不再依赖服务器上的另一套源码、预编译二进制或手工准备的 `hustoj:latest`。
 
+2026-09-14 已完成生产切换并删除旧部署。当前服务器路径、备份和验收见[生产记录](docker/PRODUCTION.md)。
+
 ## 一条命令启动
 
 在**原生 Linux x86_64 主机**上安装启用 BuildKit 的 Docker Engine 23+ 和 Compose v2 后：
@@ -60,6 +62,7 @@ docker compose logs --tail=100 web judge
 | judge-data | 题目输入输出、SPJ 文件 |
 | uploads | 用户上传 |
 | judge-runtime | 判题配置、工作目录和日志 |
+| nginx-state | 动态反爬封禁状态 |
 
 `docker compose down` 不删除这些数据；**不要执行 `down -v` 或清理这些 volumes**，否则会丢数据。
 保持同一 Compose 项目名，改项目名会启动独立空环境。
