@@ -13,24 +13,23 @@ if(!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end))   $end   = date('Y-m-t');
 if(strtotime($start)===false) $start = date('Y-m-01');
 if(strtotime($end)===false)   $end   = date('Y-m-t');
 if(strtotime($start)>strtotime($end)) { $t=$start; $start=$end; $end=$t; }
+$end_exclusive = date('Y-m-d', strtotime($end.' +1 day'));
 $num  = max(1, min(200, intval(isset($_GET['limit'])?$_GET['limit']:20)));
 $page = max(1, intval(isset($_GET['page'])?$_GET['page']:1));
 
 
-$sql_users = "SELECT users.user_id,school,nick,s.solved,t.submit FROM users
+$sql_users = "SELECT users.user_id,school,nick,s.solved,s.submit FROM users
                                         inner join
-                                        (select count(distinct problem_id) solved ,user_id from solution 
-					where TO_DAYS(in_date)>=TO_DAYS(?) and TO_DAYS(in_date)<=TO_DAYS(?) and result=4 
-					group by user_id order by solved desc ) s 
-				on users.user_id=s.user_id
-                                        inner join
-                                        (select count( problem_id) submit ,user_id from solution 
-					where TO_DAYS(in_date)>=TO_DAYS(?) and TO_DAYS(in_date)<=TO_DAYS(?)
-					group by user_id order by submit desc ) t 
-				on users.user_id=t.user_id
-                                ORDER BY s.solved DESC,t.submit,reg_time  ";
+						(select count(distinct case when result=4 then problem_id end) solved,
+						        count(problem_id) submit,user_id
+						 from solution
+						 where in_date>=? and in_date<?
+						 group by user_id
+						 having solved>0) s
+					on users.user_id=s.user_id
+				ORDER BY s.solved DESC,s.submit,reg_time  ";
 //echo $sql_users;
-$result_users = mysql_query_cache( $sql_users, $start, $end, $start, $end);
+$result_users = mysql_query_cache($sql_users, $start, $end_exclusive);
 $data = array();
 
 $i = 1;

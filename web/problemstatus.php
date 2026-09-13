@@ -117,24 +117,23 @@ if(isset($_SESSION[$OJ_NAME.'_'.'s'.$id])){
 	}
 }
 
-$sql="SELECT * FROM (
-  SELECT COUNT(*) att, user_id, min(10000000000000000000 + time*100000000000 + memory*100000 + code_length) score
+$sql="SELECT solution_id,user_id,language,in_date,att,
+       10000000000000000000 + time*100000000000 + memory*100000 + code_length score
+FROM (
+  SELECT solution_id,user_id,language,time,memory,code_length,in_date,
+         COUNT(*) OVER (PARTITION BY user_id) att,
+         ROW_NUMBER() OVER (
+           PARTITION BY user_id
+           ORDER BY time,memory,code_length,in_date,solution_id
+         ) best_rank
   FROM solution
-  WHERE problem_id =? AND result =4
-  GROUP BY user_id
-  ORDER BY score, in_date DESC
-)c
-LEFT JOIN (
-  SELECT solution_id, user_id, language, 10000000000000000000 + time*100000000000 + memory*100000 + code_length score, in_date
-  FROM solution 
-  WHERE problem_id =? AND result =4  
-  ORDER BY score, in_date DESC
-)b ON b.user_id=c.user_id AND b.score=c.score
-ORDER BY c.score, in_date ASC
+  WHERE problem_id=? AND result=4
+) ranked
+WHERE best_rank=1
+ORDER BY time,memory,code_length,in_date,solution_id
 LIMIT $start,$sz;";
 
-$result=pdo_query( "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
-$result=pdo_query( $sql,$id,$id);
+$result=pdo_query($sql,$id);
 
 $view_solution=array();
 $j=0;
@@ -215,4 +214,3 @@ require("template/".$OJ_TEMPLATE."/problemstatus.php");
 if(file_exists('./include/cache_end.php'))
         require_once('./include/cache_end.php');
 ?>
-

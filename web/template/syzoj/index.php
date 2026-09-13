@@ -263,11 +263,11 @@
                             $sql_problems="SELECT problem.problem_id, problem.title, s.submit FROM `problem`
                                 RIGHT JOIN
                                 (SELECT problem_id,COUNT(problem_id) as submit FROM solution
-                                WHERE TO_DAYS(solution.in_date)>=TO_DAYS('".$today."')
+                                WHERE solution.in_date>=?
                                 GROUP BY problem_id order by submit desc LIMIT 5 ) s
                                 ON problem.problem_id = s.problem_id
                                 WHERE problem.`defunct`='N'";
-                            $result_problems = mysql_query_cache( $sql_problems );
+                            $result_problems = mysql_query_cache($sql_problems, $today);
                             if (!$result_problems) echo '<tr><td colspan="2" class="oj-empty">本月暂无提交记录</td></tr>';
                             if ( $result_problems ) {
                                 $i = 1;
@@ -302,19 +302,19 @@
                             <?php
                             $firstday=date('Y-m-d', strtotime(date('Y-m-01') . ' -1 month'));
                             $lastday=date('Y-m-d', strtotime(date('Y-m-01') . ' -1 day'));
-                            $sql_users = "SELECT users.`user_id`,`school`,`nick`,s.`solved`,t.`submit` FROM `users`
+                            $end_exclusive=date('Y-m-d', strtotime($lastday . ' +1 day'));
+                            $sql_users = "SELECT users.`user_id`,`school`,`nick`,s.`solved`,s.`submit` FROM `users`
                                                 inner join
-                                                (select count(distinct problem_id) solved ,user_id from solution 
-                                where (TO_DAYS(in_date)>=TO_DAYS('".$firstday."') and TO_DAYS(in_date)<=TO_DAYS('".$lastday."'))and result=4 
-                                group by user_id order by solved desc limit 50) s 
+                                                (select count(distinct case when result=4 then problem_id end) solved,
+                                                        count(problem_id) submit,user_id
+                                from solution
+                                where in_date>=? and in_date<?
+                                group by user_id
+                                having solved>0
+                                order by solved desc limit 50) s
                             on users.user_id=s.user_id
-                                                inner join
-                                                (select count( problem_id) submit ,user_id from solution 
-                                where (TO_DAYS(in_date)>=TO_DAYS('".$firstday."') and TO_DAYS(in_date)<=TO_DAYS('".$lastday."')) 
-                                group by user_id order by submit desc ) t 
-                            on users.user_id=t.user_id
-                                        ORDER BY s.`solved` DESC,t.submit,reg_time  LIMIT  3";
-                            $result_users = mysql_query_cache( $sql_users );
+                                        ORDER BY s.`solved` DESC,s.submit,reg_time  LIMIT  3";
+                            $result_users = mysql_query_cache($sql_users, $firstday, $end_exclusive);
                             if (!$result_users) echo '<tr><td colspan="3" class="oj-empty">上月暂无做题记录</td></tr>';
                             if ( $result_users ) {
                                 $i = 1;

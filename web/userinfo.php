@@ -35,19 +35,16 @@ $nick=$row['nick'];
 $qq_num = $row['qq'];
 $chongFu=isset($res[0]['sim_num'])?intval($res[0]['sim_num']):0;
 
-// count solved
-$sql="SELECT count(DISTINCT problem_id) as `ac` FROM `solution` WHERE `user_id`=? AND `result`=4";
-$result=pdo_query($sql,$user) ;
+// count solved and submissions in one pass over this user's records
+$sql="SELECT count(DISTINCT CASE WHEN result=4 THEN problem_id END) as `ac`,
+             SUM(problem_id>0) as `Submit`
+      FROM `solution` WHERE `user_id`=?";
+$result=pdo_query($sql,$user);
 $row=$result[0];
-$AC=$row['ac'];
+$AC=intval($row['ac']);
+$Submit=intval($row['Submit']);
 
 $chongFu=sprintf ( "%.02lf%%", $AC>0 ? ($chongFu / $AC) : 0 );
-
-// count submission
-$sql="SELECT count(solution_id) as `Submit` FROM `solution` WHERE `user_id`=? and  problem_id>0";
-$result=pdo_query($sql,$user) ;
-$row=$result[0];
-$Submit=$row['Submit'];
 
 // update solved (带缓存，避免每次访问用户主页都写库)
 $stat_key="userstat_".$user;
@@ -76,22 +73,17 @@ foreach($result as $row){
 }
 
 
-$sql=	"SELECT UNIX_TIMESTAMP(date(in_date))*1000 md,count(1) c FROM `solution` where  `user_id`=?  group by md order by md desc ";
+$sql=	"SELECT UNIX_TIMESTAMP(date(in_date))*1000 md,count(1) c,
+                SUM(result=4) ac
+         FROM `solution` where `user_id`=? group by md order by md desc ";
 $result=pdo_query($sql,$user);//mysql_escape_string($sql));
 $chart_data_all= array();
-//echo $sql;
-
-foreach($result as $row){
-	$chart_data_all[$row['md']]=$row['c'];
-}
-
-$sql=	"SELECT UNIX_TIMESTAMP(date(in_date))*1000 md,count(1) c FROM `solution` where  `user_id`=? and result=4 group by md order by md desc ";
-$result=pdo_query($sql,$user);//mysql_escape_string($sql));
 $chart_data_ac= array();
 //echo $sql;
 
 foreach($result as $row){
-	$chart_data_ac[$row['md']]=$row['c'];
+	$chart_data_all[$row['md']]=$row['c'];
+	if(intval($row['ac'])>0) $chart_data_ac[$row['md']]=$row['ac'];
 }
 
 /////////////////////////Template
