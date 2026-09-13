@@ -12,7 +12,7 @@
    现库有 MyISAM 表，**不能仅使用 --single-transaction 声称一致备份**。
    最终备份应在维护窗口停止写入，使用 `mariadb-dump --lock-all-tables`。
 2. `/home/judge/data` 与 Web 的 `upload/`。
-3. 两个原 Git 仓库的 bundle、未提交修改、未跟踪文件；Web 私密历史不得上传公开仓库。
+3. 两个原 Git 仓库的 bundle、未提交修改、未跟踪文件；Web 私密历史不得上传主仓库。
 4. 旧 Compose、`.env`、`judge.conf`、Web 私密配置、Nginx/PHP 配置、反爬列表、
    当前镜像 ID 及可回滚的镜像导出。
 5. 公网 Nginx、FRP 配置及对应服务状态。入口层不随本次仓库整理自动改动。
@@ -21,7 +21,7 @@
 
 ## 先平行恢复，再切流量
 
-1. 克隆公开仓库到新目录，例如 `/opt/hnieoj`。不要删除两个旧目录。
+1. 使用有访问权限的 Git 身份克隆主仓库到新目录，例如 `/opt/hnieoj`。不要删除两个旧目录。
 2. 用**独立项目名和端口**初始化，避免碰到旧项目 `hnieoj`：
 
    ```bash

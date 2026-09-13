@@ -8,10 +8,12 @@ Web 来自 `web/`，判题程序从 `core/` 编译；不再依赖服务器上的
 在**原生 Linux x86_64 主机**上安装启用 BuildKit 的 Docker Engine 23+ 和 Compose v2 后：
 
 ```bash
-git clone https://github.com/KHG420/hieoj.git
+git clone git@github.com:KHG420/hieoj.git
 cd hieoj
 docker compose up -d --build
 ```
+
+获取源码需要该仓库的 Git 访问权限；Docker 启动本身不依赖 Git 凭据。
 
 首次构建需要联网下载 Ubuntu 基础镜像和软件包。x86_64 默认使用中科大 Ubuntu 镜像源，四个镜像共享分架构 APT 下载缓存并启用重试，避免重复下载及瞬时网络错误。启动后访问 **http://127.0.0.1:8080**。
 等待 `docker compose ps` 中 db、web、judge 显示 healthy。
@@ -90,7 +92,7 @@ OJ 是运行不可信代码的系统，生产应部署在专用 Linux 主机，�
 - `docs/legacy/`、`OJ系统说明文档.md`：历史记录，不应照其中旧命令新建服务。
 
 旧 `production-docker/`、两套 `docker/hustoj*` 和 `install/Dockerfile` 部署入口已合并/退役，
-历史版本可从 Git 恢复。不要把生产环境的私密 Web Git 历史合并到公开仓库。
+历史版本可从 Git 恢复。不要把生产环境含私密配置的 Web Git 历史合并到主仓库。
 
 ## 隔离验收
 
