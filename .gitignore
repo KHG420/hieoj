@@ -13,3 +13,5 @@ web/curl.log
 *.swo
 *.bak
 *~
+.env
+.codegraph/

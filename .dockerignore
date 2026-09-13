@@ -1,0 +1,12 @@
+.git
+.codegraph
+.env
+**/*.swp
+**/*.bak
+web/include/db_info.inc.php
+web/upload
+etc/judge.conf
+install/judge.conf
+install/jol.tar.gz
+**/backup
+**/run

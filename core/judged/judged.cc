@@ -331,6 +331,27 @@ void run_client(int runid, int clientid) {
 //			     (char * const )"LC_ALL=zh_CN.UTF-8",NULL};
 	//if (!DEBUG)
 	if(use_docker){
+		// Compose uses named volumes: host bind paths inside this container do not
+		// refer to the same files on the Docker engine's host.
+		const char *runtime_volume = getenv("OJ_DOCKER_RUNTIME_VOLUME");
+		if (runtime_volume && *runtime_volume) {
+			const char *data_volume = getenv("OJ_DOCKER_DATA_VOLUME");
+			const char *network = getenv("OJ_DOCKER_NETWORK");
+			const char *image = getenv("OJ_DOCKER_IMAGE");
+			if (!data_volume || !network || !image) {
+				fprintf(stderr, "Incomplete Compose sandbox configuration\n");
+				exit(1);
+			}
+			char runtime_mount[BUFFER_SIZE*3], data_mount[BUFFER_SIZE*3];
+			snprintf(runtime_mount, sizeof(runtime_mount), "%s:/home/judge", runtime_volume);
+			snprintf(data_mount, sizeof(data_mount), "%s:/home/judge/data", data_volume);
+			execl(docker_path, docker_path, "container", "run", "--rm",
+				"--pids-limit", "100", "--cap-add", "SYS_PTRACE", "--cap-add", "SYS_ADMIN",
+				"--network", network, "-v", runtime_mount, "-v", data_mount,
+				image, "/usr/bin/judge_client", runidstr, buf, (char *) NULL);
+			perror("Cannot start Compose sandbox");
+			exit(1);
+		}
 		char docker_v[BUFFER_SIZE*3];
 		char data_v[BUFFER_SIZE*3];
 		char client_path[BUFFER_SIZE];

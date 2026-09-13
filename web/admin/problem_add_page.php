@@ -78,6 +78,7 @@
                 <!-- 题目添加表单容器 -->
                 <div class="form-container">
                     <form method=POST action=problem_add.php>
+                        <?php require_once("../include/set_post_key.php"); ?>
                         <input type=hidden name=problem_id value="New Problem">
                         
                         <!-- 标题行：核心修改区域 -->

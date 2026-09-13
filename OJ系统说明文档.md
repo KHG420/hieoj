@@ -1,5 +1,7 @@
 # HnieOJ 在线评测系统 — 部署与使用说明
 
+> 历史文档：以下为旧裸机部署记录，不是当前部署入口。新部署只使用根目录 `compose.yaml`，见 [README](README.md)；生产切换见 [迁移说明](docker/MIGRATION.md)。
+
 > 最后更新：2025-08-04
 > 系统类型：HUSTOJ（算法设计在线评测系统）
 > 服务域名：hnieacm.com（证书已就绪，HTTPS 未启用）
