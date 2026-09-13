@@ -16,11 +16,10 @@
 # ============================================================
 set -uo pipefail
 
-BLOCK_FILE=/opt/hnieoj-docker/conf/nginx/conf.d/blocklist.map
-ALLOW_FILE=/opt/hnieoj-docker/conf/crawler-guard.allow
-RUN_DIR=/opt/hnieoj-docker/run
+BLOCK_FILE=/var/lib/oj-nginx/blocklist.map
+ALLOW_FILE=/opt/oj/crawler-guard.allow
+RUN_DIR=/var/lib/oj-nginx
 STATE_LOG=/var/log/hnieoj-crawler-guard.log
-CT=hnieoj-web
 TTL_SECONDS=${HP_TTL:-604800}   # 7 天
 
 SINK=$(mktemp); TMP_IPS=$(mktemp); TMP_OUT=$(mktemp)
@@ -30,11 +29,10 @@ trap cleanup EXIT
 log() { echo "$(date '+%F %T') [honeypot] $*" >> "$STATE_LOG"; }
 
 mkdir -p "$RUN_DIR"
-docker exec "$CT" true > "$SINK" 2>&1 || { log "SKIP: 容器不可用"; exit 0; }
 [ -f "$BLOCK_FILE" ] || { log "ERROR: 找不到 $BLOCK_FILE"; exit 1; }
 
 # ---------- 1. 读取蜜罐日志 ----------
-docker exec "$CT" sh -c 'cat /var/log/nginx/honeypot.log 2>/dev/null || true' > "$TMP_IPS" 2> "$SINK"
+sh -c 'cat /var/log/nginx/honeypot.log 2>/dev/null || true' > "$TMP_IPS" 2> "$SINK"
 
 # ---------- 2. 提取来源 IP（去重 + 白名单过滤）----------
 awk '{ ip=$1; if (ip != "" && ip !~ /^-$/) print ip }' "$TMP_IPS" | sort -u > "$TMP_IPS.u"
@@ -105,8 +103,8 @@ rm -f "$FILTERED"
 if ! cmp -s "$TMP_OUT.d" "$BLOCK_FILE"; then
     cp -a "$BLOCK_FILE" "$RUN_DIR/blocklist.map.hp.bak"
     cat "$TMP_OUT.d" > "$BLOCK_FILE"
-    if docker exec "$CT" nginx -t > "$SINK" 2>&1; then
-        docker exec "$CT" nginx -s reload > "$SINK" 2>&1
+    if nginx -t > "$SINK" 2>&1; then
+        nginx -s reload > "$SINK" 2>&1
         log "APPLIED: 蜜罐名单已更新"
     else
         cat "$RUN_DIR/blocklist.map.hp.bak" > "$BLOCK_FILE"

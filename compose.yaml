@@ -39,6 +39,7 @@ services:
       - credentials:/run/oj-secrets:ro
       - judge-data:/home/judge/data
       - uploads:/home/judge/src/web/upload
+      - nginx-state:/var/lib/oj-nginx
     tmpfs:
       - /tmp/hustoj_page_cache:size=256m,mode=1777
     ports:
@@ -73,6 +74,7 @@ volumes:
   db-data:
   credentials:
   uploads:
+  nginx-state:
   judge-runtime:
     name: ${COMPOSE_PROJECT_NAME:-hnieoj-unified}-judge-runtime
   judge-data:

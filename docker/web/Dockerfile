@@ -21,7 +21,9 @@ COPY docker/conf/php/www.conf /etc/php/8.1/fpm/pool.d/www.conf
 COPY web/ /home/judge/src/web/
 COPY docker/web/configure.php docker/web/healthcheck.php /opt/oj/
 COPY docker/web/entrypoint.sh /entrypoint.sh
-RUN touch /etc/nginx/conf.d/blocklist.map \
+COPY docker/operations/crawler-guard.sh docker/operations/honeypot-sweep.sh /opt/oj/operations/
+COPY docker/conf/crawler-guard.allow /opt/oj/crawler-guard.allow
+RUN mkdir -p /var/lib/oj-nginx && touch /var/lib/oj-nginx/blocklist.map \
  && mkdir -p /home/judge/data /home/judge/src/web/upload \
  && chown www-data:www-data /home/judge/data /home/judge/src/web/upload \
  && chmod +x /entrypoint.sh \

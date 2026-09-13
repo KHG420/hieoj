@@ -1,0 +1,11 @@
+[Unit]
+Description=HnieOJ Compose crawler and honeypot guard
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/hnieoj
+ExecStart=/usr/bin/docker compose exec -T web bash /opt/oj/operations/crawler-guard.sh
+ExecStartPost=/usr/bin/docker compose exec -T web bash /opt/oj/operations/honeypot-sweep.sh
+Nice=10

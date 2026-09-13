@@ -14,8 +14,8 @@
 #   纯频率判据不可用：校园机房 NAT 后多个学生共用一个出口 IP，按频率封会误伤。
 #
 # 部署：systemd timer 每 30s 执行一次（hnieoj-crawler-guard.timer）
-# 回滚：touch /opt/hnieoj-docker/run/crawler-guard.disabled   → 只记录不封禁
-# 白名单：/opt/hnieoj-docker/conf/crawler-guard.allow（每行一个 IP 前缀）
+# 在 Web 容器内运行；/var/lib/oj-nginx/crawler-guard.disabled 启用观察模式。
+# 白名单：/opt/oj/crawler-guard.allow（每行一个 IP 前缀）
 #
 # 幂等性：稳态（没有新命中）下不改动 blocklist.map，因此不触发 nginx reload。
 # 注：本脚本刻意不使用 /dev/null（改用临时 sink 文件），
@@ -23,13 +23,12 @@
 # ============================================================
 set -uo pipefail
 
-CONF_D=/opt/hnieoj-docker/conf/nginx/conf.d
+CONF_D=/var/lib/oj-nginx
 BLOCK_FILE="$CONF_D/blocklist.map"
-ALLOW_FILE=/opt/hnieoj-docker/conf/crawler-guard.allow
-RUN_DIR=/opt/hnieoj-docker/run
+ALLOW_FILE=/opt/oj/crawler-guard.allow
+RUN_DIR=/var/lib/oj-nginx
 DISABLE_FLAG="$RUN_DIR/crawler-guard.disabled"
 STATE_LOG=/var/log/hnieoj-crawler-guard.log
-CT=hnieoj-web
 
 TAIL_LINES=${CG_TAIL_LINES:-3000}   # 每次分析的日志尾部行数
 MAX_IDS=${CG_MAX_IDS:-50}           # 不同 user_id/problem_id 数阈值
@@ -47,11 +46,10 @@ OBSERVE=0
 # ---------- 0. 前置检查 ----------
 mkdir -p "$RUN_DIR"
 touch "$STATE_LOG" 2> "$SINK" || true
-docker exec "$CT" true > "$SINK" 2>&1 || { log "SKIP: 容器 $CT 不可用"; exit 0; }
 [ -f "$BLOCK_FILE" ] || { log "ERROR: 找不到 $BLOCK_FILE"; exit 1; }
 
 # ---------- 1. 抓取日志尾部 ----------
-docker exec "$CT" tail -n "$TAIL_LINES" /var/log/nginx/access.log > "$TMP_TAIL" 2> "$SINK" || {
+tail -n "$TAIL_LINES" /var/log/nginx/access.log > "$TMP_TAIL" 2> "$SINK" || {
     log "SKIP: 无法读取容器日志"; exit 0; }
 
 # ---------- 2. 统计「枚举广度」 ----------
@@ -180,8 +178,8 @@ awk '
 if ! cmp -s "$TMP_OUT.d" "$BLOCK_FILE"; then
     cp -a "$BLOCK_FILE" "$RUN_DIR/blocklist.map.bak"
     cat "$TMP_OUT.d" > "$BLOCK_FILE"    # 原地覆盖；目录挂载下 inode 已不重要，保持习惯
-    if docker exec "$CT" nginx -t > "$SINK" 2>&1; then
-        docker exec "$CT" nginx -s reload > "$SINK" 2>&1
+    if nginx -t > "$SINK" 2>&1; then
+        nginx -s reload > "$SINK" 2>&1
         N=$(grep -cE '^[0-9]' "$BLOCK_FILE" 2> "$SINK" || echo 0)
         SUF=""
         [ "$OBSERVE" = "1" ] && SUF=" (OBSERVE: 只记录未封禁)"

@@ -31,6 +31,7 @@ static  $OJ_AUTO_SHARE=false;//true: One can view all AC submit if he/she has AC
 static  $OJ_CSS="white.css";
 static  $OJ_SAE=false; //using sina application engine
 static  $OJ_VCODE=false;
+static  $OJ_CSRF=true;
 static  $OJ_APPENDCODE=false;
 static  $OJ_CE_PENALTY=false;
 static  $OJ_PRINTER=false;
