@@ -132,6 +132,14 @@
                     <a class="ui basic button" href="adventure.php?tab=route">开启三题远征</a>
                 </div>
             </section>
+            <section class="syzoj-card" aria-labelledby="lab-home-title">
+                <div class="syzoj-card-header"><i class="ui university icon" aria-hidden="true"></i><h2 id="lab-home-title">ACM 实验室</h2></div>
+                <div class="syzoj-card-body"><p>一起学习算法、参与训练和竞赛，也一起完善我们的在线评测平台。</p>
+                <?php require_once './include/editorial.inc.php'; $labRecruitment=null; try { $labRecruitment=editorial_query('SELECT recruitment_open FROM acm_lab_settings WHERE id=1')->fetchColumn(); } catch(Throwable $e) {} ?>
+                <?php if($labRecruitment!==null && $labRecruitment!==false){ ?><p><?php echo $labRecruitment?'招新进行中 · 欢迎零基础同学申请':'暂未开放申请 · 可查看介绍与联系方式'; ?></p><?php } ?><div class="ui wrapping buttons" style="display:flex;flex-wrap:wrap;gap:8px">
+                    <a class="ui basic button" href="lab.php">了解实验室</a><a class="ui primary button" href="lab.php?tab=join">加入我们</a><a class="ui basic button" href="lab.php?tab=feedback&amp;kind=bug">发现 Bug</a><a class="ui basic button" href="lab.php?tab=feedback&amp;kind=suggestion">意见建议</a>
+                </div></div>
+            </section>
             <!-- 公告卡片 -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">

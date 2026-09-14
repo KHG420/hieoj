@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-14T07:35:52.056326+00:00",
+  "title": "Design System: HNIE OJ — ACM 实验室扩展",
+  "extensions": {
+    "breakpoints": [
+      {
+        "name": "page-mobile",
+        "value": "999px"
+      },
+      {
+        "name": "lab-compact",
+        "value": "600px"
+      }
+    ],
+    "motion": [],
+    "shadows": [],
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "primary",
+        "tonalRamp": [
+          "oklch(15.00% 0.1983 262.78)",
+          "oklch(26.43% 0.1983 262.78)",
+          "oklch(37.86% 0.1983 262.78)",
+          "oklch(49.29% 0.1983 262.78)",
+          "oklch(60.71% 0.1983 262.78)",
+          "oklch(72.14% 0.1983 262.78)",
+          "oklch(83.57% 0.1983 262.78)",
+          "oklch(95.00% 0.1983 262.78)"
+        ]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "primary-hover",
+        "tonalRamp": [
+          "oklch(15.00% 0.1772 263.05)",
+          "oklch(26.43% 0.1772 263.05)",
+          "oklch(37.86% 0.1772 263.05)",
+          "oklch(49.29% 0.1772 263.05)",
+          "oklch(60.71% 0.1772 263.05)",
+          "oklch(72.14% 0.1772 263.05)",
+          "oklch(83.57% 0.1772 263.05)",
+          "oklch(95.00% 0.1772 263.05)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.0000 89.88)",
+          "oklch(26.43% 0.0000 89.88)",
+          "oklch(37.86% 0.0000 89.88)",
+          "oklch(49.29% 0.0000 89.88)",
+          "oklch(60.71% 0.0000 89.88)",
+          "oklch(72.14% 0.0000 89.88)",
+          "oklch(83.57% 0.0000 89.88)",
+          "oklch(95.00% 0.0000 89.88)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "background",
+        "tonalRamp": [
+          "oklch(15.00% 0.0057 264.53)",
+          "oklch(26.43% 0.0057 264.53)",
+          "oklch(37.86% 0.0057 264.53)",
+          "oklch(49.29% 0.0057 264.53)",
+          "oklch(60.71% 0.0057 264.53)",
+          "oklch(72.14% 0.0057 264.53)",
+          "oklch(83.57% 0.0057 264.53)",
+          "oklch(95.00% 0.0057 264.53)"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "text",
+        "tonalRamp": [
+          "oklch(15.00% 0.0443 257.84)",
+          "oklch(26.43% 0.0443 257.84)",
+          "oklch(37.86% 0.0443 257.84)",
+          "oklch(49.29% 0.0443 257.84)",
+          "oklch(60.71% 0.0443 257.84)",
+          "oklch(72.14% 0.0443 257.84)",
+          "oklch(83.57% 0.0443 257.84)",
+          "oklch(95.00% 0.0443 257.84)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "border",
+        "tonalRamp": [
+          "oklch(15.00% 0.0144 254.61)",
+          "oklch(26.43% 0.0144 254.61)",
+          "oklch(37.86% 0.0144 254.61)",
+          "oklch(49.29% 0.0144 254.61)",
+          "oklch(60.71% 0.0144 254.61)",
+          "oklch(72.14% 0.0144 254.61)",
+          "oklch(83.57% 0.0144 254.61)",
+          "oklch(95.00% 0.0144 254.61)"
+        ]
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "field-border",
+        "tonalRamp": [
+          "oklch(15.00% 0.0211 254.93)",
+          "oklch(26.43% 0.0211 254.93)",
+          "oklch(37.86% 0.0211 254.93)",
+          "oklch(49.29% 0.0211 254.93)",
+          "oklch(60.71% 0.0211 254.93)",
+          "oklch(72.14% 0.0211 254.93)",
+          "oklch(83.57% 0.0211 254.93)",
+          "oklch(95.00% 0.0211 254.93)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "muted",
+        "tonalRamp": [
+          "oklch(15.00% 0.0434 257.02)",
+          "oklch(26.43% 0.0434 257.02)",
+          "oklch(37.86% 0.0434 257.02)",
+          "oklch(49.29% 0.0434 257.02)",
+          "oklch(60.71% 0.0434 257.02)",
+          "oklch(72.14% 0.0434 257.02)",
+          "oklch(83.57% 0.0434 257.02)",
+          "oklch(95.00% 0.0434 257.02)"
+        ]
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "主要按钮",
+      "kind": "button",
+      "description": "已实现实验室组件的独立样式示例；实际页面以现有级联样式为准。",
+      "html": "<button class=\"ds-primary\">提交加入申请</button>",
+      "css": ".ds-primary{background:#245dd8;color:#fff;border:0;border-radius:4px;padding:11px 21px;min-height:44px;font:700 14px sans-serif;cursor:pointer}.ds-primary:hover{background:#1d4db8}.ds-primary:focus-visible{outline:3px solid #245dd8;outline-offset:3px}",
+      "refersTo": "button-primary"
+    },
+    {
+      "name": "基础按钮",
+      "kind": "button",
+      "description": "已实现实验室组件的独立样式示例；实际页面以现有级联样式为准。",
+      "html": "<button class=\"ds-basic\">发现 Bug</button>",
+      "css": ".ds-basic{background:transparent;color:#526177;border:1px solid #dce3ec;border-radius:4px;padding:11px 21px;min-height:44px;cursor:pointer}.ds-basic:hover{color:#25344a;border-color:#aab9cc}.ds-basic:focus-visible{outline:3px solid #245dd8;outline-offset:3px}"
+    },
+    {
+      "name": "带标签输入",
+      "kind": "input",
+      "description": "已实现实验室组件的独立样式示例；实际页面以现有级联样式为准。",
+      "html": "<label class=\"ds-label\" for=\"ds-name\">姓名 必填</label><input class=\"ds-field\" id=\"ds-name\">",
+      "css": ".ds-label{display:block;font-weight:600;margin-bottom:12px;color:#25344a}.ds-field{padding:10px 12px;min-height:44px;box-sizing:border-box;border:1px solid #c9d3e0;border-radius:6px;background:#fff;color:#24334b;font:inherit;width:100%}.ds-field:focus-visible{outline:2px solid #245ccb;outline-offset:3px}",
+      "refersTo": "field"
+    },
+    {
+      "name": "实验室标签导航",
+      "kind": "nav",
+      "description": "已实现实验室组件的独立样式示例；实际页面以现有级联样式为准。",
+      "html": "<nav class=\"ds-tabs\"><a href=\"#about\">了解实验室</a><a href=\"#join\" aria-current=\"page\">加入我们</a></nav>",
+      "css": ".ds-tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #dce3ec}.ds-tabs a{padding:12px 16px;color:#526177;border-bottom:3px solid transparent;text-decoration:none}.ds-tabs a[aria-current]{color:#245dd8;border-color:#245dd8;font-weight:700}.ds-tabs a:hover{text-decoration:underline}.ds-tabs a:focus-visible{outline:2px solid #245ccb;outline-offset:3px}"
+    },
+    {
+      "name": "内容面板",
+      "kind": "card",
+      "description": "已实现实验室组件的独立样式示例；实际页面以现有级联样式为准。",
+      "html": "<section class=\"ds-panel\"><h2>加入我们</h2><p>无需竞赛成绩。介绍你的基础、学习方向和可参与时间。</p></section>",
+      "css": ".ds-panel{background:#fff;border:1px solid #dce3ec;border-radius:12px;padding:32px;color:#25344a}.ds-panel h2{font-size:24px;line-height:1.5;margin:16px 0}.ds-panel p{color:#596a82;line-height:1.7}",
+      "refersTo": "panel"
+    }
+  ],
+  "narrative": {
+    "northStar": "延续现有蓝白工作界面",
+    "overview": "这是已实现界面的有限记录，不是新的全站视觉方案，也没有单独批准的视觉效果图。实验室以操作（Operate）与阅读（Read）为主：清楚的中文标签、白色面板、蓝色主要动作和可查询的文字状态。继承现有 Semantic UI 与桌面样式。",
+    "keyCharacteristics": [],
+    "rules": [],
+    "dos": [
+      "延续现有蓝白 Semantic UI、可见标签、文字状态和清楚的主要动作。",
+      "为长标题与纯文本保留换行和断行，为手机表格保留内部横向滚动。"
+    ],
+    "donts": [
+      "把本次实验室布局规则推广成全站重设计。",
+      "为状态增加没有文字解释的颜色编码，或用占位符替代字段标签。"
+    ]
+  }
+}

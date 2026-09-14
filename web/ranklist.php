@@ -7,6 +7,8 @@ require_once('./include/setlang.php');
 require_once('./include/memcache.php');
 $view_title= $MSG_RANKLIST;
 
+$rankRange = ($_GET['range'] ?? '') === 'all' ? 'all' : 'year';
+$rankSince = date('Y-m-d', strtotime('-1 year'));
 $where="";
 $where_params=array();
 if(isset($_GET['prefix']) || isset($_GET['xy']) || isset($_GET['nj']) || isset($_GET['school'])){
@@ -56,26 +58,28 @@ $page_size=50;
 if ($rank < 0)
     $rank = 0;
 
-// 优化后的SQL查询（移除了时间范围查询）
-$subquery = "SELECT a.user_id, a.school, a.nick, a.solved, a.submit, a.reg_time 
-             FROM `users` a 
-             $where 
-             ORDER BY a.solved DESC, a.submit, a.reg_time 
-             LIMIT " . strval($rank) . ", $page_size";
-    
-$sql = "SELECT t.user_id, t.school, t.nick, t.solved, t.submit, 
-               IFNULL(SUM(c.sim), 0) as sim_num
-        FROM ($subquery) t
-        LEFT JOIN `solution` b ON t.user_id = b.user_id
-        LEFT JOIN `sim` c ON b.solution_id = c.s_id
-        GROUP BY t.user_id
-        ORDER BY t.solved DESC, t.submit, t.reg_time";
-
-if(count($where_params)>0){
-    $result = mysql_query_cache($sql, ...$where_params);
-}else{
-    $result = mysql_query_cache($sql) ;
+// The same period governs solved problems, submissions and similarity totals.
+$periodParams = array();
+$rankSource = '`users` a';
+if ($rankRange === 'year') {
+    $rankSource = "(SELECT u.*, COALESCE(y.period_solved,0) period_solved, COALESCE(y.period_submit,0) period_submit
+        FROM users u LEFT JOIN (SELECT user_id, COUNT(*) period_submit,
+        COUNT(DISTINCT CASE WHEN result=4 THEN problem_id END) period_solved
+        FROM solution WHERE problem_id>0 AND in_date>=? AND in_date<=NOW() GROUP BY user_id) y ON y.user_id=u.user_id) a";
+    $periodParams[] = $rankSince.' 00:00:00';
 }
+$solvedColumn = $rankRange === 'year' ? 'a.period_solved' : 'a.solved';
+$submitColumn = $rankRange === 'year' ? 'a.period_submit' : 'a.submit';
+$where .= " AND a.defunct='N' AND $submitColumn>0";
+$subquery = "SELECT a.user_id,a.school,a.nick,$solvedColumn solved,$submitColumn submit,a.reg_time
+    FROM $rankSource $where ORDER BY solved DESC,submit,a.reg_time LIMIT $rank,$page_size";
+$similarityPeriod = $rankRange === 'year' ? ' AND b.in_date>=? AND b.in_date<=NOW() AND b.problem_id>0' : '';
+$sql = "SELECT t.user_id,t.school,t.nick,t.solved,t.submit,IFNULL(SUM(c.sim),0) sim_num
+    FROM ($subquery) t LEFT JOIN solution b ON t.user_id=b.user_id $similarityPeriod
+    LEFT JOIN sim c ON b.solution_id=c.s_id GROUP BY t.user_id,t.school,t.nick,t.solved,t.submit,t.reg_time
+    ORDER BY t.solved DESC,t.submit,t.reg_time";
+$queryParams = array_merge($periodParams,$where_params,$periodParams);
+$result = mysql_query_cache($sql,...$queryParams);
 if($result) $rows_cnt=count($result);
 else $rows_cnt=0;
 $view_rank=Array();
@@ -110,8 +114,8 @@ for ( $i=0;$i<$rows_cnt;$i++ ) {
     }
 }
 
-$sql = "SELECT count(1) as `mycount` FROM `users`";
-$result = mysql_query_cache($sql);
+$sql = "SELECT count(1) as `mycount` FROM $rankSource $where";
+$result = mysql_query_cache($sql,...array_merge($periodParams,$where_params));
 $row=$result[0];
 $view_total=$row['mycount'];
 

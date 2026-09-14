@@ -88,6 +88,7 @@ if ($OJ_WHITE_BLACK) { ?>
                         <a class="item" href="<?php echo $path_fix?>status.php?user_id=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="file icon"></i>我的提交</a>
                         <a class="item" href="<?php echo $path_fix?>solutions.php?tab=mine"><i class="book icon"></i>我的题解</a>
+                        <a class="item" href="<?php echo $path_fix?>lab.php?tab=mine"><i class="university icon"></i>我的申请与反馈</a>
                         <a class="item" href="<?php echo $path_fix?>coins.php?tab=history"><i class="trophy icon"></i>我的金币</a>
                         <a class="item" href="<?php echo $path_fix?>adventure.php"><i class="compass icon"></i>今日冒险</a>
                         <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="history icon"></i>解题回忆录</a>

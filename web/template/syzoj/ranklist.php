@@ -1,4 +1,4 @@
-<?php $show_title="$MSG_RANKLIST - $OJ_NAME"; ?>
+<?php $OJ_EDITORIAL_VIEWPORT=true; $show_title="$MSG_RANKLIST - $OJ_NAME"; ?>
 <?php include("template/$OJ_TEMPLATE/header.php");?>
 <?php
 // 安全修复：回显参数统一转义
@@ -24,11 +24,14 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
 .oj-pages { text-align: center; margin: 16px 0 24px; }
 .oj-pages a { display: inline-block; padding: 6px 12px; border: 1px solid #e6ebf2; border-radius: 6px; color: #2f6ee5; margin: 0 3px; text-decoration: none; font-size: 14px; }
 .oj-pages a.active { background: #2f6ee5; color: #fff; border-color: #2f6ee5; }
+@media(max-width:999px){body.oj-page-ranklist{min-width:0}.oj-page-ranklist .oj-topnav{overflow-x:auto}.oj-page-ranklist .oj-topnav>.ui.container{width:max-content!important;min-width:max-content;margin:0!important}.oj-page-ranklist #main_container.ui.container{width:auto!important;margin:0 16px!important}.oj-filter input,.oj-filter select{max-width:100%}.oj-filter .f{max-width:100%}}
 .oj-pages a.disabled { color: #b8c2d0; pointer-events: none; }
 </style>
 <div class="oj-rk">
   <div class="oj-card">
+    <p><?php echo $rankRange === 'year' ? '统计范围：'.$rankSince.' 至 '.date('Y-m-d').'。按范围内通过的不同题目数排名，同题重复通过只计一次。' : '统计范围：全部历史记录。'; ?></p>
     <form class="oj-filter" action="ranklist.php" method="get">
+      <div class="f"><label for="rank-range">统计范围</label><select id="rank-range" name="range" onchange="this.form.submit()"><option value="year" <?php if($rankRange==='year') echo 'selected'; ?>>最近一年</option><option value="all" <?php if($rankRange==='all') echo 'selected'; ?>>全部时间</option></select></div>
       <div class="f">
         <label for="rank-xy">学院</label>
         <select id="rank-xy" name="xy" onchange="this.form.submit()">
@@ -101,24 +104,15 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
     </div>
   </div>
 
-  <div class="oj-pages">
+  <nav class="oj-pages" aria-label="排名分页">
     <?php
-    if(!isset($start)) $start=0;
-    if(!isset($prefix)) $prefix='';
-    $start=intval($start);
-    $section=500;
-    $end=$start+$section>$view_total?$view_total:$start+$section;
-    $st=$start+1 > $view_total ? $view_total:$start+1;
-    $qs = ($prefix?"&prefix=".urlencode($prefix):"").($xy?"&xy=".urlencode($xy):"").($school?"&school=".urlencode($school):"").($nj?"&nj=".urlencode($nj):"");
-    ?>
-    <a class="<?php if($start<=0) echo "disabled "; ?>" href="<?php echo "ranklist.php?start=".($st-$section-1 < 0 ? 0:$st-$section-1).$qs; ?>" id="page_prev">&laquo; 上一页</a>
-    <?php
-    for ($i=$st;$i<$end;$i+= 50){
-      echo "<a class=\"".($st==$i?"active ":"")."\" href=\"ranklist.php?start=".($i - 1).$qs."\" >".$i.'-'.($i + 49)."</a>";
-    }
-    ?>
-    <a class="<?php if($start>=$view_total) echo "disabled "; ?>" href="<?php echo "ranklist.php?start=".($end).$qs; ?>" id="page_next">下一页 &raquo;</a>
-  </div>
+    $currentPage = intdiv(max(0,$start),$page_size);
+    $pageCount = (int)ceil($view_total/$page_size);
+    $qs = '&range='.$rankRange.($prefix?'&prefix='.urlencode($prefix):'').($xy?'&xy='.urlencode($xy):'').($school?'&school='.urlencode($school):'').($nj?'&nj='.urlencode($nj):'');
+    if($currentPage>0){ ?><a href="<?php echo htmlspecialchars("ranklist.php?start=".(($currentPage-1)*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>">上一页</a><?php }
+    for($p=max(0,$currentPage-2);$p<min($pageCount,$currentPage+3);$p++){ ?><a class="<?php echo $p===$currentPage?'active':''; ?>" href="<?php echo htmlspecialchars("ranklist.php?start=".($p*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>" <?php if($p===$currentPage) echo 'aria-current="page"'; ?>><?php echo ($p*$page_size+1).'–'.min(($p+1)*$page_size,$view_total); ?></a><?php }
+    if($currentPage+1<$pageCount){ ?><a href="<?php echo htmlspecialchars("ranklist.php?start=".(($currentPage+1)*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>">下一页</a><?php } ?>
+  </nav>
 </div>
 <script>
 $(function(){
