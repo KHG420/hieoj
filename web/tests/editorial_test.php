@@ -142,6 +142,16 @@ try {
     ed_check(str_contains($scoped,'href="solutions.php?id='.$id.'"') && !str_contains($scoped,'href="solutions.php?id='.$different.'"'),'A problem list excludes other problems');
     $secondProblem=ed_http('/solutions.php?problem_id='.$pids[1]);
     ed_check(str_contains($secondProblem,'href="solutions.php?id='.$different.'"') && !str_contains($secondProblem,'href="solutions.php?id='.$id.'"'),'Other problem keeps its own editorial list');
+    $nav='&from_problem='.$pids[0];
+    $mineNav=ed_http('/solutions.php?tab=mine'.$nav,0);
+    ed_check(str_contains($mineNav,'href="solutions.php?problem_id='.$pids[0].'"') && str_contains($mineNav,'另一道题的题解'),'Source navigation preserves the problem without filtering my editorials');
+    ed_check(str_contains($mineNav,'coins.php?tab=ranking&amp;from_problem='.$pids[0]),'My editorials carries context to coins');
+    $coinNav=ed_http('/coins.php?tab=ranking'.$nav,0);
+    ed_check(str_contains($coinNav,'href="solutions.php?problem_id='.$pids[0].'"') && str_contains($coinNav,'coins.php?tab=history&amp;from_problem='.$pids[0]),'Coins keeps problem and history navigation');
+    ed_check(str_contains(ed_http('/coins.php?tab=history'.$nav,0),'coins.php?tab=ranking&amp;from_problem='.$pids[0]),'History keeps context on return to ranking');
+    ed_check(str_contains(ed_http('/solutions.php?tab=review'.$nav,3),'href="solutions.php?problem_id='.$pids[0].'"'),'Review keeps problem navigation');
+    ed_check(!str_contains(ed_http('/solutions.php?tab=mine',0),'本题题解'),'Direct global entry does not invent a current problem');
+    ed_check(!str_contains(ed_http('/coins.php?from_problem=2147483647',0),'本题题解'),'Invalid source problem is ignored');
     $codes=ed_parallel(array(array('unlock',$c,$id),array('unlock',$c,$different)));
     ed_check(count(array_filter($codes,fn($v)=>$v===0))===1 && editorial_balance($c)===1,'Concurrent different purchases cannot overdraw wallet');
     // Force a ledger uniqueness failure, proving the entire money operation rolls back.
@@ -190,6 +200,7 @@ try {
     for($i=0;$i<21;$i++) editorial_submit($a,$pids[1],'分页题解 '.$i,'分页正文');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine',0),'下一页'),'Editorial pagination available');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine&page=2',0),'上一页'),'Second page works');
+    ed_check(str_contains(ed_http('/solutions.php?tab=mine'.$nav,0),'page=2&amp;from_problem='.$pids[0]),'Pagination retains source without filtering the global list');
     // New Markdown posts retain their format; legacy calls remain plain text.
     $writePath='/solutions.php?problem_id='.$pids[1].'&write=1';
     $compose=ed_http($writePath,0);

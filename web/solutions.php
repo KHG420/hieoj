@@ -11,6 +11,7 @@ $admin = $user && isset($_SESSION[$OJ_NAME.'_administrator']);
 $tab = isset($_GET['tab']) && is_string($_GET['tab']) && in_array($_GET['tab'],array('published','mine','review'),true) ? $_GET['tab'] : 'published';
 $id = isset($_GET['id']) && is_scalar($_GET['id']) ? max(0,intval($_GET['id'])) : 0;
 $problemId = isset($_GET['problem_id']) && is_scalar($_GET['problem_id']) ? max(0,intval($_GET['problem_id'])) : 0;
+$returnProblemId = isset($_GET['from_problem']) && is_scalar($_GET['from_problem']) ? max(0,intval($_GET['from_problem'])) : 0;
 $page = isset($_GET['page']) && is_scalar($_GET['page']) ? min(100000,max(1,intval($_GET['page']))) : 1;
 // Public editorial browsing always belongs to a specific problem.
 if ($tab === 'published' && !$id && !$problemId) {
@@ -50,7 +51,7 @@ elseif ($ready) {
                 header('Location: solutions.php?problem_id='.$problemId, true, 303); exit;
             } elseif ($action === 'review' && $admin && $id && $tab === 'review') {
                 editorial_review($user,$id,is_string($_POST['decision'] ?? null) ? $_POST['decision'] : '',is_string($_POST['note'] ?? null) ? $_POST['note'] : '');
-                header('Location: solutions.php?tab=review', true, 303); exit;
+                header('Location: solutions.php?tab=review'.($returnProblemId ? '&from_problem='.$returnProblemId : ''), true, 303); exit;
             } else { http_response_code(400); throw new DomainException('无效操作，请使用页面中的按钮。'); }
         }
     } catch (DomainException $e) { if (http_response_code() < 400) http_response_code(400); $error = $e->getMessage(); }
@@ -101,6 +102,13 @@ elseif ($ready) {
     } catch (Throwable $e) { http_response_code(503); error_log('Editorial read failed: '.$e->getMessage()); $error = '题解暂时无法加载，请稍后刷新。'; $rows = array(); $article = null; }
 }
 $contextProblemId = $article ? intval($article['problem_id']) : ($problem ? $problemId : 0);
+// Navigation context must not filter global lists or change their headings.
+$navProblemId = $contextProblemId;
+if (!$navProblemId && $ready && $returnProblemId) {
+    try { if (editorial_problem($returnProblemId)) $navProblemId = $returnProblemId; }
+    catch (Throwable $e) { error_log('Editorial navigation failed: '.$e->getMessage()); }
+}
+$navQuery = $navProblemId ? '&amp;from_problem='.$navProblemId : '';
 $heading = $contextProblemId ? 'P'.$contextProblemId.' · '.($article ? $article['problem_title'] : $problem['title']).' · 题解' : ($tab === 'mine' ? '我的题解' : ($tab === 'review' ? '题解审核' : '题解'));
 $show_title = editorial_escape($heading).' - '.editorial_escape($OJ_NAME);
 $OJ_EDITORIAL_VIEWPORT = true;

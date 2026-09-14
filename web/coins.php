@@ -23,6 +23,13 @@ elseif ($ready) {
         $hasNext = count($rows)>30; $rows = array_slice($rows,0,30);
     } catch (Throwable $e) { http_response_code(503); error_log('Coins read failed: '.$e->getMessage()); $error = '金币记录暂时无法加载，请稍后刷新。'; }
 }
+$navProblemId = 0;
+$returnProblemId = isset($_GET['from_problem']) && is_scalar($_GET['from_problem']) ? max(0,intval($_GET['from_problem'])) : 0;
+if ($ready && $returnProblemId) {
+    try { if (editorial_problem($returnProblemId)) $navProblemId = $returnProblemId; }
+    catch (Throwable $e) { error_log('Coins navigation failed: '.$e->getMessage()); }
+}
+$navQuery = $navProblemId ? '&amp;from_problem='.$navProblemId : '';
 $show_title = '金币榜单 - '.editorial_escape($OJ_NAME);
 $OJ_EDITORIAL_VIEWPORT = true;
 require 'template/syzoj/coins.php';
