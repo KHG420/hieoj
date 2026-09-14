@@ -298,6 +298,7 @@
 <!-- <script src="https://cdn.bootcss.com/jquery/3.2.1/jquery.min.js"></script> -->
 <script src="./js/jquery.min.js"></script>
 <!-- <script src="https://cdn.bootcss.com/bootstrap/4.0.0-beta/js/bootstrap.min.js"></script> -->
+<script src="./js/popper.min.js"></script>
 <script src="./js/bootstrap.min.js"></script>
 <!-- <script src="https://cdn.bootcdn.net/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js"></script> -->
 <script src="./js/adminlte.min.js"></script>

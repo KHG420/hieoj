@@ -73,4 +73,8 @@ for(const route of ['registerpage.php','loginpage.php','modifypage.php']){
  const b=await get('/'+route);assert.match(b,/name="viewport" content="width=device-width, initial-scale=1"/);
 }
 const scroll=await get('/contestrank3.php?cid=1163');assert.doesNotMatch(scroll,/src="mathjax\/MathJax.js/);
+const news=await get('/viewnews.php?id=1016');
+assert.doesNotMatch(news,/ti<x>tle|li<x>nk\.zhihu/,'stored news markup is repaired');
+for(const id of [518930,513327,513328,513329]) assert.ok(news.includes('href="https://vjudge.net/contest/'+id+'"'),'direct VJudge link '+id);
+assert.match(await get('/admin/js/popper.min.js'),/Popper/,'vendored admin dependency is served');
 console.log(JSON.stringify({status:'passed',httpChecks:checks,replayUsers:ranked.length,replaySubmissions:submissions.length,problemLabels:labels.length},null,2));
