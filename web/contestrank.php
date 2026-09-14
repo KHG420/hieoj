@@ -3,6 +3,7 @@
 $cache_time=60;
         require_once('./include/cache_start.php');
     require_once('./include/db_info.inc.php');
+    require_once('./include/memcache.php');
         require_once('./include/setlang.php');
         $view_title= $MSG_CONTEST.$MSG_RANKLIST;
         $title="";
@@ -57,7 +58,6 @@ $cid=intval($_GET['cid']);
 
 if($OJ_MEMCACHE){
 	$sql="SELECT `start_time`,`title`,`end_time` FROM `contest` WHERE `contest_id`=$cid";
-        require("./include/memcache.php");
         $result = mysql_query_cache($sql);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
@@ -110,7 +110,7 @@ if($OJ_MEMCACHE){
         else $rows_cnt=0;
 }else{
 	$sql="SELECT count(1) as pbc FROM `contest_problem` WHERE `contest_id`=?";
-        $result = pdo_query($sql,$cid);
+        $result = mysql_query_cache($sql,$cid);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
 }
@@ -123,6 +123,7 @@ else
 // $row=$result[0];
 $pid_cnt=intval($row['pbc']);
 
+// 公共榜单查询复用短时缓存（APCu/文件），不依赖 Memcached 开关。
 $sim_cnt=array(); $link_cnt=array(); // 统一初始化，避免未定义告警
 if($OJ_MEMCACHE){
 	$sql="SELECT
@@ -143,15 +144,15 @@ if($OJ_MEMCACHE){
                 inner join users
                 on users.user_id=solution.user_id and users.defunct='N'
         ORDER BY users.user_id,in_date";
-        $result = pdo_query($sql,$cid);
+        $result = mysql_query_cache($sql,$cid);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
         // 性能优化：聚合查询替代每行 2 次查询（sim 与 linkI 各一条）
         $sim_map = array();
-        $res_sim = pdo_query("SELECT solution.user_id, COUNT(*) as num FROM solution RIGHT JOIN sim ON sim.s_id=solution.solution_id WHERE solution.contest_id=? GROUP BY solution.user_id", $cid);
+        $res_sim = mysql_query_cache("SELECT solution.user_id, COUNT(*) as num FROM solution RIGHT JOIN sim ON sim.s_id=solution.solution_id WHERE solution.contest_id=? GROUP BY solution.user_id", $cid);
         foreach($res_sim as $sr){ $sim_map[$sr['user_id']] = $sr['num']; }
         $link_map = array();
-        $res_link = pdo_query("SELECT userid, COUNT(*) as cnt FROM `linkI` WHERE cid=? GROUP BY userid", $cid);
+        $res_link = mysql_query_cache("SELECT userid, COUNT(*) as cnt FROM `linkI` WHERE cid=? GROUP BY userid", $cid);
         foreach($res_link as $lr){ $link_map[$lr['userid']] = $lr['cnt']; }
         for ($i = 0; $i < $rows_cnt; $i ++) {
                 $row = $result[$i];
@@ -205,7 +206,7 @@ if($OJ_MEMCACHE){
 	$sql="select num,user_id from
         (select num,user_id from solution where contest_id=? and result=4 order by solution_id ) contest
         group by num";
-        $fb = pdo_query($sql,$cid);
+        $fb = mysql_query_cache($sql,$cid);
         if($fb) $rows_cnt=count($fb);
         else $rows_cnt=0;
 }
