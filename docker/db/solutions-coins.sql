@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS problem_editorial (
   user_id varchar(48) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
   title varchar(120) NOT NULL,
   content mediumtext NOT NULL,
+  content_format enum('plain','markdown') NOT NULL DEFAULT 'plain',
   status enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   review_note varchar(500) NOT NULL DEFAULT '',
   reviewer varchar(48) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci DEFAULT NULL,

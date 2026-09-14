@@ -18,7 +18,13 @@ if ($tab === 'published' && !$id && !$problemId) {
 }
 $ready = editorial_ready();
 $error = null; $article = null; $problem = null; $rows = array(); $canRead = false; $passed = false; $hasNext = false;
-$balance = 0; $titleInput = ''; $contentInput = '';
+$balance = 0; $submitted = false;
+$submitRequest = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? null) === 'submit';
+$writing = !$id && $tab === 'published' && (($_GET['write'] ?? null) === '1' || $submitRequest);
+// Capture the user's work before authentication/CSRF validation so errors preserve it.
+$titleInput = $submitRequest && is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+$contentInput = $submitRequest && is_string($_POST['content'] ?? null) ? $_POST['content'] : '';
+$formatInput = $submitRequest && is_string($_POST['content_format'] ?? null) ? $_POST['content_format'] : ($submitRequest ? 'plain' : 'markdown');
 $statusNames = array('pending'=>'待审核','approved'=>'审核通过','rejected'=>'已驳回');
 if ($tab === 'review' && !$admin) { http_response_code(403); $error = '只有管理员可以访问题解审核。'; }
 elseif ($tab === 'mine' && !$user) { http_response_code(401); $error = '请先登录，再查看自己的题解。'; }
@@ -33,7 +39,8 @@ elseif ($ready) {
             if ($action === 'submit' && $problemId && !$id && $tab === 'published') {
                 $titleInput = is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
                 $contentInput = is_string($_POST['content'] ?? null) ? $_POST['content'] : '';
-                $newId = editorial_submit($user,$problemId,$titleInput,$contentInput);
+                $newId = editorial_submit($user,$problemId,$titleInput,$contentInput,$formatInput);
+                $_SESSION[$OJ_NAME.'_editorial_submitted'] = (int)$newId;
                 header('Location: solutions.php?id='.$newId, true, 303); exit;
             } elseif ($action === 'unlock' && $id) {
                 editorial_unlock($user,$id,$admin);
@@ -49,12 +56,18 @@ elseif ($ready) {
         $balance = editorial_balance($user);
         if ($id) {
             // Deliberately omit the body until visibility and payment have been checked.
-            $article = editorial_query('SELECT e.id,e.problem_id,e.user_id,e.title,e.status,e.review_note,e.created_at,e.reviewed_at,p.title problem_title FROM problem_editorial e JOIN problem p ON p.problem_id=e.problem_id WHERE e.id=?'.($admin ? '' : ' AND '.editorial_public_sql()),array($id))->fetch(PDO::FETCH_ASSOC);
+            $article = editorial_query('SELECT e.id,e.problem_id,e.user_id,e.title,e.content_format,e.status,e.review_note,e.created_at,e.reviewed_at,p.title problem_title FROM problem_editorial e JOIN problem p ON p.problem_id=e.problem_id WHERE e.id=?'.($admin ? '' : ' AND '.editorial_public_sql()),array($id))->fetch(PDO::FETCH_ASSOC);
             if (!$article || (!$admin && $article['user_id'] !== $user && $article['status'] !== 'approved')) {
                 $article = null; http_response_code(404); $error = '题解不存在或暂未公开。';
             } else {
                 $canRead = $user && ($admin || $article['user_id'] === $user || ($article['status'] === 'approved' && (editorial_passed($user,$article['problem_id']) || editorial_query('SELECT 1 FROM problem_unlock WHERE user_id=? AND problem_id=?',array($user,$article['problem_id']))->fetchColumn())));
-                if ($canRead) $article['content'] = editorial_query('SELECT content FROM problem_editorial WHERE id=?',array($id))->fetchColumn();
+                if ($canRead) {
+                    $article['content'] = editorial_query('SELECT content FROM problem_editorial WHERE id=?',array($id))->fetchColumn();
+                    if ($article['user_id'] === $user && (int)($_SESSION[$OJ_NAME.'_editorial_submitted'] ?? 0) === $id) {
+                        $submitted = true;
+                        unset($_SESSION[$OJ_NAME.'_editorial_submitted']);
+                    }
+                }
             }
         } else {
             if ($problemId) {
@@ -80,4 +93,7 @@ $contextProblemId = $article ? intval($article['problem_id']) : ($problem ? $pro
 $heading = $contextProblemId ? 'P'.$contextProblemId.' · '.($article ? $article['problem_title'] : $problem['title']).' · 题解' : ($tab === 'mine' ? '我的题解' : ($tab === 'review' ? '题解审核' : '题解'));
 $show_title = editorial_escape($heading).' - '.editorial_escape($OJ_NAME);
 $OJ_EDITORIAL_VIEWPORT = true;
+$draftKey = $user && $contextProblemId ? 'oj-editorial:'.rawurlencode($OJ_NAME).':'.rawurlencode($user).':'.$contextProblemId : '';
+$showComposer = $writing && $problem && ($passed || $submitRequest);
+$loadMarkdown = $showComposer || ($article && $canRead && $article['content_format'] === 'markdown');
 require 'template/syzoj/solutions.php';

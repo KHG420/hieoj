@@ -190,6 +190,30 @@ try {
     for($i=0;$i<21;$i++) editorial_submit($a,$pids[1],'分页题解 '.$i,'分页正文');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine',0),'下一页'),'Editorial pagination available');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine&page=2',0),'上一页'),'Second page works');
+    // New Markdown posts retain their format; legacy calls remain plain text.
+    $writePath='/solutions.php?problem_id='.$pids[1].'&write=1';
+    $compose=ed_http($writePath,0);
+    ed_check(str_contains($compose,'id="editorial-form"') && str_contains($compose,'name="content_format" value="markdown"'),'Dedicated Markdown composer');
+    ed_check(!str_contains(ed_http($writePath,1),'id="editorial-form"'),'Only accepted users can open the composer');
+    $md="## 思路\n\n**前缀和** \$O(n)\$\n\n```cpp\nint main() { return 0; }\n```\n<script>bad()</script>";
+    $invalid=ed_http($writePath,0,array('action'=>'submit','title'=>'保留的标题','content'=>$md,'content_format'=>'markdown','postkey'=>'expired'),403);
+    ed_check(str_contains($invalid,'保留的标题') && str_contains($invalid,editorial_escape($md)),'CSRF failure retains title and body');
+    ed_http($writePath,0,array('action'=>'submit','title'=>'格式验证','content'=>$md,'content_format'=>'html','postkey'=>$key),400);
+    ed_http($writePath,0,array('action'=>'submit','title'=>'Markdown 验证','content'=>$md,'content_format'=>'markdown','postkey'=>$key),303);
+    $mdId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content_format FROM problem_editorial WHERE id=?',array($mdId))==='markdown','Markdown format stored');
+    ed_check(ed_value('SELECT content_format FROM problem_editorial WHERE id=?',array($id))==='plain','Legacy format preserved');
+    $mdBody=ed_http('/solutions.php?id='.$mdId,0);
+    ed_check(str_contains($mdBody,'data-content-format="markdown"') && str_contains($mdBody,editorial_escape($md)) && !str_contains($mdBody,'<script>bad()'),'Body safely escaped before client rendering');
+    ed_check(str_contains($mdBody,'data-submitted-draft='),'Successful submit signals matching draft cleanup');
+    ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId,0),'data-submitted-draft='),'Draft cleanup signal consumed once');
+    $legacy=ed_http('/solutions.php?id='.$id,0);
+    ed_check(str_contains($legacy,'data-content-format="plain"') && !str_contains($legacy,'editorial-markdown.js'),'Legacy article not reinterpreted');
+    ed_http('/solutions.php?id='.$mdId,1,null,404);
+    $rewardBefore=editorial_balance($a);
+    ed_http('/solutions.php?id='.$mdId.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
+    ed_check(editorial_balance($a)===$rewardBefore+10,'Markdown approval earns the same ten coins');
+    ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId),editorial_escape($md)),'Markdown never leaks through anonymous paywall');
     echo "PASS: $checks checks covering judge rewards, authorization, CSRF, review, unlocks, concurrency, rollbacks, privacy, escaping, ledger and ranking.\n";
 } catch(Throwable $e) { $failed=true; fwrite(STDERR,'FAIL: '.$e->getMessage()."\n".$e->getTraceAsString()."\n"); }
 finally {

@@ -45,7 +45,8 @@ function editorial_balance($user) {
     return $user ? (int)editorial_query('SELECT balance FROM coin_wallet WHERE user_id=?', array($user))->fetchColumn() : 0;
 }
 
-function editorial_submit($user, $problem, $title, $content) {
+function editorial_submit($user, $problem, $title, $content, $format = 'plain') {
+    if (!in_array($format, array('plain','markdown'), true)) throw new DomainException('不支持的题解格式。');
     $title = trim($title); $content = trim($content);
     if (!$user || !editorial_problem($problem) || !editorial_passed($user,$problem)) {
         throw new DomainException('通过这道公开题目后，才能提交题解。');
@@ -53,7 +54,7 @@ function editorial_submit($user, $problem, $title, $content) {
     if ($title === '' || mb_strlen($title,'UTF-8') > 120 || $content === '' || mb_strlen($content,'UTF-8') > 50000) {
         throw new DomainException('请填写 1–120 字标题和 1–50000 字正文。');
     }
-    editorial_query('INSERT INTO problem_editorial(problem_id,user_id,title,content) VALUES(?,?,?,?)', array($problem,$user,$title,$content));
+    editorial_query('INSERT INTO problem_editorial(problem_id,user_id,title,content,content_format) VALUES(?,?,?,?,?)', array($problem,$user,$title,$content,$format));
     return editorial_db()->lastInsertId();
 }
 

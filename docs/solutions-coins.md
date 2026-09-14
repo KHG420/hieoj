@@ -2,7 +2,7 @@
 
 ## 已实现规则
 
-- 通过某道公开题目后可以提交该题的题解，正文使用纯文本，保留换行和代码缩进。
+- 通过某道公开题目后可以提交该题的题解，新正文使用 Markdown，支持代码块、公式与预览；历史纯文本仍保留原换行和代码缩进。
 - 题解提交后处于待审核状态；管理员审核通过后公开，并向作者发放 10 金币。驳回时必须填写原因，不发奖。
 - **通过该题的用户可以免费查看该题全部已审核题解。** 作者可以查看自己的待审核、已通过和已驳回题解，管理员可以免费审核。
 - 未通过该题的用户可支付 **5 金币，永久解锁该题全部已审核题解，包括后续新增题解**。同题重复解锁不扣费，不同题目独立解锁。
@@ -14,7 +14,8 @@
 ## 页面入口
 
 - 不提供全站题解浏览和按题号查找题解的页面；题解入口位于各自题目页，直接访问 `solutions.php` 会跳转到题库。
-- `solutions.php?problem_id=1000`：指定题目的题解和投稿表单。
+- `solutions.php?problem_id=1000`：指定题目的题解列表与编写入口。
+- `solutions.php?problem_id=1000&write=1`：通过本题后使用的独立编写页。
 - `solutions.php?tab=mine`：自己的题解及审核状态。
 - `solutions.php?id=1`：题解正文或按题目解锁入口，标题与返回链接始终指向该题解所属题目。
 - `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏提供入口。
@@ -74,3 +75,37 @@ docker compose exec -T --user www-data web php /home/judge/src/web/tests/editori
 docker compose cp docker/tests/editorial-migration.sh db:/tmp/editorial-migration.sh
 docker compose exec -T db sh /tmp/editorial-migration.sh
 ```
+
+## Markdown 编写体验（2026-09-14）
+
+- 标题、加粗、列表、链接、代码语言、代码块、公式及主动插入的题解模板；桌面对照预览，手机默认单栏编辑，可切换预览与专注模式。
+- 正文格式 `content_format` 为 `plain` 或 `markdown`。旧记录和省略格式的旧调用默认 `plain`；新编写表单显式提交 `markdown`。预览和授权后的正式阅读共用渲染器。
+- Markdown 复用站内 Marked、KaTeX 0.12.0 和 Ace。作者 HTML 转义，渲染结果按允许的元素与属性过滤，链接仅允许 HTTP(S)/mailto；公式禁用 trust；代码通过文本节点高亮。图片显示为链接，不自动请求外部图片。访问控制仍由服务端完成，未授权响应没有正文。
+- 本机草稿按站点、账号、题目区分，保存在浏览器 localStorage，不跨设备同步。输入后自动保存，提供恢复、保存状态和下载。多个标签页发生冲突时暂停覆盖，由作者选择。存储失败时提示下载，离开时提醒。提交失败保留正文，成功后只清理与该篇内容相符的草稿。
+- 无 JavaScript 时仍可提交原始正文；Markdown 文章保留安全的源文本作为降级展示。
+- `css/fonts/KaTeX_*.woff2` 来自官方 npm `katex@0.12.0`，与站内现有 JS/CSS 版本一致；许可证同目录保存。补齐这些字体以避免公式字体 404。
+
+### 升级现有数据库
+
+先备份 `problem_editorial`，执行 `docker/db/editorial-markdown.sql`，再部署 Web。此次只增加格式字段，不需要暂停判题，不修改正文、余额、奖励或解锁记录。迁移可重复执行；旧 Web 与新字段兼容，代码回滚时保留新增字段。
+
+```sh
+docker compose cp docker/db/editorial-markdown.sql db:/tmp/editorial-markdown.sql
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol < /tmp/editorial-markdown.sql'
+```
+
+新安装在 `solutions-coins.sql` 中直接创建该字段，无须单独升级。
+
+### 新增验证
+
+`editorial_test.php --fixtures` 也覆盖格式保存、旧正文保留、编写资格、CSRF 失败正文恢复、成功提示、Markdown 审核奖励及正文权限。
+
+迁移测试前额外复制 `docker/db/editorial-markdown.sql` 到测试 DB 的 `/tmp/editorial-markdown.sql`；迁移脚本验证原纯文本记录不变和重复升级。
+
+`web/tests/editorial-editor.browser.js` 是供 Playwright CLI `run-code` 使用的浏览器检查函数。仅在本机隔离环境，使用已通过题目的测试账户打开编写页运行；会编辑该测试账户的本机草稿。覆盖预览、公式、高亮、HTML/链接安全、草稿刷新恢复、标签页冲突、存储失败恢复、模板、视图切换和手机宽度。
+
+### 设计参考
+
+- 洛谷题解规范：https://help.luogu.com.cn/rules/academic/solution-standard
+- GitHub 代码排版：https://docs.github.com/zh/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks
+- StackEdit：https://stackedit.io/app

@@ -1,11 +1,12 @@
 <?php include("template/$OJ_TEMPLATE/header.php"); ?>
-<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=2">
+<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=3">
 <div class="ed-page">
   <div class="ed-heading"><div><h1><?php echo editorial_escape($heading); ?></h1><p><?php echo $tab==='review' ? '审核投稿，通过后公开并奖励作者 10 金币。' : ($tab==='mine' ? '查看投稿的审核状态，进入对应题目继续阅读。' : '通过本题可免费阅读全部已审核题解，也可以分享你的解题思路。'); ?></p></div><a class="ui basic button" href="coins.php<?php echo $user ? '?tab=history' : ''; ?>"><?php echo $user ? '我的金币 · '.intval($balance) : '了解金币奖励'; ?></a></div>
   <nav class="ed-tabs" aria-label="题解导航">
     <?php if($contextProblemId){ ?>
     <a href="problem.php?id=<?php echo $contextProblemId; ?>">返回题目</a>
-    <a href="solutions.php?problem_id=<?php echo $contextProblemId; ?>" <?php if(!$id && $tab==='published') echo 'aria-current="page"'; ?>>本题题解</a>
+    <a href="solutions.php?problem_id=<?php echo $contextProblemId; ?>" <?php if(!$id && $tab==='published' && !$writing) echo 'aria-current="page"'; ?>>本题题解</a>
+    <?php if($passed){ ?><a href="solutions.php?problem_id=<?php echo $contextProblemId; ?>&amp;write=1" <?php if($writing) echo 'aria-current="page"'; ?>>编写题解</a><?php } ?>
     <?php } else { ?><a href="problemset.php">返回题库</a><?php } ?>
     <a href="solutions.php?tab=mine" <?php if($tab==='mine') echo 'aria-current="page"'; ?>>我的题解</a>
     <a href="coins.php">金币榜单</a>
@@ -20,7 +21,7 @@
       <?php if($canRead){ ?>
         <?php if($article['status']==='pending'){ ?><p class="ed-notice">题解已提交，正在等待管理员审核。审核通过后公开，并奖励 10 金币。</p><?php } ?>
         <?php if(($admin || $article['user_id']===$user) && $article['review_note']!==''){ ?><p class="ed-notice">审核说明：<?php echo editorial_escape($article['review_note']); ?></p><?php } ?>
-        <div class="ed-body"><?php echo editorial_escape($article['content']); ?></div>
+        <div class="ed-body" data-content-format="<?php echo editorial_escape($article['content_format']); ?>"<?php if($submitted){ ?> data-submitted-draft="<?php echo editorial_escape($draftKey); ?>" data-submitted-title="<?php echo editorial_escape($article['title']); ?>"<?php } ?>><?php echo editorial_escape($article['content']); ?></div>
         <?php if($admin && $tab==='review' && $article['status']==='pending'){ ?>
           <form method="post" class="ed-form ed-review">
             <?php require './include/set_post_key.php'; ?><input type="hidden" name="action" value="review">
@@ -38,21 +39,27 @@
         </div>
       <?php } ?>
     </article>
+  <?php } elseif($ready && $showComposer){ ?>
+    <?php include 'template/syzoj/editorial-editor.php'; ?>
   <?php } elseif($ready && (!$error || $rows || $problem)){ ?>
     <section class="ed-panel" aria-label="题解列表">
       <?php if(!$rows){ ?><div class="ed-empty"><h2><?php echo $tab==='review' ? '暂时没有待审核题解' : ($tab==='mine' ? '你还没有提交题解' : '本题暂无已审核题解'); ?></h2><p><?php echo $tab==='review' ? '新提交的题解会出现在这里。' : '通过题目后，在题目页面进入题解，分享你的解题思路。'; ?></p></div><?php } ?>
       <?php foreach($rows as $item){ ?><div class="ed-row"><div><a class="ed-row-title" href="solutions.php?id=<?php echo intval($item['id']).($tab==='review' ? '&amp;tab=review' : ''); ?>"><?php echo editorial_escape($item['title']); ?></a><p class="ed-meta">P<?php echo intval($item['problem_id']).' · '.editorial_escape($item['problem_title']); ?></p><p class="ed-meta"><?php echo editorial_escape($item['user_id']).' · '.editorial_escape($item['created_at']); ?></p></div><span class="ed-status"><?php echo $statusNames[$item['status']]; ?></span></div><?php } ?>
     </section>
     <?php if($page>1 || $hasNext){ ?><nav class="ed-pagination" aria-label="题解分页"><?php if($page>1){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page-1; ?>">上一页</a><?php } ?><span>第 <?php echo $page; ?> 页</span><?php if($hasNext){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page+1; ?>">下一页</a><?php } ?></nav><?php } ?>
-    <?php if($problem && $tab==='published'){ ?><section class="ed-panel"><h2>提交我的题解</h2>
-      <?php if($passed){ ?><p>审核通过后获得 10 金币。请写清思路、算法步骤、复杂度和关键代码。</p>
-        <form method="post" class="ed-form"><?php require './include/set_post_key.php'; ?><input type="hidden" name="action" value="submit">
-          <label for="editorial-title">题解标题</label><input id="editorial-title" name="title" maxlength="120" required value="<?php echo editorial_escape($titleInput); ?>" placeholder="例如：用前缀和减少重复计算">
-          <label for="editorial-content">题解正文</label><p class="ed-meta" id="content-help">使用纯文本编写，保留换行和代码缩进，最多 50000 字。</p><textarea id="editorial-content" name="content" rows="16" maxlength="50000" aria-describedby="content-help" required><?php echo editorial_escape($contentInput); ?></textarea>
-          <div><button class="ui primary button" type="submit">提交题解，等待审核</button></div>
-        </form>
-      <?php } else { ?><p>通过这道题目后即可提交题解。<?php if(!$user){ ?><a href="loginpage.php">请先登录</a><?php } else { ?><a href="problem.php?id=<?php echo $problemId; ?>">去完成题目</a><?php } ?></p><?php } ?>
+    <?php if($problem && $tab==='published'){ ?><section class="ed-panel ed-write-invite"><div><h2>分享你的解题思路</h2>
+      <p class="ed-meta"><?php echo $passed ? '支持 Markdown、代码和公式。审核通过后公开，奖励 10 金币。' : '通过这道题目后即可提交题解。'; ?></p></div>
+      <?php if($passed){ ?><a class="ui primary button" href="solutions.php?problem_id=<?php echo $problemId; ?>&amp;write=1">编写题解</a>
+      <?php } elseif(!$user){ ?><a href="loginpage.php">请先登录</a><?php } else { ?><a href="problem.php?id=<?php echo $problemId; ?>">去完成题目</a><?php } ?>
     </section><?php } ?>
   <?php } ?>
 </div>
+<?php if($loadMarkdown){ ?>
+<link rel="stylesheet" href="template/syzoj/css/katex.min.css">
+<script defer src="template/bs3/marked.min.js"></script>
+<script defer src="template/syzoj/css/katex.js"></script>
+<script defer src="ace/ace.js"></script>
+<script defer src="template/syzoj/js/editorial-markdown.js?v=1"></script>
+<?php } ?>
+<?php if($showComposer || $submitted){ ?><script defer src="template/syzoj/js/editorial-editor.js?v=2"></script><?php } ?>
 <?php include("template/$OJ_TEMPLATE/footer.php"); ?>
