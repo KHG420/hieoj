@@ -158,11 +158,11 @@ function ad_fixture_class_page($page, $pageNum, $total, $each, array $rows)
 $GLOBALS['AD_TOTAL'] = 3;
 $GLOBALS['AD_EACH'] = 2;
 $GLOBALS['AD_PAGE1'] = ad_fixture_class_page(1, 2, 3, 2, array(
-    ad_fixture_row('c001', '2004010101', '电气工程0401', '01', '电气与信息工程学院'),
-    ad_fixture_row('c002', '2014360101', '动力工程2014', '36', '研究生院（研究生工作部）'),
+    ad_fixture_row('c001', '2024010101', '电气工程2401', '01', '电气与信息工程学院'),
+    ad_fixture_row('c002', '2025010101', '研究生工程2501', '36', '研究生院（研究生工作部）'),
 ));
 $GLOBALS['AD_PAGE2'] = ad_fixture_class_page(2, 2, 3, 2, array(
-    ad_fixture_row('c003', '2004010102', '电气工程0402', '01', '电气与信息工程学院'),
+    ad_fixture_row('c003', '2024010102', '电气工程2402', '01', '电气与信息工程学院'),
 ));
 
 function ad_test_handler($pages, array $overrides = array())
@@ -413,6 +413,37 @@ foreach ($fake2->requests as $request) {
 ad_check($exchanged, '执行了课表会话交换');
 ad_check($httpOnly, '所有请求均为 HTTPS 同源');
 ad_check(strpos(json_encode($snapshot2), 'secret-pw') === false, '快照中不含密码');
+
+// 采集编排同样收窄范围：完整校验通过后只保留 2024 级及以后（含 2024）。
+$mixedPage = ad_fixture_class_page(1, 1, 3, 3, array(
+    ad_fixture_row('m1', '2024010101', '电气2401', '01', '电气与信息工程学院'),
+    ad_fixture_row('m2', '2004010101', '电气0401', '01', '电气与信息工程学院'),
+    ad_fixture_row('m3', '2026010101', '动力2601', '36', '研究生院（研究生工作部）'),
+));
+$fakeMixed = new AcademicDirectoryTestHttp(ad_test_handler(array(1 => $mixedPage)));
+$mixedPreview = academic_directory_source_preview($fakeMixed, $config, 'testuser', 'secret-pw', '1234');
+ad_check(
+    $mixedPreview['total'] === 2 && count($mixedPreview['classes']) === 2,
+    'preview 采集后仅保留 2024 级及以后班级'
+);
+ad_check(
+    array_column($mixedPreview['colleges'], 'source_id') === array('01', '36'),
+    'preview 采集后学院只保留被范围内班级引用者'
+);
+
+$oldOnlyPage = ad_fixture_class_page(1, 1, 1, 1, array(
+    ad_fixture_row('o1', '2004010101', '电气0401', '01', '电气与信息工程学院'),
+));
+$fakeOldOnly = new AcademicDirectoryTestHttp(ad_test_handler(array(1 => $oldOnlyPage)));
+try {
+    academic_directory_source_preview($fakeOldOnly, $config, 'testuser', 'secret-pw', '1234');
+    ad_check(false, 'preview 无范围内班级时拒绝（不产生空预览）');
+} catch (Throwable $e) {
+    ad_check(
+        strpos($e->getMessage(), '没有2024级及以后的班级') !== false,
+        'preview 无范围内班级时给出“没有2024级及以后的班级”'
+    );
+}
 
 // 登录失败（远端返回登录页）必须拒绝
 $fakeLoginFail = new AcademicDirectoryTestHttp(ad_test_handler(

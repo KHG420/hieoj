@@ -236,9 +236,9 @@ function adp_oj_db($path, $scenario)
     } elseif ($scenario === 'matching') {
         $pdo->exec("INSERT INTO collegiate VALUES (1,'电气与信息工程学院','01')");
         $pdo->exec("INSERT INTO collegiate VALUES (80,'研究生院（研究生工作部）','36')");
-        $pdo->exec("INSERT INTO schoolList VALUES (1,'2004010101','电气工程0401',1,'c001','2020-01-01')");
-        $pdo->exec("INSERT INTO schoolList VALUES (2,'2014360101','动力工程2014',80,'c002','2020-01-01')");
-        $pdo->exec("INSERT INTO schoolList VALUES (3,'2004010102','电气工程0402',1,'c003','2020-01-01')");
+        $pdo->exec("INSERT INTO schoolList VALUES (1,'2024010101','电气工程0401',1,'c001','2020-01-01')");
+        $pdo->exec("INSERT INTO schoolList VALUES (2,'2025010101','动力工程2014',80,'c002','2020-01-01')");
+        $pdo->exec("INSERT INTO schoolList VALUES (3,'2024010102','电气工程0402',1,'c003','2020-01-01')");
     }
 }
 
@@ -274,9 +274,9 @@ $snapshot = array(
         array('source_id' => '36', 'code' => '80', 'name' => '研究生院（研究生工作部）'),
     ),
     'classes' => array(
-        array('field0' => 'c001', 'bh' => '2004010101', 'bj' => '电气工程0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
-        array('field0' => 'c002', 'bh' => '2014360101', 'bj' => '动力工程2014', 'field6' => '36', 'xx0301$dwmc' => '研究生院（研究生工作部）'),
-        array('field0' => 'c003', 'bh' => '2004010102', 'bj' => '电气工程0402', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+        array('field0' => 'c001', 'bh' => '2024010101', 'bj' => '电气工程0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+        array('field0' => 'c002', 'bh' => '2025010101', 'bj' => '动力工程2014', 'field6' => '36', 'xx0301$dwmc' => '研究生院（研究生工作部）'),
+        array('field0' => 'c003', 'bh' => '2024010102', 'bj' => '电气工程0402', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
     ),
     'total' => 3,
 );
@@ -481,6 +481,109 @@ try {
     adp_lacks($f['body'], '变更样例', 'F 全一致时不渲染班级变更样例');
     adp_no_php_errors($caseF['errlog'], 'F 全一致预览没有 PHP 警告');
 
+    // ---------------- G. 范围一致性：session 里的全量快照，预览与确认都只处理 2024 级及以后 ----------------
+    $mixedSnapshot = array(
+        'colleges' => array(
+            array('source_id' => '01', 'code' => '01', 'name' => '电气与信息工程学院'),
+            array('source_id' => '36', 'code' => '80', 'name' => '研究生院（研究生工作部）'),
+        ),
+        'classes' => array(
+            array('field0' => 'g1', 'bh' => '2024010101', 'bj' => '电气2401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'g2', 'bh' => '2004010101', 'bj' => '电气0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'g3', 'bh' => '2026010101', 'bj' => '动力2601', 'field6' => '36', 'xx0301$dwmc' => '研究生院（研究生工作部）'),
+        ),
+        'total' => 3,
+    );
+    $caseG1 = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $legacyDb,
+        'info' => $infoPath,
+        'method' => 'GET',
+        'post' => array(),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => array_merge($previewState, array('snapshot' => $mixedSnapshot)),
+        ),
+        'out' => $root . '/out-g1.html',
+        'state_out' => $root . '/state-g1.json',
+        'errlog' => $root . '/err-g1.log',
+    );
+    $g1 = adp_run($root, $caseG1);
+    adp_check($g1['exit'] === 0, 'G1 含旧年级的 session 快照预览正常结束');
+    adp_has($g1['body'], '<b>2</b>源班级', 'G1 预览只统计 2024 级及以后（旧年级不进入统计）');
+    adp_has($g1['body'], '<b>2</b>班级新增', 'G1 预览新增按范围内计算');
+    adp_lacks($g1['body'], '<b>3</b>源班级', 'G1 预览不把旧年级算入');
+    adp_has($g1['body'], 'name="action" value="apply"', 'G1 范围内预览仍可确认同步');
+    adp_no_php_errors($caseG1['errlog'], 'G1 没有 PHP 警告');
+
+    $scopeDb = $root . '/oj-scope.sqlite';
+    adp_oj_db($scopeDb, 'legacy');
+    $caseG2 = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $scopeDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'apply', 'preview_nonce' => $previewNonce, 'postkey' => $postkey),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => array_merge($previewState, array(
+                'snapshot' => $mixedSnapshot,
+                'preview_ok' => true,
+            )),
+        ),
+        'out' => $root . '/out-g2.html',
+        'state_out' => $root . '/state-g2.json',
+        'errlog' => $root . '/err-g2.log',
+    );
+    $g2 = adp_run($root, $caseG2);
+    adp_check($g2['exit'] === 0, 'G2 含旧年级的 session 快照确认同步正常结束');
+    adp_has($g2['body'], '同步结果', 'G2 显示同步结果');
+    adp_has($g2['body'], '<b>2</b>源班级', 'G2 确认同步统计与预览一致（范围内 2 班）');
+    $verify = new PDO('sqlite:' . $scopeDb);
+    adp_check((int)$verify->query('SELECT COUNT(*) FROM schoolList')->fetchColumn() === 2, 'G2 只写入范围内班级');
+    adp_check((int)$verify->query("SELECT COUNT(*) FROM schoolList WHERE num LIKE '2004%'")->fetchColumn() === 0, 'G2 旧年级行未落库');
+    adp_check((int)$verify->query('SELECT COUNT(*) FROM collegiate')->fetchColumn() === 3, 'G2 只新增被范围内班级引用的学院');
+    adp_no_php_errors($caseG2['errlog'], 'G2 没有 PHP 警告');
+
+    // ---------------- H. 零匹配：仅旧年级的 session 快照确认同步被拒绝且零写入 ----------------
+    $oldOnlySnapshot = array(
+        'colleges' => array(array('source_id' => '01', 'code' => '01', 'name' => '电气与信息工程学院')),
+        'classes' => array(
+            array('field0' => 'h1', 'bh' => '2004010101', 'bj' => '电气0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+        ),
+        'total' => 1,
+    );
+    $zeroDb = $root . '/oj-zero.sqlite';
+    adp_oj_db($zeroDb, 'legacy');
+    $caseH = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $zeroDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'apply', 'preview_nonce' => $previewNonce, 'postkey' => $postkey),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => array_merge($previewState, array(
+                'snapshot' => $oldOnlySnapshot,
+                'preview_ok' => true,
+            )),
+        ),
+        'out' => $root . '/out-h.html',
+        'state_out' => $root . '/state-h.json',
+        'errlog' => $root . '/err-h.log',
+    );
+    $h = adp_run($root, $caseH);
+    adp_check($h['exit'] === 0, 'H 零匹配确认同步正常结束');
+    adp_has($h['body'], '没有2024级及以后的班级', 'H 零匹配给出清晰提示');
+    adp_lacks($h['body'], '同步结果', 'H 零匹配不显示同步结果');
+    $verify = new PDO('sqlite:' . $zeroDb);
+    adp_check((int)$verify->query('SELECT COUNT(*) FROM schoolList')->fetchColumn() === 0, 'H 零匹配零写入（schoolList 无变化）');
+    adp_check((int)$verify->query('SELECT COUNT(*) FROM collegiate')->fetchColumn() === 1, 'H 零匹配零写入（学院无变化）');
+    adp_no_php_errors($caseH['errlog'], 'H 没有 PHP 警告');
+
     // ---------------- 源码级负向对照：旧实现必须无法通过这些断言 ----------------
     $pageSrc = (string)file_get_contents($root . '/admin/academic_directory.php');
     adp_check(strpos($pageSrc, '$syncResult') !== false, 'R2 页面使用 $syncResult 作为结果变量');
@@ -490,6 +593,7 @@ try {
     adp_check(strpos($pageSrc, 'empty($state[\'preview_ok\'])') !== false, 'R3 确认处理校验服务端 preview_ok 标记');
     adp_check(strpos($pageSrc, 'role="alert"') !== false && strpos($pageSrc, 'role="status"') !== false, 'R4 结果/错误具备 role=status/alert');
     adp_check(preg_match('/elseif \(is_array\(\$planView\) && empty\(\$planView\[\'has_changes\'\]\)\)/', $pageSrc) === 1, 'R5 预览无变化文案仅在 has_changes 为假时显示（旧代码会失败）');
+    adp_check(strpos($pageSrc, 'academic_directory_sync_scope_snapshot') !== false, '页面预览与确认统一应用到 2024 级及以后范围');
 } catch (Throwable $e) {
     $failed = true;
     fwrite(STDERR, "FAIL: 未捕获异常：" . $e->getMessage() . "\n");

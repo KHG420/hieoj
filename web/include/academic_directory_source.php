@@ -718,7 +718,11 @@ function academic_directory_source_fetch_pages($http, array $config)
 }
 
 /**
- * 第二步：用临时账号 / 密码 / 验证码登录并完整采集，返回原始快照。
+ * 第二步：用临时账号 / 密码 / 验证码登录并完整采集，返回快照。
+ *
+ * 采集与分页完整性校验始终针对**完整**数据；在完整构建并通过既有
+ * academic_directory_snapshot_validate() 之后，再收窄到目录同步范围
+ * （仅 2024 级及以后，含 2024）。没有任何符合范围的班级时抛异常，不返回空快照。
  * 密码只在本函数内存中存在；返回前 $encoded / POST 字段均被丢弃。
  */
 function academic_directory_source_preview($http, array $config, $account, $password, $captcha)
@@ -771,9 +775,9 @@ function academic_directory_source_preview($http, array $config, $account, $pass
     $colleges = academic_directory_source_parse_colleges($collegesRes['body']);
     $pages = academic_directory_source_fetch_pages($http, $config);
     $snapshot = academic_directory_source_build_snapshot($colleges, $pages);
-    // 复用既有校验，保证与 CLI 导入 / 旧快照完全同一格式。
-    academic_directory_snapshot_validate($snapshot);
-    return $snapshot;
+    // 先完整校验（与 CLI 导入 / 旧快照完全同一格式），再收窄到 2024 级及以后（含 2024）。
+    // 筛选发生在完整构建 / 校验之后，不会掩盖截断或坏数据。
+    return academic_directory_sync_scope_snapshot($snapshot);
 }
 
 // ---------------------------------------------------------------------------

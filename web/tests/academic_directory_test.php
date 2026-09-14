@@ -223,6 +223,87 @@ check_throws(function () {
 }, '坏结构拒绝');
 
 // ---------------------------------------------------------------------------
+// 同步范围：仅 2024 级及以后（含 2024）
+// ---------------------------------------------------------------------------
+check(academic_directory_sync_year_in_scope('2024010101') === true, '2024 边界编号在范围内');
+check(academic_directory_sync_year_in_scope('2025010101') === true, '2025 编号在范围内');
+check(academic_directory_sync_year_in_scope('2026010101') === true, '2026 编号在范围内');
+check(academic_directory_sync_year_in_scope('20240101012') === true, '11 位纯数字编号按前 4 位判断');
+check(academic_directory_sync_year_in_scope('2023123101') === false, '2023 编号不在范围内');
+check(academic_directory_sync_year_in_scope('2023010101') === false, '2023 学年编号不在范围内');
+check(academic_directory_sync_year_in_scope('2004010101') === false, '更早年级编号不在范围内');
+check(academic_directory_sync_year_in_scope('02011202') === false, '8 位旧编号不参与（不猜年级）');
+check(academic_directory_sync_year_in_scope('w2025010101') === false, '含字母编号不参与');
+check(academic_directory_sync_year_in_scope('202401010') === false, '9 位编号不参与');
+check(academic_directory_sync_year_in_scope('0123456789abcdef0123456789abcdef') === false, '32 位稳定源 ID 不被当作编号');
+check(academic_directory_sync_year_in_scope(null) === false && academic_directory_sync_year_in_scope('') === false, '空编号不参与');
+
+function scope_snapshot_fixture()
+{
+    return array(
+        'colleges' => array(
+            array('source_id' => '01', 'code' => '01', 'name' => '电气与信息工程学院'),
+            array('source_id' => '36', 'code' => '80', 'name' => '研究生院（研究生工作部）'),
+            array('source_id' => '99', 'code' => '99', 'name' => '仅旧年级引用学院'),
+        ),
+        'total' => 9,
+        'classes' => array(
+            array('field0' => 'k2024', 'bh' => '2024010101', 'bj' => '电气2401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'k2025', 'bh' => '2025010101', 'bj' => '研究生2501', 'field6' => '36', 'xx0301$dwmc' => '研究生院（研究生工作部）'),
+            array('field0' => 'k2026', 'bh' => '2026010101', 'bj' => '电气2601', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'k2023', 'bh' => '2023010101', 'bj' => '电气2301', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'k2004', 'bh' => '2004010101', 'bj' => '电气0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+            array('field0' => 'k8', 'bh' => '02011202', 'bj' => '旧八位', 'field6' => '99', 'xx0301$dwmc' => '仅旧年级引用学院'),
+            array('field0' => 'kw', 'bh' => 'w2025010101', 'bj' => '字母编号', 'field6' => '36', 'xx0301$dwmc' => '研究生院（研究生工作部）'),
+            array('field0' => 'k9', 'bh' => '202401010', 'bj' => '九位编号', 'field6' => '99', 'xx0301$dwmc' => '仅旧年级引用学院'),
+            array('field0' => '0123456789abcdef0123456789abcdef', 'bh' => '2024010102', 'bj' => '三十二位源ID', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+        ),
+    );
+}
+
+$scoped = academic_directory_sync_scope_snapshot(scope_snapshot_fixture());
+$scopedBh = array_column($scoped['classes'], 'bh');
+sort($scopedBh);
+check($scoped['total'] === 4 && count($scoped['classes']) === 4, '范围筛选只保留 2024 级及以后班级');
+check(
+    $scopedBh === array('2024010101', '2024010102', '2025010101', '2026010101'),
+    '2024 边界与 2025/2026 保留，2023 及更早被排除'
+);
+check(array_column($scoped['colleges'], 'source_id') === array('01', '36'), '学院只保留被范围内班级引用者');
+check($scoped['classes'][0]['field0'] === 'k2024', '32 位稳定源 ID 的班级按其显示编号正常保留');
+check(academic_directory_snapshot_validate($scoped)['total'] === 4, '筛选后的快照仍通过完整校验');
+check(academic_directory_sync_scope_snapshot($scoped) === $scoped, '范围筛选幂等（重复调用结果不变）');
+
+$oldOnly = array(
+    'colleges' => array(array('source_id' => '01', 'code' => '01', 'name' => '电气与信息工程学院')),
+    'total' => 1,
+    'classes' => array(
+        array('field0' => 'old', 'bh' => '2004010101', 'bj' => '电气0401', 'field6' => '01', 'xx0301$dwmc' => '电气与信息工程学院'),
+    ),
+);
+check_throws(function () use ($oldOnly) {
+    academic_directory_sync_scope_snapshot($oldOnly);
+}, '没有 2024 级及以后班级时拒绝（不产生空预览）');
+try {
+    academic_directory_sync_scope_snapshot($oldOnly);
+    check(false, '零匹配异常包含清晰提示');
+} catch (Throwable $e) {
+    check(strpos($e->getMessage(), '没有2024级及以后的班级') !== false, '零匹配异常包含“没有2024级及以后的班级”');
+}
+
+// 完整校验必须在筛选之前：坏数据即使只出现在旧年级行也必须拒绝。
+check_throws(function () {
+    $bad = scope_snapshot_fixture();
+    $bad['total'] = 100; // total 与条数不一致
+    academic_directory_sync_scope_snapshot($bad);
+}, '筛选前仍拒绝无效 total（旧年级行不能被过滤掩盖）');
+check_throws(function () {
+    $bad = scope_snapshot_fixture();
+    $bad['classes'][4]['field6'] = '不存在'; // 仅旧年级行引用未知学院
+    academic_directory_sync_scope_snapshot($bad);
+}, '筛选前仍拒绝旧年级行的未知学院归属');
+
+// ---------------------------------------------------------------------------
 // 计划 / 幂等 / 冲突测试
 // ---------------------------------------------------------------------------
 $norm = academic_directory_snapshot_validate(valid_snapshot());

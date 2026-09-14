@@ -181,13 +181,16 @@ if ($previewNonce !== '' && is_array($state) && isset($state['snapshot'])) {
         } else {
             $colleges = $dbh->query('SELECT `id`,`name`,`source_id` FROM `collegiate`')->fetchAll(PDO::FETCH_ASSOC);
             $classes = $dbh->query('SELECT `school_id`,`num`,`value`,`collegiate_id`,`source_id` FROM `schoolList`')->fetchAll(PDO::FETCH_ASSOC);
-            $plan = academic_directory_plan(academic_directory_snapshot_validate($snapshot), $colleges, $classes);
+            // 预览与确认使用同一范围：先完整校验，再收窄到 2024 级及以后（含 2024）。
+            // 这样无论 session 里那份快照如何产生，预览统计都与确认同步一致。
+            $scopedSnapshot = academic_directory_sync_scope_snapshot($snapshot);
+            $plan = academic_directory_plan(academic_directory_snapshot_validate($scopedSnapshot), $colleges, $classes);
             $preview = array(
                 'stats' => $plan['stats'],
                 'conflicts' => array_slice($plan['conflicts'], 0, 10),
                 'conflict_total' => count($plan['conflicts']),
             );
-            $planView = academic_directory_source_plan_view($snapshot, $plan);
+            $planView = academic_directory_source_plan_view($scopedSnapshot, $plan);
             $previewReady = true;
             // 记录“这份 nonce 的预览确实成功生成过计划”，供确认同步校验；确认后即被消费。
             if (empty($state['preview_ok'])) {
@@ -221,6 +224,7 @@ require_once dirname(__FILE__) . '/admin-header.php';
 <h1>同步学院班级</h1>
 <p class="ad-muted">
 临时填写教务账号、密码和验证码。采集后先预览，确认后更新；密码不会保存。
+仅同步 2024 级及以后（含 2024）的班级及其所属学院，库内历史记录与用户保留、不会删除。
 </p>
 
 <?php if ($notice !== '') { ?><p class="ad-success" role="status"><?php echo htmlentities($notice, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
@@ -252,6 +256,7 @@ require_once dirname(__FILE__) . '/admin-header.php';
 <?php if ($previewReady) { ?>
 <section class="ad-card">
 <h2>变更预览（尚未写入）</h2>
+<p class="ad-muted">仅同步 2024 级及以后（含 2024）的班级及其所属学院；库内历史记录保留。</p>
 <?php if (is_array($preview)) { $ps = $preview['stats']; ?>
 <div class="ad-stats">
 <div><b><?php echo (int)$ps['source_colleges']; ?></b>源学院</div>

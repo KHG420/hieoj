@@ -1,6 +1,6 @@
 <?php
 /**
- * 学院班级目录同步的纯逻辑：快照校验 + 变更计划。
+ * 学院班级目录同步的纯逻辑：快照校验 + 2024 级及以后范围收窄 + 变更计划。
  *
  * 本文件不做任何数据库写入，也不连接数据库，方便在无数据库的测试环境里直接
  * 构造数据验证。真正的写入由 web/cli/academic_directory_import.php 负责。
@@ -138,6 +138,75 @@ function academic_directory_snapshot_validate($snapshot)
     return array(
         'total' => count($classes),
         'colleges' => $colleges,
+        'classes' => $classes,
+    );
+}
+
+/**
+ * 显示编号（bh）是否属于目录同步范围：2024 级及以后（含 2024）。
+ *
+ * 判断只依据显示编号本身：仅接受 10 或 11 位纯数字、以 “20” 开头且前四位 >= 2024。
+ * 8 位旧编号、含字母的编号、32 位稳定源 ID（field0）以及其它位数一律不属于范围；
+ * 绝不根据班级中文名 / 尾号猜测年级，也不把 field0 当作编号。
+ */
+function academic_directory_sync_year_in_scope($bh)
+{
+    $bh = $bh === null ? '' : (string)$bh;
+    if (strlen($bh) !== 10 && strlen($bh) !== 11) {
+        return false;
+    }
+    if (!preg_match('/^20[0-9]{8,9}$/', $bh)) {
+        return false;
+    }
+    return (int)substr($bh, 0, 4) >= 2024;
+}
+
+/**
+ * 把一个完整快照收窄到目录同步范围：仅保留 2024 级及以后的班级及其所属学院。
+ *
+ * 语义与边界：
+ *   - 先调用完整的 academic_directory_snapshot_validate()，保证分页 / total / 编号与源 ID
+ *     唯一性 / 学院归属在筛选之前全部成立；无效 total、截断或引用未知学院的旧年级行
+ *     依旧被拒绝，筛选不会掩盖坏数据；
+ *   - 再按班级显示编号 bh 筛选，保留被选中班级 field6 引用的学院，并把 total 改写为选中
+ *     班级数量；学院 / 班级条目保持与原快照一致的字段格式，便于既有校验 / 计划 / 预览复用；
+ *   - 没有任何符合范围的班级时抛 InvalidArgumentException，调用方据此零写入，不产生可确认
+ *     的空预览；
+ *   - 对已经在范围内的快照再次调用结果不变（幂等）。
+ *
+ * @param array $snapshot 原始快照（格式同 live-directory.json：colleges / total / classes）
+ * @return array 收窄后的同格式快照
+ */
+function academic_directory_sync_scope_snapshot($snapshot)
+{
+    // 1. 完整校验必须在筛选之前（无效旧数据不能被过滤掩盖）。
+    academic_directory_snapshot_validate($snapshot);
+
+    // 2. 按显示编号筛选 2024 级及以后，并记录被引用的学院。
+    $classes = array();
+    $referenced = array();
+    foreach ($snapshot['classes'] as $class) {
+        if (!academic_directory_sync_year_in_scope($class['bh'])) {
+            continue;
+        }
+        $classes[] = $class;
+        $referenced[(string)$class['field6']] = true;
+    }
+    if (count($classes) === 0) {
+        throw new InvalidArgumentException('没有2024级及以后的班级');
+    }
+
+    // 3. 只保留被选中班级引用的学院（完整校验已保证引用有效）。
+    $colleges = array();
+    foreach ($snapshot['colleges'] as $college) {
+        if (isset($referenced[(string)$college['source_id']])) {
+            $colleges[] = $college;
+        }
+    }
+
+    return array(
+        'colleges' => $colleges,
+        'total' => count($classes),
         'classes' => $classes,
     );
 }
@@ -496,6 +565,7 @@ function academic_directory_sync_fetch_all(PDO $dbh, $sql)
  * 目录同步的唯一执行器：CLI importer 与管理后台确认同步共用。
  *
  * 语义与原 CLI 完全一致：
+ *   - 快照先完整校验，再收窄到 2024 级及以后（含 2024）；无符合范围的班级时零写入；
  *   - apply 时先取 MySQL advisory lock，再在锁内校验 migration、读取现状并重新规划；
  *   - 未迁移 / 半迁移 / 锁失败 / 规划冲突一律零写入；
  *   - apply 写入在单个事务内完成，任何异常回滚并释放锁；
@@ -514,7 +584,9 @@ function academic_directory_sync_execute(PDO $dbh, array $snapshot, $apply = fal
     $driver = $dbh->getAttribute(PDO::ATTR_DRIVER_NAME);
     $locked = false;
 
-    $normalized = academic_directory_snapshot_validate($snapshot);
+    // 完整校验 + 收窄到 2024 级及以后（含 2024）：管理员采集只传范围内的快照，
+    // CLI 传入的旧全量快照也在此统一范围，保证两条路径同一语义、同一统计。
+    $normalized = academic_directory_snapshot_validate(academic_directory_sync_scope_snapshot($snapshot));
 
     try {
         if ($apply && $driver === 'mysql') {

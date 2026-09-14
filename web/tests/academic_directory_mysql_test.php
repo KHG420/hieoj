@@ -23,6 +23,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once dirname(__DIR__) . '/include/db_info.inc.php';
+require_once dirname(__DIR__) . '/include/academic_directory_sync.php';
 
 $GLOBALS['IT_FAIL'] = 0;
 $GLOBALS['IT_CHECKS'] = 0;
@@ -459,7 +460,7 @@ it_check(
 );
 
 // ===========================================================================
-// 场景 7（可选）：真实完整快照两次 apply 幂等
+// 场景 7（可选）：真实完整快照两次 apply 幂等（新语义：仅同步 2024 级及以后）
 // ===========================================================================
 $fullSnapshot = getenv('ACADEMIC_ITEST_SNAPSHOT');
 if ($fullSnapshot && is_readable($fullSnapshot)) {
@@ -467,12 +468,23 @@ if ($fullSnapshot && is_readable($fullSnapshot)) {
     it_migrate();
     $raw = file_get_contents($fullSnapshot);
     $decoded = json_decode($raw, true);
-    $expected = is_array($decoded) && isset($decoded['total']) ? (int)$decoded['total'] : -1;
+    // 真实快照是教务**全量**（含历史所有年级）；同步只落 2024 级及以后（含 2024），
+    // 因此预期写入条数是收窄后的数量，而不是教务全量总数。
+    $scoped = academic_directory_sync_scope_snapshot($decoded);
+    $sourceTotal = is_array($decoded) && isset($decoded['total']) ? (int)$decoded['total'] : -1;
+    $expected = (int)$scoped['total'];
+    it_check(
+        $expected > 0 && $sourceTotal > $expected && count($scoped['colleges']) > 0,
+        '真实全量快照收窄到 2024 级及以后（含 2024）'
+    );
     $first = it_report('full-1', it_import($decoded, true));
-    it_check($first['code'] === 0 && $first['json']['stats']['source_classes'] === $expected, '完整快照首次 apply 成功且条数匹配');
+    it_check(
+        $first['code'] === 0 && $first['json']['stats']['source_classes'] === $expected,
+        '完整快照首次 apply 成功且只同步范围内条数'
+    );
     it_check(
         (int)it_scalar('SELECT COUNT(*) FROM schoolList WHERE source_id IS NOT NULL') === $expected,
-        '完整快照所有班级都有 source_id'
+        '库内只有范围内班级写入（旧年级不落库）'
     );
     $second = it_report('full-2', it_import($decoded, true));
     it_check(
