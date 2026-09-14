@@ -78,6 +78,9 @@
                                 <a class='nav-link bg-primary' href="user_list.php" title="对注册用户停用、启用帐号" id="a4"><b>用户列表</b></a>
                             </li>
                             <li class="nav-item">
+                                <a class='nav-link bg-primary' href="academic_directory.php" title="临时登录教务采集学院班级目录并预览确认" id="a32"><b>同步学院班级</b></a>
+                            </li>
+                            <li class="nav-item">
                                 <a class='nav-link bg-primary' href="user_set_ip.php" title="指定登录IP" id="a5"><b>指定登录IP</b></a>
                             </li>
                             <li class="nav-item">

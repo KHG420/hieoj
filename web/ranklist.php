@@ -5,6 +5,7 @@ require_once('./include/cache_start.php');
 require_once('./include/db_info.inc.php');
 require_once('./include/setlang.php');
 require_once('./include/memcache.php');
+require_once('./include/academic_directory.php');
 $view_title= $MSG_RANKLIST;
 
 $rankRange = ($_GET['range'] ?? '') === 'all' ? 'all' : 'year';
@@ -119,17 +120,15 @@ $result = mysql_query_cache($sql,...array_merge($periodParams,$where_params));
 $row=$result[0];
 $view_total=$row['mycount'];
 
-$xueYuan = array(array("电气与信息工程学院", "01"), array("机械工程学院", "02"), array("信息科学与工程学院", "03"), array("外国语学院", "04"),
-    array("经济学院", "05"), array("材料与化工学院", "06"), array("商学院", "07"), array("纺织服装学院", "08"), array("智慧建造与能源工程学院", "09"),array("计算科学与电子学院", "10"), array("设计艺术学院", "12"), array("应用技术学院", "13"), array("国际教育学院", "17"), array("卓越工程师学院", "45"), array("体育科学与工程学院", "11"), array("智能科学与工程学院", "14"), array("医学工程技术学院", "47"));
+$xueYuan = academic_directory_colleges();
 
-$sql = "SELECT SUBSTR(`value`, -4, 2) as nj FROM schoolList GROUP BY nj ORDER BY nj desc LIMIT 1";
-$result = mysql_query_cache($sql);
-$row=$result[0][0];
-
-$nianJi = array();
-for ($i = 0; $i < 8; $i ++ ) {
-    $nianJi[$i] = $row;
-    $row --;
+// 年级选项来自可识别班级编号前 4 位（19/20xx），不再从班级名称反推
+$nianJi = academic_directory_years(8);
+if (count($nianJi) === 0) {
+    $nianJi = array();
+    for ($i = 0; $i < 8; $i ++) {
+        $nianJi[] = str_pad((string)(intval(date('y')) - $i), 2, '0', STR_PAD_LEFT);
+    }
 }
 
 $start = isset($_GET['start']) ? intval($_GET['start']) : 0;

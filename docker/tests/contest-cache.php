@@ -10,7 +10,7 @@ mkdir($root . '/include', 0700, true);
 mkdir($root . '/template/test', 0700, true);
 mkdir($root . '/template/sta_sty', 0700, true);
 mkdir($root . '/tmp', 0700);
-foreach (['contestrank.php', 'contestrank-oi.php', 'contestrank2.php', 'contestrank3.php', 'ranklist.php', 'problemset.php', 'userinfo.php', 'include/cache_start.php', 'include/cache_end.php', 'include/cache_layer.php', 'include/memcache.php'] as $file) {
+foreach (['contestrank.php', 'contestrank-oi.php', 'contestrank2.php', 'contestrank3.php', 'ranklist.php', 'problemset.php', 'userinfo.php', 'include/cache_start.php', 'include/cache_end.php', 'include/cache_layer.php', 'include/memcache.php', 'include/academic_directory.php'] as $file) {
     copy(__DIR__ . '/../../web/' . $file, $root . '/' . $file);
 }
 foreach (['setlang.php', 'const.inc.php', 'my_func.inc.php'] as $file) file_put_contents($root . '/include/' . $file, '<?php');
@@ -32,6 +32,8 @@ function pdo_query($sql, ...$args) {
         'user_id' => 'student', 'school' => json_encode($args), 'nick' => 'Student',
         'solved' => $state['score'], 'submit' => 10, 'sim_num' => 0]];
     if (strpos($sql, 'as `mycount`') !== false) return [['mycount' => 1]];
+    if (strpos($sql, 'FROM `collegiate`') !== false) return [['id' => 1, 'name' => 'Test College']];
+    if (strpos($sql, 'FROM `schoolList`') !== false) return [['y' => '2026']];
     if (strpos($sql, 'FROM schoolList') !== false) return [[24]];
     if (strpos($sql, 'volume from users') !== false) return [[1]];
     if (strpos($sql, 'SELECT `problem_id` FROM `solution`') !== false) return $state['progress'] ? [[1001]] : [];

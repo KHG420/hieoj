@@ -49,7 +49,19 @@
       <input type="hidden" name="type" value="class">
       <div class="oj-field">
         <label>申请修改学院</label>
+        <?php
+        // 保留用户当前历史学院值：若它已不在动态列表中，也作为可选项并默认选中，
+        // 避免用户不修改时被默认提交成其它学院。
+        $currentXy = isset($row['xueYuan']) ? (string)$row['xueYuan'] : '';
+        $xyMatched = false;
+        foreach ($xueYuan as $x) {
+            if ((string)$x[0] === $currentXy) { $xyMatched = true; break; }
+        }
+        ?>
         <select name="xueYuan">
+          <?php if ($currentXy !== '' && !$xyMatched) { ?>
+            <option value="<?php echo htmlentities($currentXy,ENT_QUOTES,"UTF-8")?>" selected><?php echo htmlentities($currentXy,ENT_QUOTES,"UTF-8")?>（当前）</option>
+          <?php } ?>
           <?php foreach ($xueYuan as $x) { ?>
             <option value="<?php echo htmlentities($x[0],ENT_QUOTES,"UTF-8")?>" <?php if($x[0]==$row['xueYuan']) echo "selected"; ?>><?php echo htmlentities($x[0],ENT_QUOTES,"UTF-8")?></option>
           <?php } ?>

@@ -7,6 +7,8 @@ install/jol.tar.gz
 # ===== 运行时数据 / 用户上传 =====
 web/upload/
 web/curl.log
+__pycache__/
+*.pyc
 
 # ===== 编辑器/备份残留 =====
 *.swp
