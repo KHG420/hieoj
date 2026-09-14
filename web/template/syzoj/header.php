@@ -79,7 +79,7 @@ if ($OJ_WHITE_BLACK) { ?>
             <?php if(isset($_SESSION[$OJ_NAME.'_'.'user_id'])) { ?>
                 <!--                <a href="--><?php //echo $path_fix?><!--userinfo.php?user=--><?php //echo $_SESSION[$OJ_NAME.'_'.'user_id']?><!--"-->
                 <!--                    style="color: inherit; ">-->
-                <div class="ui simple dropdown item" tabindex="0" aria-label="个人菜单" aria-haspopup="true">
+                <div class="ui simple dropdown item oj-account-menu" tabindex="0" aria-label="个人菜单" aria-haspopup="true">
                     <?php echo $_SESSION[$OJ_NAME.'_'.'user_id']; ?>
                     <i class="dropdown icon"></i>
                     <div class="menu">
@@ -126,6 +126,7 @@ if ($OJ_WHITE_BLACK) { ?>
                         </form>
                     </div>
                 </div>
+                <script defer src="<?php echo $path_fix; ?>template/syzoj/js/account-menu.js?v=20260914.1"></script>
             <?php } else { ?>
 
 

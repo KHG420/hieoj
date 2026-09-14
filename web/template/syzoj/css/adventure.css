@@ -58,11 +58,11 @@
 .adv-welcome .ui.button { margin-top:16px; }
 #adv-clock { white-space:nowrap;font-variant-numeric:tabular-nums;color:#245dd8; }
 @media (max-width:999px) {
-  body.oj-page-adventure { min-width:0;background:#f4f6fa; }
-  body.oj-page-adventure #main_container.ui.container { width:auto!important;margin:0 16px!important; }
-  body.oj-page-adventure #marg { padding-top:24px; }
-  body.oj-page-adventure .oj-topnav { overflow-x:auto; }
-  body.oj-page-adventure .oj-topnav>.ui.container { width:max-content!important;min-width:max-content;margin:0!important; }
+  body:is(.oj-page-adventure,.oj-page-hunt) { min-width:0;background:#f4f6fa; }
+  body:is(.oj-page-adventure,.oj-page-hunt) #main_container.ui.container { width:auto!important;margin:0 16px!important; }
+  body:is(.oj-page-adventure,.oj-page-hunt) #marg { padding-top:24px; }
+  body:is(.oj-page-adventure,.oj-page-hunt) .oj-topnav { overflow-x:auto; }
+  body:is(.oj-page-adventure,.oj-page-hunt) .oj-topnav>.ui.container { width:max-content!important;min-width:max-content;margin:0!important; }
   .adv-heading,.adv-section-head { align-items:flex-start;flex-direction:column;gap:12px; }
   .adv-heading h1 { font-size:28px; }
   .adv-tabs a { padding:12px 10px; }

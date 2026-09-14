@@ -1,0 +1,23 @@
+.hunt-actions { display:flex;flex-wrap:wrap;align-items:center;gap:12px; }
+.hunt-actions form { margin:0; }
+.hunt-editor { max-width:860px; }
+.hunt-editor label { display:block;margin:24px 0 8px;font-weight:600; }
+.hunt-editor label span { color:#596980;font-size:13px;font-weight:400; }
+.hunt-editor input,.hunt-editor textarea,.hunt-editor select { width:100%;padding:10px 12px;border:1px solid #b8c6d8;border-radius:6px;background:#fff;color:#25344a; }
+.hunt-editor textarea { resize:vertical;line-height:1.6; }
+.hunt-editor select { width:auto;min-width:180px; }
+.hunt-editor .hunt-actions { margin-top:24px; }
+.hunt-code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:4; }
+.hunt-prose { white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8; }
+.hunt-page pre { overflow:auto;max-height:480px;white-space:pre; }
+.hunt-page h1,.hunt-page h2,.hunt-page .adv-problems a { overflow-wrap:anywhere; }
+.hunt-page details { margin:16px 0; }
+.hunt-page summary { cursor:pointer;color:#245dd8;padding:8px 0; }
+.hunt-comment { padding:22px 0;border-top:1px solid #dce3ec; }
+.hunt-comment:first-of-type { margin-top:24px; }
+.hunt-comment time { color:#596980;font-size:13px;margin-left:8px; }
+@media (max-width:640px) {
+  .hunt-page .adv-heading { align-items:flex-start;gap:16px; }
+  .hunt-page .adv-section-head { flex-wrap:wrap;gap:8px; }
+  .hunt-comment time { display:block;margin:4px 0 0; }
+}

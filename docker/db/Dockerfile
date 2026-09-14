@@ -9,7 +9,7 @@ RUN --mount=type=cache,id=hnieoj-jammy-apt-${TARGETARCH},target=/var/cache/apt,s
     mariadb-server mariadb-client ca-certificates tzdata procps openssl \
  && rm -rf /var/lib/mysql/* \
  && mkdir -p /var/lib/mysql /run/mysqld && chown -R mysql:mysql /var/lib/mysql /run/mysqld
-COPY docker/db/schema.sql docker/db/knowledge-graph.sql /opt/oj/
+COPY docker/db/schema.sql docker/db/knowledge-graph.sql docker/db/community-hunts.sql /opt/oj/
 COPY docker/db/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 EXPOSE 3306
