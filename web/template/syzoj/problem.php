@@ -66,7 +66,27 @@
 .oj-rel-item a { color: #2f6ee5; }
 .oj-rel-item a:hover { text-decoration: underline; }
 .oj-empty { text-align: center; color: #8a93a6; padding: 16px 0; font-size: 14px; }
-.oj-btn-sm { padding: 6px 12px; font-size: 13px; }</style>
+.oj-btn-sm { padding: 6px 12px; font-size: 13px; }
+/* Compact problem sidebar: one primary action, grouped secondary links. */
+.oj-pd-side .oj-card { padding:16px; margin-bottom:14px; }
+.oj-pd-side .oj-info-row { font-size:13px; line-height:1.5; margin-bottom:8px; }
+.oj-pd-side .oj-info-row .v { min-width:0; overflow-wrap:anywhere; }
+.oj-pd-side .oj-pd-btns { margin-top:14px; }
+.oj-pd-side .oj-btn-primary { min-height:36px; padding:8px 12px; font-size:13px; line-height:20px; border-radius:6px; }
+.oj-side-actions { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:10px; }
+.oj-side-actions a { display:inline-flex; align-items:center; min-height:30px; font-size:13px; line-height:20px; color:#245bbd; }
+.oj-side-actions a:hover,.oj-side-heading a:hover { text-decoration:underline; text-underline-offset:3px; }
+.oj-pd-side .oj-side-note { margin:10px 0 0; font-size:12px; line-height:1.7; color:#596980; }
+.oj-side-admin { border-top:1px solid #e2e8f0; padding-top:8px; }
+.oj-side-admin a { color:#596980; }
+.oj-pd-side .oj-side-title { margin:0 0 10px; padding:0; border:0; font-size:14px; line-height:20px; }
+.oj-pd-side .oj-tags { justify-content:flex-start; gap:6px; }
+.oj-pd-side .oj-tag { padding:2px 7px; font-size:12px; line-height:18px; border-radius:4px; overflow-wrap:anywhere; max-width:100%; }
+.oj-side-heading { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.oj-side-heading a { color:#245bbd; font-size:12px; }
+body.oj-desktop .oj-pd-side .oj-empty { padding:8px 0 !important; font-size:13px; }
+.oj-pd-side .oj-rel-item { font-size:13px; overflow-wrap:anywhere; }
+</style>
 <script src="<?php echo $OJ_CDN_URL.$path_fix."template/$OJ_TEMPLATE/"?>clipboard.min.js"></script>
 
 <?php
@@ -174,55 +194,54 @@
     <div class="oj-pd-side">
       <div class="oj-card">
         <div class="oj-info-row"><span class="l">上传者</span><span class="v"><span id="creator"></span></span></div>
-        <div class="oj-info-row"><span class="l">提交记录</span><span class="v"><a href="<?php echo "status.php?problem_id=$id"; ?>">查看记录</a></span></div>
         <div class="oj-info-row"><span class="l">题目类型</span><span class="v">传统</span></div>
         <div class="oj-info-row"><span class="l">评测方式</span><span class="v"><?php if($row['spj']) echo "Special Judge"; else echo "文本比较"; ?></span></div>
         <div class="oj-info-row"><span class="l">提交 / 通过</span><span class="v"><?php echo $row['submit']; ?> / <?php echo $row['accepted']; ?></span></div>
-        <?php if($row['source']){ ?>
-        <div class="oj-info-row"><span class="l">标签</span><span class="v"><span class="oj-tags">
-          <?php $cats2=explode(" ",$row['source']); foreach($cats2 as $cat){ if(trim($cat)=="") continue; ?>
-            <a class="oj-tag" href="<?php echo "problemset.php?search=".htmlentities($cat,ENT_QUOTES,'utf-8') ?>"><?php echo htmlentities($cat,ENT_QUOTES,'utf-8'); ?></a>
-          <?php } ?>
-        </span></span></div>
-        <?php } ?>
 
         <div class="oj-pd-btns">
-          <?php
-            if($pr_flag){
-              echo "<a class=\"oj-btn oj-btn-primary\" href=\"submitpage.php?id=$id\">提交代码</a>";
-              echo "<a class=\"oj-btn oj-btn-ghost\" href=\"status.php?problem_id=$id\">提交记录</a>";
-              echo "<a class=\"oj-btn oj-btn-orange\" href=\"problemstatus.php?id=$id\">统计</a>";
-              echo "<a class=\"oj-btn oj-btn-red\" href=\"discuss.php?pid=$id\">$MSG_BBS</a>";
-            }else{
-              echo "<a class=\"oj-btn oj-btn-ghost\" href=\"contest.php?cid=$cid\">返回比赛</a>";
-              echo "<a class=\"oj-btn oj-btn-primary\" href=\"submitpage.php?cid=$cid&pid=$pid&langmask=$langmask\">提交代码</a>";
-              echo "<a class=\"oj-btn oj-btn-ghost\" href=\"status.php?problem_id=$PID[$pid]&cid=$cid\">提交记录</a>";
-            }
-          ?>
+          <a class="oj-btn oj-btn-primary" href="<?php echo $pr_flag ? "submitpage.php?id=$id" : "submitpage.php?cid=$cid&pid=$pid&langmask=$langmask"; ?>">提交代码</a>
         </div>
+        <nav class="oj-side-actions" aria-label="题目操作">
+          <a href="<?php echo $pr_flag ? "status.php?problem_id=$id" : "status.php?problem_id=$PID[$pid]&cid=$cid"; ?>"><i class="file icon" aria-hidden="true"></i>提交记录</a>
+          <?php if($pr_flag){ ?>
+          <a href="problemstatus.php?id=<?php echo $id; ?>"><i class="signal icon" aria-hidden="true"></i>统计</a>
+          <a href="discuss.php?pid=<?php echo $id; ?>"><i class="clipboard icon" aria-hidden="true"></i><?php echo $MSG_BBS; ?></a>
+          <?php }else{ ?>
+          <a href="contest.php?cid=<?php echo $cid; ?>"><i class="arrow left icon" aria-hidden="true"></i>返回比赛</a>
+          <?php } ?>
+          <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>
+          <a href="solutions.php?problem_id=<?php echo intval($id); ?>"><i class="book icon" aria-hidden="true"></i>查看 / 提交题解</a>
+          <?php } ?>
+        </nav>
+        <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>
+        <p class="oj-side-note">通过本题可免费查看并提交题解；未通过可花 5 金币永久解锁本题全部题解；题解审核通过奖励 10 金币。</p>
+        <?php } ?>
 
         <?php
           if ( isset($_SESSION[$OJ_NAME.'_'.'administrator']) || isset($_SESSION[$OJ_NAME.'_'."p".$row['problem_id']])  ) {
             require_once("include/set_get_key.php");
         ?>
-        <div class="oj-pd-btns">
-          <a class="oj-btn oj-btn-ghost" href="admin/problem_edit.php?id=<?php echo $id?>&getkey=<?php echo $_SESSION[$OJ_NAME.'_'.'getkey']?>">编辑题目</a>
-          <a class="oj-btn oj-btn-ghost" href="javascript:phpfm(<?php echo $row['problem_id'];?>)">测试数据</a>
+        <div class="oj-side-actions oj-side-admin">
+          <a href="admin/problem_edit.php?id=<?php echo $id?>&getkey=<?php echo $_SESSION[$OJ_NAME.'_'.'getkey']?>">编辑题目</a>
+          <a href="javascript:phpfm(<?php echo $row['problem_id'];?>)">测试数据</a>
         </div>
         <?php } ?>
       </div>
 
-      <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>
+      <?php if($row['source']){ ?>
       <div class="oj-card">
-        <div class="oj-side-title">题解</div>
-        <p>通过本题后可提交题解，审核通过奖励 10 金币。通过本题免费查看全部题解，也可支付 5 金币永久解锁本题全部题解。</p>
-        <a class="oj-btn oj-btn-ghost" href="solutions.php?problem_id=<?php echo intval($id); ?>">查看 / 提交题解</a>
+        <div class="oj-side-title">标签</div>
+        <div class="oj-tags">
+          <?php $cats2=explode(" ",$row['source']); foreach($cats2 as $cat){ if(trim($cat)=="") continue; ?>
+          <a class="oj-tag" href="<?php echo "problemset.php?search=".htmlentities($cat,ENT_QUOTES,'utf-8'); ?>"><?php echo htmlentities($cat,ENT_QUOTES,'utf-8'); ?></a>
+          <?php } ?>
+        </div>
       </div>
       <?php } ?>
 
       <!-- 相关讨论 -->
       <div class="oj-card">
-        <div class="oj-side-title">相关讨论</div>
+        <div class="oj-side-heading"><div class="oj-side-title">相关讨论</div><a href="discuss.php?pid=<?php echo $id; ?>">进入讨论版</a></div>
         <?php
           $rel_topics=array();
           $sql="SELECT t.tid,t.title,t.author_id,MAX(r.time) last FROM topic t LEFT JOIN reply r ON r.topic_id=t.tid WHERE t.pid=? AND t.status!=2 GROUP BY t.tid ORDER BY t.tid DESC LIMIT 5";
@@ -238,7 +257,6 @@
         <?php }else{ ?>
           <div class="oj-empty" style="padding: 6px 0;">暂无讨论</div>
         <?php } ?>
-        <div style="margin-top: 10px;"><a class="oj-btn oj-btn-ghost oj-btn-sm" href="discuss.php?pid=<?php echo $id; ?>">前往讨论</a></div>
       </div>
     </div>
   </div>
