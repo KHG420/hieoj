@@ -4,7 +4,7 @@
   if (!account) return;
   const nav = account.closest('.oj-topnav');
   function positionMenu() {
-    if (window.innerWidth >= 1000) return;
+    if (window.innerWidth >= 1280) return;
     const bounds = account.getBoundingClientRect();
     account.style.setProperty('--oj-account-top', `${bounds.bottom}px`);
     account.style.setProperty('--oj-account-right', `${Math.min(window.innerWidth - 204, Math.max(8, window.innerWidth - bounds.right))}px`);

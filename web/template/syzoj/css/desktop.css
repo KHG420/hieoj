@@ -18,7 +18,9 @@
 .oj-desktop .oj-topnav .oj-account-menu>.menu>form>.item { display:flex !important;width:100%;height:auto;min-height:42px;align-items:center;justify-content:flex-start;padding:10px 16px !important;margin:0;white-space:nowrap;text-align:left;border-radius:0; }
 .oj-desktop .oj-topnav .oj-account-menu>.menu>form { border-top:1px solid #e6ebf2;margin-top:6px !important;padding-top:6px; }
 .oj-desktop .oj-topnav .oj-account-menu>.menu .item:hover { background:#edf3ff !important;color:#245dd8; }
-@media (max-width:999px) {
+@media (max-width:1279px) {
+  body.oj-desktop .oj-topnav { overflow-x:auto; }
+  body.oj-desktop .oj-topnav>.ui.container { width:max-content !important;min-width:max-content;margin:0 !important; }
   .oj-desktop .oj-topnav .oj-account-menu>.menu { position:fixed;right:var(--oj-account-right,16px); }
   .oj-desktop .oj-topnav .oj-account-menu:hover>.menu,
   .oj-desktop .oj-topnav .oj-account-menu:focus-within>.menu { top:var(--oj-account-top,63px) !important;max-height:calc(100vh - var(--oj-account-top,63px) - 8px);overflow-y:auto; }
@@ -138,3 +140,4 @@
 /* Missing mappings in the bundled Semantic UI icon stylesheet. */
 i.icon.book:before { content: "\f02d"; }
 i.icon.compass:before { content: "\f14e"; }
+i.icon.university:before { content: "\f19c"; }

@@ -86,10 +86,24 @@
     }
     
     /* 响应式调整 */
-    @media (max-width: 768px) {
-        .syzoj-container .grid {
+    @media (max-width: 999px) {
+        body.oj-page-index { min-width: 0; }
+        .oj-page-index #main_container.ui.container { width: auto !important; margin: 0 16px !important; }
+        .oj-page-index .oj-page-heading { flex-wrap: wrap; gap: 16px; }
+        .oj-page-index .syzoj-container > .grid {
             flex-direction: column;
+            margin: 0;
         }
+        .oj-page-index .syzoj-container > .ui.grid > .wide.column {
+            width: 100% !important;
+            min-width: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .oj-page-index .syzoj-card-body { overflow-x: auto; }
+        .oj-page-index .syzoj-card-header h2 { margin: 0; font-size: 18px; }
+        .oj-page-index .oj-friend-links a { flex-wrap: wrap; }
+        .oj-page-index .oj-friend-links .tag { overflow-wrap: anywhere; }
         
         .syzoj-card-body {
             padding: 15px;
