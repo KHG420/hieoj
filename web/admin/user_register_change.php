@@ -1,17 +1,28 @@
 <?php require_once("admin-header.php");
 require_once("../include/check_get_key.php");
 require_once('../include/db_info.inc.php');
-$cid=$_GET['cid'];
+$cid=$_GET['cid'] ?? '';
 //echo $cid;
 if(!(isset($_SESSION[$OJ_NAME.'_'."m$cid"])||isset($_SESSION[$OJ_NAME.'_'.'administrator']))) exit();
-$sql="select * FROM `users` WHERE `user_id`=?";
+// Authentication and one-time CSRF key consumption are complete. Mail must not
+// hold the administrator's session lock and block their other requests.
+session_write_close();
+$action = $_GET['num'] ?? '';
+if ($action !== '1' && $action !== '0') {
+    echo '无效的审批操作。<a href="user_register.php">返回申请列表</a>';
+    exit;
+}
+$sql="select * FROM `users` WHERE `user_id`=? AND `register_num`=0";
 $result=pdo_query($sql,$cid);
+if ($result === false) {
+    echo '申请读取失败，请稍后重试。<a href="user_register.php">返回申请列表</a>';
+    exit;
+}
 //echo $result;
 $num=count($result);
 //echo $num;
 if ($num<1){
-    echo "No Such User!";
-    require_once("../oj-footer.php");
+    echo '申请不存在或已经处理，请刷新列表。<a href="user_register.php">返回申请列表</a>';
     exit(0);
 }
 $email = $result[0]['email'];
@@ -114,29 +125,33 @@ $str = '<div>
     </div>';
 
 function send_post($url, $post_data) {
-
-    $postdata = http_build_query($post_data);
-    $options = array(
-        'http' => array(
-            'method' => 'POST',
-            'header' => 'Content-type:application/x-www-form-urlencoded',
-            'content' => $postdata,
-            'timeout' => 15 * 60 // 超时时间（单位:s）
-        )
-    );
-    $context = stream_context_create($options);
-    $result = file_get_contents($url, false, $context);
-
-    return $result;
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => http_build_query($post_data),
+        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT_MS => 1000,
+        // Total deadline, including a connected service that never responds.
+        CURLOPT_TIMEOUT_MS => 3000,
+    ]);
+    $result = curl_exec($curl);
+    $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $ok = $result !== false && $status >= 200 && $status < 300;
+    if (!$ok) {
+        error_log('Registration approval mail failed: curl=' . curl_errno($curl) . ', http=' . $status);
+    }
+    curl_close($curl);
+    return $ok;
 }
 
-if ($_GET['num'] == 1) {
-    $sql = "UPDATE `users` SET `defunct`='N',`register_num`=1,`accesstime`=NOW() WHERE `user_id`=?";
-    pdo_query($sql,$cid);
+if ($action === '1') {
+    $sql = "UPDATE `users` SET `defunct`='N',`register_num`=1,`accesstime`=NOW() WHERE `user_id`=? AND `register_num`=0";
+    $changed = pdo_query($sql,$cid);
 //    $str = "[HNIEOJ] 你注册的账号已通过审核，可以正常登陆使用，恭喜你开启一段 coding 之旅 !!!（本邮件为程序自动发送，不用回复，外网可使用新域名访问：https://hnieacm.com）";
-} else if ($_GET['num'] == 0) {
-    $sql = "DELETE FROM users WHERE user_id=?";
-    pdo_query($sql,$cid);
+} else if ($action === '0') {
+    $sql = "DELETE FROM users WHERE user_id=? AND `register_num`=0";
+    $changed = pdo_query($sql,$cid);
     $str = "[HNIEOJ] 你的注册申请未通过申请，"."可能的原因：姓名、班级或学号不正确。请检查后重新注册（本邮件为程序自动发送，不用回复）。<br>"
         ."您的注册信息如下：<br>"
         ."<table>"
@@ -146,6 +161,14 @@ if ($_GET['num'] == 1) {
         ."</table>";
 }
 
+if ($changed === false) {
+    echo '审批保存失败，请稍后重试。<a href="user_register.php">返回申请列表</a>';
+    exit;
+}
+if ($changed !== 1) {
+    echo '申请已经处理，请刷新列表。<a href="user_register.php">返回申请列表</a>';
+    exit;
+}
 
 $post_data = array(
     'code' => 'acmore',
@@ -153,10 +176,13 @@ $post_data = array(
     'content' => $str,
 );
 $url = "http://".$micServiceIP."/mail/sendEmail/";
-send_post($url, $post_data);
-
-?>
-<script language=javascript>
-    history.go(-1);
-</script>
+echo $action === '1' ? '审批已通过，账号可以正常登录。' : '已拒绝该注册申请。';
+if (trim((string)$email) === '') {
+    echo '该申请未填写邮箱，未发送邮件通知。';
+} elseif (!send_post($url, $post_data)) {
+    echo '邮件通知失败，但审批结果已保存，无需重复审批。';
+} else {
+    echo '邮件通知请求已发送。';
+}
+echo '<p><a href="user_register.php">返回申请列表</a></p>';
 
