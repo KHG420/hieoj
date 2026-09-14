@@ -89,4 +89,19 @@ HTTP 测试覆盖实际表单目标、普通用户发布、编辑和下架权限
 另验证了 DB 全新初始化、重复迁移、完整判题源码 HTTP 版本在本地 x86_64 容器中的编译，以及桌面和手机浏览器的出题与评论操作、表单、菜单展开和布局。
 既有 adventure HTTP 集成测试依赖题库和知识分类映射；隔离空库测试时补充了临时映射和公开题，运行后全部删除。
 
-**环境限制：** 本机是 Mac ARM，原生 Linux x86_64 的 ptrace 沙箱端到端运行尚未验收。独立本地 Web 可用于出题、讨论和页面验收；没有启动受支持的判题服务时，自定义反例验证保持排队状态。实际 Linux 沙箱编译/执行验收是上线前剩余的环境验证项，本次不连接远端主机。
+## 2026-09-14 原生判题补充验收
+
+本地开发阶段受 Mac ARM 限制的沙箱验收，已在用户随后授权的远端 Linux x86_64 隔离项目 `hnieoj-release-qa` 完成。它使用独立数据库、数据卷、网络和 18089 端口，不与正式判题器共享任务。
+
+新增 `web/tests/community_hunts_native_test.php`，通过真实 HTTP 发布题目及提交输入，再等待已有 Docker/ptrace 判题队列完成，不模拟结果。11 类场景覆盖 C++ 输出不同、输出相同、非法输入、运行错误、超时、输出超限、编译错误、参考程序错误、校验程序错误、空输出及 Python。三段程序的状态与最终结论逐项断言。
+
+另通过真实 `submit.php` 分别提交 C++ 和 Python 普通题，两条不同提交均 AC；检查首次 AC 只奖励 2 金币，自定义试运行不发奖。脚本遵守原有 10 秒提交限流，并断言确实创建了新的 solution ID，防止重复读取旧提交造成假通过。
+
+```sh
+# 只在明确授权的环境中执行；首选隔离项目。需要运行中的原生 x86_64 judge。
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/community_hunts_native_test.php --fixtures
+# 上线后的较小范围验收：3 类反例（C++ 命中/运行错误/Python 命中）和两次普通题 AC。
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/community_hunts_native_test.php --fixtures --smoke
+```
+
+测试仅创建随机前缀用户和临时题目；任务结束后清理用户、题目、源码、判题结果、金币记录、会话和测试数据。任务超时未完成时保留现场，不删除仍可能被沙箱读取的载荷。Mac 上未运行原生 judge 的本地预览仍会显示排队状态。
