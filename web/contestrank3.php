@@ -23,7 +23,7 @@ function getSubmitByCid($OJ_MEMCACHE,$cid){
         $subList = mysql_query_cache($sql);
     } else {
         $sql = "SELECT `solution_id`,`user_id`,`problem_id`,`in_date`,`result` FROM solution WHERE `contest_id`= ?";
-        $subList = pdo_query($sql, $cid);
+        $subList = mysql_query_cache($sql, $cid);
     }
     return $subList;
 }
@@ -40,7 +40,7 @@ function getTeamByCid($OJ_MEMCACHE,$cid){
         $teamList = mysql_query_cache($sql);
     } else {
         $sql = "SELECT a.user_id,nick FROM (SELECT distinct user_id FROM solution WHERE contest_id = ?)AS a INNER JOIN users WHERE users.user_id = a.user_id";
-        $teamList = pdo_query($sql, $cid);
+        $teamList = mysql_query_cache($sql, $cid);
     }
     return $teamList;
 }
@@ -57,7 +57,7 @@ function getProblemMapByCid($OJ_MEMCACHE,$cid) {
         $proList = mysql_query_cache($sql);
     } else {
         $sql = "SELECT `problem_id`,`num` FROM contest_problem WHERE `contest_id` = ?";
-        $proList = pdo_query($sql, $cid);
+        $proList = mysql_query_cache($sql, $cid);
     }
     $arr = array();
     for($i=0;$i<count($proList);$i++) {
@@ -235,8 +235,8 @@ if (isset($_GET['type'])&&$_GET['type']=='json') {
 	$lock = $end_time - ($end_time - $start_time) * $OJ_RANK_LOCK_PERCENT;
 	$start_time_str = date("Y-m-d H:i:s",$start_time);
 	$lock_time_str = date("Y-m-d H:i:s",$lock);
-$problem_num = pdo_query("select count(distinct problem_id ) from contest_problem where contest_id=?",$cid)[0][0];
-$team_num=pdo_query("select count(distinct user_id ) from solution where contest_id=?",$cid)[0][0];
+$problem_num = mysql_query_cache("select count(distinct problem_id ) from contest_problem where contest_id=?",$cid)[0][0];
+$team_num=mysql_query_cache("select count(distinct user_id ) from solution where contest_id=?",$cid)[0][0];
 $gold_num=intval($team_num*0.05);
 $silver_num=intval($team_num*0.15);
 $bronze_num=intval($team_num*0.20);

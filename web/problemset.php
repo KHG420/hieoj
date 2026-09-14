@@ -103,14 +103,14 @@ if ($OJ_FREE_PRACTICE){  // open free practice without limit of contest using
 // End Page Setting
 
 $query_params = isset($_GET['search']) && trim($_GET['search'])!=='' ? array($search, $search) : array();
-$count_rows = pdo_query("SELECT COUNT(*) AS total FROM problem".$where_sql, ...$query_params);
+$count_rows = mysql_query_cache("SELECT COUNT(*) AS total FROM problem".$where_sql, ...$query_params);
 $view_total_count = intval($count_rows[0]['total']);
 $view_total_page = max(1, intval(ceil($view_total_count / $page_cnt)));
 $page = min($page, $view_total_page);
 $offset = ($page - 1) * $page_cnt;
 $sql = "SELECT `problem_id`,`title`,`source`,`submit`,`accepted`,defunct FROM problem".$where_sql." ORDER BY problem_id LIMIT ".$offset.", ".$page_cnt;
 if (isset($_GET['search']) && trim($_GET['search'])!="") {
-	$result = pdo_query($sql,$search,$search);
+	$result = mysql_query_cache($sql,$search,$search);
 }
 else {
 	$result = mysql_query_cache($sql);

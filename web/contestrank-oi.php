@@ -3,6 +3,7 @@
         $cache_time=10;
         require_once('./include/cache_start.php');
     require_once('./include/db_info.inc.php');
+    require_once('./include/memcache.php');
         require_once('./include/setlang.php');
         $view_title= $MSG_CONTEST.$MSG_RANKLIST;
         $title="";
@@ -77,7 +78,6 @@ $cid=intval($_GET['cid']);
 
 if($OJ_MEMCACHE){
 		$sql="SELECT `start_time`,`title`,`end_time` FROM `contest` WHERE `contest_id`='$cid'";
-        require("./include/memcache.php");
         $result = mysql_query_cache($sql);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
@@ -129,7 +129,7 @@ if($OJ_MEMCACHE){
         else $rows_cnt=0;
 }else{
 		$sql="SELECT count(1) as pbc FROM `contest_problem` WHERE `contest_id`=?";
-        $result = pdo_query($sql,$cid);
+        $result = mysql_query_cache($sql,$cid);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
 }
@@ -164,7 +164,7 @@ if($OJ_MEMCACHE){
                 inner join users
                 on users.user_id=solution.user_id and users.defunct='N'
         ORDER BY users.user_id,in_date";
-        $result = pdo_query($sql,$cid);
+        $result = mysql_query_cache($sql,$cid);
         if($result) $rows_cnt=count($result);
         else $rows_cnt=0;
 }
@@ -212,7 +212,7 @@ if($OJ_MEMCACHE){
 	$sql="select num,user_id from
         (select num,user_id from solution where contest_id=? and result=4 order by solution_id ) contest
         group by num";
-    $fb = pdo_query($sql,$cid);
+    $fb = mysql_query_cache($sql,$cid);
 }
 foreach ($fb as $row){
          $first_blood[$row['num']]=$row['user_id'];

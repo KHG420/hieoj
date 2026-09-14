@@ -3,6 +3,7 @@ $cache_time=10;
 $OJ_CACHE_SHARE=false;
 require_once('./include/cache_start.php');
 require_once('./include/db_info.inc.php');
+require_once('./include/memcache.php');
 require_once('./include/setlang.php');
 require_once("./include/const.inc.php");
 require_once("./include/my_func.inc.php");
@@ -24,7 +25,7 @@ if ($row_cnt==0){
 }
 
 $sql="SELECT SUM(c.sim) as sim_num FROM `users` a LEFT JOIN (`solution` b RIGHT JOIN `sim` c ON c.s_id = b.solution_id) on a.user_id = b.user_id WHERE a.user_id=? GROUP BY a.user_id ORDER BY a.solved DESC";
-$res=pdo_query($sql,$user);
+$res=mysql_query_cache($sql,$user);
 
 
 $row=$result[0];
@@ -54,7 +55,7 @@ if(cache_get($stat_key)===false){
 	cache_set($stat_key,1,300);
 }
 $sql="SELECT count(*) as `Rank` FROM `users` WHERE `solved`>?";
-$result=pdo_query($sql,$AC);
+$result=mysql_query_cache($sql,$AC);
 $row=$result[0];
 $Rank=intval($row[0])+1;
 
@@ -65,7 +66,7 @@ if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
 
 }
 $sql="SELECT result,count(1) FROM solution WHERE `user_id`=? AND result>=4 group by result order by result";
-$result=pdo_query($sql,$user);
+$result=mysql_query_cache($sql,$user);
 $view_userstat=array();
 $i=0;
 foreach($result as $row){
@@ -76,7 +77,7 @@ foreach($result as $row){
 $sql=	"SELECT UNIX_TIMESTAMP(date(in_date))*1000 md,count(1) c,
                 SUM(result=4) ac
          FROM `solution` where `user_id`=? group by md order by md desc ";
-$result=pdo_query($sql,$user);//mysql_escape_string($sql));
+$result=mysql_query_cache($sql,$user);//mysql_escape_string($sql));
 $chart_data_all= array();
 $chart_data_ac= array();
 //echo $sql;

@@ -35,7 +35,8 @@
         if(stripos(trim($sql),"select")!==0){
             return pdo_query($sql, ...$args);
         }
-        $key=md5($OJ_NAME.$_SERVER['HTTP_HOST']."mysql_query" . $sql.implode(" ",$args));
+        // 保留参数边界，避免不同筛选条件因空格拼接而共用缓存。
+        $key=md5(serialize(array($OJ_NAME, $_SERVER['HTTP_HOST'], $sql, $args)));
         $timeout = 5;
 
         // 1) APCu 优先

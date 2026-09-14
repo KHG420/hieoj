@@ -72,7 +72,7 @@ $sql = "SELECT t.user_id, t.school, t.nick, t.solved, t.submit,
         ORDER BY t.solved DESC, t.submit, t.reg_time";
 
 if(count($where_params)>0){
-    $result = pdo_query($sql, ...$where_params);
+    $result = mysql_query_cache($sql, ...$where_params);
 }else{
     $result = mysql_query_cache($sql) ;
 }
