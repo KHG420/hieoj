@@ -9,6 +9,7 @@
     <div id="draft-restore" class="ed-notice" hidden><p id="draft-message">发现本题的本机草稿。</p><div class="ed-actions"><button type="button" id="restore-draft" class="ui basic button">恢复草稿</button><button type="button" id="keep-current" class="ui basic button">保留当前内容</button></div></div>
     <label for="editorial-content">题解正文</label>
     <p class="ed-meta" id="content-help"><?php echo $formatInput === 'plain' ? '当前保留原纯文本格式，换行和代码缩进会原样显示。' : '支持 Markdown 和 LaTeX。可用工具栏插入格式，在预览中检查阅读效果。'; ?></p>
+    <p class="ed-meta">新手教程：<a href="https://blog.csdn.net/x3468714225/article/details/165311404" target="_blank" rel="noopener noreferrer">Markdown 入门教程</a> · <a href="https://blog.csdn.net/x3468714225/article/details/165312054" target="_blank" rel="noopener noreferrer">LaTeX 公式教程</a>（新窗口打开）</p>
     <div class="ed-editor-tools" hidden>
       <?php if($formatInput !== 'plain'){ ?>
       <div class="ed-format-tools" aria-label="正文格式工具">
