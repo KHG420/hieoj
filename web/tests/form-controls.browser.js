@@ -51,6 +51,14 @@ async () => {
             await page.goto(origin+path);
             await page.evaluate(() => document.fonts.ready);
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No full-page mobile overflow: '+path);
+            if (path === '/problemset.php') {
+                check(await page.evaluate(() => [...document.querySelectorAll('.search-box')].every(form => {
+                    const input = form.querySelector('input').getBoundingClientRect();
+                    const button = form.querySelector('button').getBoundingClientRect();
+                    const icon = form.querySelector('.search-icon').getBoundingClientRect();
+                    return input.height >= 40 && button.left >= input.right && icon.top >= input.top && icon.bottom <= input.bottom && icon.right <= input.right;
+                })), 'Search and jump icons stay in their inputs, clear of the buttons');
+            }
         }
         if (viewport) await page.setViewportSize(viewport);
         check(errors.length === 0, 'No JavaScript exceptions: '+errors.join(', '));

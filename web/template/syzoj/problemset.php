@@ -73,6 +73,7 @@
 
 .status i.icon {
   color: #6c757d;
+  pointer-events: none;
 }
 
 .tag-container {
@@ -132,6 +133,9 @@
 }
 
 .search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   position: relative;
   width: 280px;
 }
@@ -145,11 +149,17 @@
 }
 
 .search-box input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
   padding-left: 35px !important;
   border-radius: 6px;
   border: 1px solid #ced4da;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.search-box button { flex-shrink: 0; margin: 0 !important; }
 
 .search-box input:focus {
   border-color: #86b7fe;
@@ -216,7 +226,7 @@
               <input id="problem-search" aria-label="搜索题目标题或标签" class="prompt" type="search" value="<?php echo htmlspecialchars(isset($_GET['search']) ? $_GET['search'] : ''); ?>" placeholder="搜索题目标题或知识标签" name="search"><button class="ui primary button" type="submit">搜索</button>
           </form>
 
-          <form action="problem.php" method="get" class="search-box" style="width: 150px;">
+          <form action="problem.php" method="get" class="search-box">
               <i class="search icon search-icon"></i>
               <input class="prompt" type="number" min="1" aria-label="题目编号" placeholder="题目编号" name="id" required><button class="ui basic button" type="submit">跳转</button>
           </form>
