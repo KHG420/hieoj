@@ -1,4 +1,4 @@
-// playwright-cli run-code: authenticated restored HnieOJ data (problem 1000, thread 84).
+// playwright-cli run-code: administrator session with restored HnieOJ data (problem 1000, thread 84).
 // Only edits browser fields/cookies; never submits code, posts, registrations or email.
 async () => {
     const origin = await page.evaluate(() => location.origin);
@@ -45,9 +45,9 @@ async () => {
         await page.getByRole('button', {name:'重置',exact:true}).click();
         await page.waitForFunction(() => document.querySelector('#xueyuan_sel').value === '' && document.querySelector('#school_sel').options.length === 1);
         check(!await page.locator('#school_manual').isVisible(), 'Reset clears manual field mode');
-        const viewport = page.viewportSize();
+        const viewport = page.viewportSize() || await page.evaluate(() => ({width:innerWidth,height:innerHeight}));
         await page.setViewportSize({width:390,height:844});
-        for (const path of ['/problemset.php','/viewnews.php?id=1016','/registerpage.php']) {
+        for (const path of ['/problemset.php','/viewnews.php?id=1016','/registerpage.php','/admin/problem_list.php','/admin/contest_list.php']) {
             await page.goto(origin+path);
             await page.evaluate(() => document.fonts.ready);
             check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No full-page mobile overflow: '+path);

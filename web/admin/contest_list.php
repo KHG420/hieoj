@@ -65,7 +65,7 @@ if(isset($OJ_LANG)){
                     <input name=keyword><input type=submit value="<?php echo $MSG_SEARCH?>">
                 </form>
 
-                <center>
+                <center class="table-responsive">
                     <table width=100% border=1 style="text-align:center;">
                         <tr>
                             <td>ID</td>

@@ -87,7 +87,7 @@ if(isset($OJ_LANG)){
                 */
                 ?>
 
-                <center>
+                <center class="table-responsive">
                     <table width=100% border=1 style="text-align:center;">
                         <form method=post action=contest_add.php>
                             <tr>
