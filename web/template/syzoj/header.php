@@ -90,7 +90,7 @@ if ($OJ_WHITE_BLACK) { ?>
                         <a class="item" href="<?php echo $path_fix?>solutions.php?tab=mine"><i class="book icon"></i>我的题解</a>
                         <a class="item" href="<?php echo $path_fix?>coins.php?tab=history"><i class="trophy icon"></i>我的金币</a>
                         <a class="item" href="<?php echo $path_fix?>adventure.php"><i class="compass icon"></i>今日冒险</a>
-                        <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="book icon"></i>解题回忆录</a>
+                        <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="history icon"></i>解题回忆录</a>
                         <a class="item" href="<?php echo $path_fix?>modifypage.php"><i
                                     class="edit icon"></i><?php echo $MSG_REG_INFO;?></a>
                         <?php if ($OJ_SaaS_ENABLE){ ?>

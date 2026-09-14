@@ -134,3 +134,7 @@
   body.oj-page-userinfo .oj-solved-item a { padding:6px 10px;color:#245bbd;font-variant-numeric:tabular-nums; }
   body.oj-page-userinfo .oj-solved-item a+a { border-left:1px solid #d7e4f7;font-size:12px;background:#fff; }
 }
+
+/* Missing mappings in the bundled Semantic UI icon stylesheet. */
+i.icon.book:before { content: "\f02d"; }
+i.icon.compass:before { content: "\f14e"; }
