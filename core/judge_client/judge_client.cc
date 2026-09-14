@@ -76,6 +76,7 @@
 #define OJ_RE 10     //运行错误
 #define OJ_CE 11     //编译错误
 #define OJ_CO 12     //编译完成
+#define CUSTOM_OUTPUT_LIMIT 16384 // runtimeinfo text capture limit for custom runs
 #define OJ_TR 13     //测试运行结束
 #define OJ_MC 14     // 等待裁判手工确认
 
@@ -3157,7 +3158,8 @@ void watch_solution(pid_t pidApp, char *infile, int &ACflg, int spj,
 	struct user_regs_struct reg;
 	struct rusage ruse;
 	int tick=0;
-	long outFileSize=get_file_size(outfile);
+	long outFileSize=p_id == 0 ? 0 : get_file_size(outfile);
+	long outputLimit=p_id == 0 ? CUSTOM_OUTPUT_LIMIT : outFileSize * 2 + 1024;
 
 	// 对于多线程程序,在watch的时候需要让对应的被停住的程序继续往前
 	// 如果有其它停止信号,比如Java的JVM会使用一个SIGSEGV的停止信号,这个停止码需要通过ptrace发给被trace程序   -- by Sempr
@@ -3267,7 +3269,7 @@ void watch_solution(pid_t pidApp, char *infile, int &ACflg, int spj,
 			break;
 		}
 
-		if (((tick & 0xff)==0x00) &&(!spj) && get_file_size(userfile) >outFileSize * 2 + 1024)
+		if (((tick & 0xff)==0x00) &&(!spj) && get_file_size(userfile) > outputLimit)
 		{
 			ACflg = OJ_OL;
 			ptrace(PTRACE_KILL, pidApp, NULL, NULL);
@@ -3721,9 +3723,19 @@ int make_out(int solution_id,int p_id,int lang,char * work_dir,double time_lmt,i
 }
 int test_run(int solution_id,int p_id,int lang,char * work_dir,double time_lmt,int &usedtime,int mem_lmt,char * userfile,char * infile,char *outfile,int &topmemory,int spj,int &PEflg,int &ACflg){
 	int ret=0;
+	// Custom runs do not pass through prepare_files or set a data-path prefix.
+	prelen = 0;
+	strcpy(infile, "data.in");
+	strcpy(userfile, "user.out");
+	strcpy(outfile, "/dev/null");
 	get_custominput(solution_id, work_dir);
 	init_syscalls_limits(lang);
 	pid_t pidApp = fork();
+	if (pidApp < 0) {
+		update_solution(solution_id, OJ_MC, usedtime, topmemory >> 10, 0, 0, 0);
+		clean_workdir(work_dir);
+		return 0;
+	}
 
 	if (pidApp == 0)
 	{
@@ -3735,8 +3747,21 @@ int test_run(int solution_id,int p_id,int lang,char * work_dir,double time_lmt,i
 					   solution_id, lang, topmemory, mem_lmt, usedtime, time_lmt,
 					   p_id, PEflg, work_dir);
 	}
+	// The watcher samples output size; check again after fast programs exit.
+	// runtimeinfo is a text channel: embedded NUL must not truncate a comparison.
+	if (ACflg == OJ_AC) {
+		FILE *output = fopen("user.out", "rb");
+		int ch;
+		if (!output || get_file_size("user.out") > CUSTOM_OUTPUT_LIMIT) ACflg = OJ_OL;
+		if (output) {
+			while (ACflg == OJ_AC && (ch = fgetc(output)) != EOF)
+				if (ch == 0) ACflg = OJ_OL;
+			fclose(output);
+		}
+	}
+	if (ACflg == OJ_AC && lang != LANG_CJ && get_file_size("error.out") > 0) ACflg = OJ_RE;
 	if(DEBUG) printf("custom running result:%d PEflg:%d\n",ACflg,PEflg);
-	if (ACflg == OJ_RE||( lang!=LANG_CJ  && get_file_size("error.out")>0))
+	if (ACflg != OJ_AC)
 	{
 		if (DEBUG)
 			printf("add RE info of %d..... \n", solution_id);
@@ -3748,7 +3773,7 @@ int test_run(int solution_id,int p_id,int lang,char * work_dir,double time_lmt,i
 		addcustomout(solution_id);
 		ret=2;
 	}
-	update_solution(solution_id, OJ_TR, usedtime, topmemory >> 10, 0, 0, 0);
+	update_solution(solution_id, ACflg == OJ_AC ? OJ_TR : ACflg, usedtime, topmemory >> 10, 0, 0, 0);
 	clean_workdir(work_dir);
 	return ret;
 }

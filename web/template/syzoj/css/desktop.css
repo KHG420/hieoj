@@ -12,6 +12,17 @@
 .oj-desktop .oj-page-actions { display:flex;gap:8px; }
 .oj-desktop .oj-result-summary { margin:0 0 14px;color:#596980;font-size:13px; }
 .oj-desktop .oj-topnav .dropdown:focus-within>.menu { display:block; }
+.oj-desktop .oj-topnav .oj-account-menu:focus-within>.menu { top:100% !important;opacity:1;height:auto;overflow:visible; }
+.oj-desktop .oj-topnav .oj-account-menu>.menu { top:100%;right:0;left:auto;width:196px !important;min-width:196px !important;padding:6px 0;margin:0;border:1px solid #dce3ec;border-radius:8px;box-shadow:none; }
+.oj-desktop .oj-topnav .oj-account-menu>.menu>.item,
+.oj-desktop .oj-topnav .oj-account-menu>.menu>form>.item { display:flex !important;width:100%;height:auto;min-height:42px;align-items:center;justify-content:flex-start;padding:10px 16px !important;margin:0;white-space:nowrap;text-align:left;border-radius:0; }
+.oj-desktop .oj-topnav .oj-account-menu>.menu>form { border-top:1px solid #e6ebf2;margin-top:6px !important;padding-top:6px; }
+.oj-desktop .oj-topnav .oj-account-menu>.menu .item:hover { background:#edf3ff !important;color:#245dd8; }
+@media (max-width:999px) {
+  .oj-desktop .oj-topnav .oj-account-menu>.menu { position:fixed;right:var(--oj-account-right,16px); }
+  .oj-desktop .oj-topnav .oj-account-menu:hover>.menu,
+  .oj-desktop .oj-topnav .oj-account-menu:focus-within>.menu { top:var(--oj-account-top,63px) !important;max-height:calc(100vh - var(--oj-account-top,63px) - 8px);overflow-y:auto; }
+}
 @media (min-width:1000px) {
   body.oj-desktop { background:var(--oj-bg);color:var(--oj-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.6; }
   body.oj-desktop .oj-topnav { height:64px !important;margin:0;border:0;border-bottom:1px solid var(--oj-border);border-radius:0;box-shadow:none; }
