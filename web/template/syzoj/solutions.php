@@ -17,8 +17,11 @@
   <?php if($ready && $article){ ?>
     <article class="ed-panel">
       <h2 class="ed-article-title"><?php echo editorial_escape($article['title']); ?></h2>
-      <p class="ed-meta">作者 <?php echo editorial_escape($article['user_id']); ?> · <?php echo editorial_escape($article['created_at']); ?> · <?php echo $statusNames[$article['status']]; ?></p>
+      <?php if($reference){ ?><p class="ed-notice">无人提交题解，选取一份 AC 代码做参考。</p>
+      <?php } else { ?><p class="ed-meta">作者 <?php echo editorial_escape($article['user_id']); ?> · <?php echo editorial_escape($article['created_at']); ?> · <?php echo $statusNames[$article['status']]; ?></p><?php } ?>
       <?php if($canRead){ ?>
+        <?php if($reference){ ?><div class="ed-markdown"><pre class="ed-code-shell"><code><?php echo editorial_escape($article['content']); ?></code></pre></div>
+        <?php } else { ?>
         <?php if($article['status']==='pending'){ ?><p class="ed-notice">题解已提交，正在等待管理员审核。审核通过后公开，并奖励 10 金币。</p><?php } ?>
         <?php if(($admin || $article['user_id']===$user) && $article['review_note']!==''){ ?><p class="ed-notice">审核说明：<?php echo editorial_escape($article['review_note']); ?></p><?php } ?>
         <div class="ed-body" data-content-format="<?php echo editorial_escape($article['content_format']); ?>"<?php if($submitted){ ?> data-submitted-draft="<?php echo editorial_escape($draftKey); ?>" data-submitted-title="<?php echo editorial_escape($article['title']); ?>"<?php } ?>><?php echo editorial_escape($article['content']); ?></div>
@@ -30,8 +33,9 @@
             <div class="ed-actions"><button class="ui primary button" type="submit" name="decision" value="approved">审核通过 · 奖励作者 10 金币</button><button class="ui basic button" type="submit" name="decision" value="rejected">驳回题解</button></div>
           </form>
         <?php } ?>
+        <?php } ?>
       <?php } else { ?>
-        <div class="ed-paywall"><h3>解锁本题全部题解</h3><p>支付 <strong>5 金币</strong>，永久解锁本题全部已审核题解，包括后续新增题解。通过本题后可免费查看。</p>
+        <div class="ed-paywall"><h3>解锁本题全部题解</h3><p>支付 <strong>5 金币</strong>，<?php echo $reference ? '永久解锁本题参考代码及后续审核通过的题解。' : '永久解锁本题全部已审核题解，包括后续新增题解。'; ?>通过本题后可免费查看。</p>
         <?php if($user){ ?><p>当前余额 <?php echo intval($balance); ?> 金币<?php if($balance<5) echo '，还差 '.(5-$balance).' 金币。'; ?></p>
           <form method="post"><?php require './include/set_post_key.php'; ?><input type="hidden" name="action" value="unlock"><button class="ui primary button" type="submit" <?php if($balance<5) echo 'disabled'; ?>>支付 5 金币解锁本题</button></form>
           <?php if($balance<5){ ?><p><a href="problemset.php">去练习赚金币</a> · 首次通过一道题获得 2 金币。</p><?php } ?>

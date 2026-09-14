@@ -45,6 +45,18 @@ function editorial_balance($user) {
     return $user ? (int)editorial_query('SELECT balance FROM coin_wallet WHERE user_id=?', array($user))->fetchColumn() : 0;
 }
 
+// A reference is derived from submissions, never stored or rewarded as a post.
+// Keep source text out of this query until the reader is authorized.
+function editorial_reference($problem) {
+    return editorial_query("SELECT s.solution_id FROM solution s
+        JOIN source_code_user sc ON sc.solution_id=s.solution_id
+        JOIN problem p ON p.problem_id=s.problem_id
+        WHERE s.problem_id=? AND s.result=4 AND sc.source REGEXP '[^[:space:]]'
+        AND ".editorial_public_sql()."
+        AND NOT EXISTS (SELECT 1 FROM problem_editorial e WHERE e.problem_id=s.problem_id AND e.status='approved')
+        ORDER BY s.solution_id ASC LIMIT 1",array($problem))->fetch(PDO::FETCH_ASSOC);
+}
+
 function editorial_submit($user, $problem, $title, $content, $format = 'plain') {
     if (!in_array($format, array('plain','markdown'), true)) throw new DomainException('不支持的题解格式。');
     $title = trim($title); $content = trim($content);
@@ -58,17 +70,24 @@ function editorial_submit($user, $problem, $title, $content, $format = 'plain') 
     return editorial_db()->lastInsertId();
 }
 
-function editorial_unlock($user, $id, $admin) {
+function editorial_unlock($user, $id, $admin, $referenceProblem = 0) {
     if (!$user) throw new DomainException('请先登录，再解锁题解。');
     $db = editorial_db();
     $db->beginTransaction();
     try {
-        $article = editorial_query('SELECT * FROM problem_editorial WHERE id=? FOR UPDATE', array($id))->fetch(PDO::FETCH_ASSOC);
-        if (!$article || !editorial_problem($article['problem_id']) || $article['status'] !== 'approved') {
-            throw new DomainException('这篇题解暂时不能解锁，请返回题解列表。');
+        if (!$id && $referenceProblem) {
+            if (!editorial_reference($referenceProblem)) throw new DomainException('备用题解已更新，请返回本题题解列表。');
+            $problem = $referenceProblem;
+            $author = null;
+        } else {
+            $article = editorial_query('SELECT * FROM problem_editorial WHERE id=? FOR UPDATE', array($id))->fetch(PDO::FETCH_ASSOC);
+            if (!$article || !editorial_problem($article['problem_id']) || $article['status'] !== 'approved') {
+                throw new DomainException('这篇题解暂时不能解锁，请返回题解列表。');
+            }
+            $problem = $article['problem_id'];
+            $author = $article['user_id'];
         }
-        $problem = $article['problem_id'];
-        if (!$admin && $article['user_id'] !== $user && !editorial_passed($user,$problem)) {
+        if (!$admin && $author !== $user && !editorial_passed($user,$problem)) {
             // Serialize purchases by wallet, including simultaneous requests for
             // different articles on the same problem. Read the unlock after locking.
             editorial_query('INSERT INTO coin_wallet(user_id,balance) VALUES(?,0) ON DUPLICATE KEY UPDATE balance=balance', array($user));

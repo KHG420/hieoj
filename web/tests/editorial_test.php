@@ -8,7 +8,7 @@ session_write_close();
 if ($argv[1] === 'worker') {
     $spec = json_decode(base64_decode($argv[2]),true);
     try {
-        if ($spec[0] === 'unlock') editorial_unlock($spec[1],$spec[2],false);
+        if ($spec[0] === 'unlock') editorial_unlock($spec[1],$spec[2],false,$spec[3] ?? 0);
         elseif ($spec[0] === 'review') { $_SESSION[$OJ_NAME.'_administrator']=true; editorial_review($spec[1],$spec[2],'approved',''); }
         else editorial_query('UPDATE solution SET result=4 WHERE solution_id=?',array($spec[1]));
         exit(0);
@@ -214,10 +214,82 @@ try {
     ed_http('/solutions.php?id='.$mdId.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
     ed_check(editorial_balance($a)===$rewardBefore+10,'Markdown approval earns the same ten coins');
     ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId),editorial_escape($md)),'Markdown never leaks through anonymous paywall');
-    echo "PASS: $checks checks covering judge rewards, authorization, CSRF, review, unlocks, concurrency, rollbacks, privacy, escaping, ledger and ranking.\n";
+    // References are live AC code, with the same problem-level access and payment.
+    editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'备用题解'));
+    $refPid=(int)editorial_db()->lastInsertId(); $pids[]=$refPid;
+    $refPath='/solutions.php?problem_id='.$refPid;
+    ed_check(!editorial_reference($refPid),'No submission means no reference');
+    $wa=ed_ac($a,$refPid,6);
+    editorial_query('INSERT INTO source_code_user(solution_id,source) VALUES(?,?)',array($wa,'WRONG_REFERENCE_'.$prefix));
+    ed_check(!editorial_reference($refPid),'Wrong answers cannot become references');
+    ed_ac($a,$refPid); // AC without source must be skipped.
+    $blank=ed_ac($a,$refPid);
+    editorial_query('INSERT INTO source_code_user(solution_id,source) VALUES(?,?)',array($blank," \n\t "));
+    ed_check(!editorial_reference($refPid),'Missing and whitespace-only AC source are skipped');
+    ed_check(str_contains(ed_http($refPath,0),'本题暂无已审核题解'),'No usable source keeps the empty state');
+    $refSid=ed_ac($a,$refPid);
+    $refCode="// REFERENCE_".$prefix."\n#include <stdio.h>\n// <script>alert('reference')</script>\nint main() {\n\treturn 0;\n}";
+    editorial_query('INSERT INTO source_code_user(solution_id,source) VALUES(?,?)',array($refSid,$refCode));
+    $later=ed_ac($a,$refPid);
+    editorial_query('INSERT INTO source_code_user(solution_id,source) VALUES(?,?)',array($later,'LATER_REFERENCE_'.$prefix));
+    ed_check((int)editorial_reference($refPid)['solution_id']===$refSid,'Choose the earliest usable AC deterministically');
+    editorial_query('UPDATE solution SET result=6 WHERE solution_id=?',array($refSid));
+    ed_check((int)editorial_reference($refPid)['solution_id']===$later,'Rejudged non-AC code is no longer selected');
+    editorial_query('UPDATE solution SET result=4 WHERE solution_id=?',array($refSid));
+    $refHtml=ed_http($refPath,0);
+    ed_check(str_contains($refHtml,'无人提交题解') && str_contains($refHtml,'<code>'.editorial_escape($refCode).'</code>'),'Passed reader sees the exact escaped reference code');
+    ed_check(!str_contains($refHtml,'LATER_REFERENCE_') && !str_contains($refHtml,"<script>alert('reference')"),'Only one reference, with no executable HTML');
+    ed_check(!str_contains(ed_http($refPath),'REFERENCE_'.$prefix),'Anonymous reference body is withheld');
+    ed_check(!str_contains(ed_http($refPath,2),'REFERENCE_'.$prefix),'Unpaid reference body is withheld');
+    ed_check(str_contains(ed_http($refPath,3),editorial_escape($refCode)),'Administrator reads reference free');
+    ed_check(!str_contains(ed_http($refPath.'&page=2',0),'无人提交题解'),'Reference is not duplicated on later pages');
+    ed_check(str_contains(ed_http($refPath.'&write=1',0),'id="editorial-form"'),'Reference does not replace the composer');
+    ed_http($refPath,2,array('action'=>'unlock','postkey'=>'invalid'),403);
+    ed_http($refPath,null,array('action'=>'unlock','postkey'=>$key),401);
+    $poorBalance=editorial_balance($c);
+    ed_check($poorBalance<5,'Reference insufficient-funds fixture');
+    ed_http($refPath,2,array('action'=>'unlock','postkey'=>$key),400);
+    ed_check(editorial_balance($c)===$poorBalance && !ed_value('SELECT 1 FROM problem_unlock WHERE user_id=? AND problem_id=?',array($c,$refPid)),'Insufficient reference funds leave wallet and access unchanged');
+    for($i=0;$i<3;$i++) {
+        editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'备用解锁金币'.$i));
+        $earnPid=(int)editorial_db()->lastInsertId(); $pids[]=$earnPid; ed_ac($c,$earnPid);
+    }
+    $refBalance=editorial_balance($c);
+    ed_parallel(array(array('unlock',$c,0,$refPid),array('unlock',$c,0,$refPid)));
+    ed_check(editorial_balance($c)===$refBalance-5,'Concurrent reference unlock charges exactly five coins');
+    ed_http($refPath,2,array('action'=>'unlock','postkey'=>$key),303,'solutions.php?problem_id='.$refPid);
+    ed_check(editorial_balance($c)===$refBalance-5 && str_contains(ed_http($refPath,2),editorial_escape($refCode)),'Repeat unlock is free and the purchased reference is readable');
+    editorial_query("UPDATE problem SET defunct='Y' WHERE problem_id=?",array($refPid));
+    ed_check(!editorial_reference($refPid),'Hidden problem has no reference');
+    ed_check(!str_contains(ed_http($refPath,2,null,404),'REFERENCE_'.$prefix),'Purchased references respect problem visibility');
+    editorial_query("UPDATE problem SET defunct='N' WHERE problem_id=?",array($refPid));
+    foreach(array(1,0) as $private) {
+        editorial_query("INSERT INTO contest(title,private,defunct,start_time,end_time) VALUES(?,?,'N',NOW()-INTERVAL 1 DAY,NOW()+INTERVAL 1 DAY)",array($prefix,$private));
+        $cid=(int)editorial_db()->lastInsertId(); $cids[]=$cid;
+        editorial_query('INSERT INTO contest_problem(contest_id,problem_id,num) VALUES(?,?,0)',array($cid,$refPid));
+        ed_check(!editorial_reference($refPid),'Private and ongoing contest references are excluded');
+        ed_http($refPath,2,null,404);
+        editorial_query('DELETE FROM contest_problem WHERE contest_id=?',array($cid));
+    }
+    $pendingRef=editorial_submit($a,$refPid,'正式题解测试','APPROVED_REFERENCE_REPLACEMENT_'.$prefix);
+    ed_check(str_contains(ed_http($refPath,0),editorial_escape($refCode)),'Pending editorial keeps the reference');
+    editorial_review($admin,$pendingRef,'rejected','请修改');
+    ed_check(str_contains(ed_http($refPath,0),editorial_escape($refCode)),'Rejected editorial keeps the reference');
+    $approvedRef=editorial_submit($a,$refPid,'正式题解测试','APPROVED_REFERENCE_REPLACEMENT_'.$prefix);
+    $authorBalance=editorial_balance($a);
+    editorial_review($admin,$approvedRef,'approved','');
+    $replaced=ed_http($refPath,2);
+    ed_check(!editorial_reference($refPid) && !str_contains($replaced,'无人提交题解') && !str_contains($replaced,editorial_escape($refCode)) && str_contains($replaced,'href="solutions.php?id='.$approvedRef.'"'),'Approval replaces the reference with the real editorial');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$approvedRef,2),'APPROVED_REFERENCE_REPLACEMENT_'.$prefix) && editorial_balance($c)===$refBalance-5,'Reference purchase also unlocks the later approved editorial');
+    ed_check(editorial_balance($a)===$authorBalance+10 && (int)ed_value('SELECT COUNT(*) FROM problem_editorial WHERE problem_id=?',array($refPid))===2,'Only actual posts exist and only approval rewards the author');
+    ed_http($refPath,2,array('action'=>'unlock','postkey'=>$key),400);
+    ed_check(editorial_balance($c)===$refBalance-5,'Stale reference unlock cannot charge again');
+    ed_check(ed_value('SELECT source FROM source_code_user WHERE solution_id=?',array($refSid))===$refCode,'Replacing a reference preserves the original submission');
+    echo "PASS: $checks checks covering judge rewards, authorization, CSRF, review, unlocks, concurrency, rollbacks, privacy, escaping, ledger, ranking and AC references.\n";
 } catch(Throwable $e) { $failed=true; fwrite(STDERR,'FAIL: '.$e->getMessage()."\n".$e->getTraceAsString()."\n"); }
 finally {
     foreach($users as $uid) {
+        editorial_query('DELETE sc FROM source_code_user sc JOIN solution s ON s.solution_id=sc.solution_id WHERE s.user_id=?',array($uid));
         foreach(array('problem_unlock','problem_editorial','coin_ledger','coin_first_ac','coin_wallet','solution','users') as $table) editorial_query("DELETE FROM $table WHERE user_id=?",array($uid));
     }
     foreach($cids as $cid) { editorial_query('DELETE FROM contest_problem WHERE contest_id=?',array($cid));editorial_query('DELETE FROM contest WHERE contest_id=?',array($cid)); }

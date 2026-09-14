@@ -18,7 +18,7 @@ if ($tab === 'published' && !$id && !$problemId) {
 }
 $ready = editorial_ready();
 $error = null; $article = null; $problem = null; $rows = array(); $canRead = false; $passed = false; $hasNext = false;
-$balance = 0; $submitted = false;
+$balance = 0; $submitted = false; $reference = null;
 $submitRequest = $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? null) === 'submit';
 $writing = !$id && $tab === 'published' && (($_GET['write'] ?? null) === '1' || $submitRequest);
 // Capture the user's work before authentication/CSRF validation so errors preserve it.
@@ -45,6 +45,9 @@ elseif ($ready) {
             } elseif ($action === 'unlock' && $id) {
                 editorial_unlock($user,$id,$admin);
                 header('Location: solutions.php?id='.$id, true, 303); exit;
+            } elseif ($action === 'unlock' && $problemId && $tab === 'published' && !$writing) {
+                editorial_unlock($user,0,$admin,$problemId);
+                header('Location: solutions.php?problem_id='.$problemId, true, 303); exit;
             } elseif ($action === 'review' && $admin && $id && $tab === 'review') {
                 editorial_review($user,$id,is_string($_POST['decision'] ?? null) ? $_POST['decision'] : '',is_string($_POST['note'] ?? null) ? $_POST['note'] : '');
                 header('Location: solutions.php?tab=review', true, 303); exit;
@@ -85,6 +88,14 @@ elseif ($ready) {
                 $rows = editorial_query("SELECT e.id,e.problem_id,e.user_id,e.title,e.status,e.created_at,p.title problem_title
                     FROM problem_editorial e JOIN problem p ON p.problem_id=e.problem_id WHERE $where ORDER BY e.id DESC LIMIT 21 OFFSET $offset",$args)->fetchAll(PDO::FETCH_ASSOC);
                 $hasNext = count($rows)>20; $rows = array_slice($rows,0,20);
+                if ($tab === 'published' && !$writing && !$rows && $page === 1 && ($reference = editorial_reference($problemId))) {
+                    $article = array('problem_id'=>$problemId,'problem_title'=>$problem['title'],
+                        'title'=>'AC 参考代码','content_format'=>'plain');
+                    $canRead = $user && ($admin || $passed || editorial_query('SELECT 1 FROM problem_unlock WHERE user_id=? AND problem_id=?',array($user,$problemId))->fetchColumn());
+                    if ($canRead) {
+                        $article['content'] = editorial_query('SELECT source FROM source_code_user WHERE solution_id=?',array($reference['solution_id']))->fetchColumn();
+                    }
+                }
             }
         }
     } catch (Throwable $e) { http_response_code(503); error_log('Editorial read failed: '.$e->getMessage()); $error = '题解暂时无法加载，请稍后刷新。'; $rows = array(); $article = null; }
