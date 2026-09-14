@@ -47,7 +47,7 @@
                 <th>罚时</th>
                 <?php
                   for ($i=0;$i<$pid_cnt;$i++)
-                  echo "<th><a href=problem.php?cid=$cid&pid=$i>".chr(65+$i)."</a></th>";
+                  echo "<th><a href=problem.php?cid=$cid&pid=$i>".$PID[$i]."</a></th>";
                 ?>
                 <th></th>
             </tr>

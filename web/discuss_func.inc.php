@@ -23,6 +23,8 @@ function problem_exist($pid,$cid){
     return is_array($result) && count($result)>0;
 }
 function err_msg($msg){
+    // Error templates and their header/footer expect the page globals.
+    extract($GLOBALS, EXTR_SKIP);
     $view_errors= "$msg";
     require("template/".$OJ_TEMPLATE."/error.php");
     exit(0);

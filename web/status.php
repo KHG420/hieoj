@@ -214,7 +214,7 @@ $sql=$sql.$order_str." LIMIT 20";
 
 
 
-if (isset($_GET['user_id'])){
+if ($user_id !== ""){
     $result = pdo_query($sql,$user_id);
 }else{
     $result = mysql_query_cache($sql);

@@ -19,7 +19,7 @@ if(isset($_GET['prefix']) || isset($_GET['xy']) || isset($_GET['nj']) || isset($
     $conds = array();
     // 安全修复：筛选参数一律白名单校验 + 绑定参数，杜绝 SQL 注入
     if ($xy != "") {
-        if (preg_match('/^\d{2}$/', $xy)) {   // 学院代码为两位数字
+        if (mb_strlen($xy, 'UTF-8') <= 100) {   // users.xueYuan 保存学院名称
             $conds[] = "a.xueYuan = ?";
             $where_params[] = $xy;
         }

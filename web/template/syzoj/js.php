@@ -11,18 +11,9 @@ $view_marquee_msg=file_get_contents($OJ_SAE?"saestor://web/msg.txt":"../admin/ms
 
 
 ?>
-<!--  to enable mathjax in hustoj:
-svn export http://github.com/mathjax/MathJax/trunk /home/judge/src/web/mathjax-->
-<script type="text/javascript"
-  src="mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-<!--
-or
-<script type="text/javascript"
-  src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-
--->
+<?php if (is_file(__DIR__.'/../../mathjax/MathJax.js')) { ?>
+<script src="<?php echo $path_fix ?>mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<?php } ?>
 <script>
 $(document).ready(function(){
   var msg="<marquee style='margin-top:10px' id=broadcast direction='left' scrollamount=3 scrolldelay=50 onMouseOver='this.stop()'"+

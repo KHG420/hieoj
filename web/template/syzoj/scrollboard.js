@@ -319,9 +319,9 @@ function Board(problemCount, medalCounts, startTime, freezeBoardTime, cid) {
     this.noAnimate = true; //当前无动画进行
 
     //根据题目数量设置alphabetId
-    var ACode = 65;
+    var problemLabels = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     for (var i = 0; i < problemCount; i++)
-        this.problemList.push(String.fromCharCode(ACode + i));
+        this.problemList.push(problemLabels.charAt(i));
 
     //计算medalRanks
     this.medalRanks[0] = medalCounts[0];

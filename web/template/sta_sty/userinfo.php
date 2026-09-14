@@ -289,7 +289,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                                 }
 
                                 var str = "<div style='color:black; font-size:16px; margin:8px;'>暂时没有未完成的题目，快去尝试新的题目吧!</div>";
-                                <?php $sql = "SELECT * FROM (SELECT DISTINCT `problem_id` AS p1 FROM solution WHERE `user_id`=?) AS t1 LEFT JOIN (SELECT DISTINCT `problem_id` AS p2 FROM solution WHERE `user_id`=? AND result=4) AS t2 ON p1=p2  WHERE p2 IS NULL GROUP BY `p1` ORDER BY `p1` ASC";
+                                <?php $sql = "SELECT * FROM (SELECT DISTINCT `problem_id` AS p1 FROM solution WHERE `user_id`=?) AS t1 LEFT JOIN (SELECT DISTINCT `problem_id` AS p2 FROM solution WHERE `user_id`=? AND result=4) AS t2 ON p1=p2  WHERE p2 IS NULL AND p1>0 GROUP BY `p1` ORDER BY `p1` ASC";
                                 $num = 0;
                                 if ($result = pdo_query($sql, $user, $user)) {
                                     foreach ($result as $row) {
@@ -317,7 +317,7 @@ $last_time = !empty($result[0]['time']) ? $result[0]['time'] : time();
                                 function p(id, c) {
                                     document.write("<span class='oj-solved-item'><a href='problem.php?id=" + id + "'>" + id + "</a><a aria-label='查看题目 " + id + " 的提交记录' href='status.php?user_id=<?php echo urlencode($user)?>&problem_id=" + id + "'>" + c + " 次</a></span>");
                                 }
-                                <?php $sql = "SELECT `problem_id`,count(1) from solution where `user_id`=? and result=4 group by `problem_id` ORDER BY `problem_id` ASC";
+                                <?php $sql = "SELECT `problem_id`,count(1) from solution where `user_id`=? and problem_id>0 and result=4 group by `problem_id` ORDER BY `problem_id` ASC";
                                 if ($result = pdo_query($sql, $user)) {
                                     foreach ($result as $row)
 

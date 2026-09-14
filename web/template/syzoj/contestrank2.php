@@ -91,7 +91,7 @@ table#rank.replaying thead{ pointer-events:none; opacity:.6; }
           <th>Nick</th>
           <th>Solved</th>
           <th>Penalty</th>
-<?php for($i=0;$i<$pid_cnt;$i++) echo '<th class="cr2-p"><a href="problem.php?cid='.$cid.'&amp;pid='.$i.'" title="Problem '.chr(65+$i).'">'.chr(65+$i).'</a></th>'; ?>
+<?php for($i=0;$i<$pid_cnt;$i++) echo '<th class="cr2-p"><a href="problem.php?cid='.$cid.'&amp;pid='.$i.'" title="Problem '.$PID[$i].'">'.$PID[$i].'</a></th>'; ?>
         </tr>
       </thead>
       <tbody>
@@ -119,7 +119,7 @@ for($i=1;$i<=$user_cnt;$i++){
                 $wa=isset($U[$i]->p_wa_num[$j])?intval($U[$i]->p_wa_num[$j]):0;
                 $acsec=isset($U[$i]->p_ac_sec[$j])?intval($U[$i]->p_ac_sec[$j]):0;
                 $isfb=(isset($first_blood[$j])&&$first_blood[$j]===$uuid);
-                if($acsec>0){
+                if(isset($U[$i]->p_ac_sec[$j])){
                         $cls='cr2-cell cr2-ac'.($isfb?' cr2-fb':'');
                         echo '<td class="'.$cls.'"'.($isfb?' title="First Blood"':'').'>'.sec2str($acsec);
                         if($wa>0) echo '<span class="att">(-'.$wa.')</span>';
@@ -149,6 +149,7 @@ for($i=1;$i<=$user_cnt;$i++){
 <script type="text/javascript">
 var CID=<?php echo intval($cid)?>;
 var PP=<?php echo intval($pid_cnt)?>;
+var CE_PENALTY=<?php echo !isset($OJ_CE_PENALTY) || $OJ_CE_PENALTY ? "true" : "false"; ?>;
 var SELF=<?php echo isset($_GET['user_id'])?json_encode($_GET['user_id']):'null'?>;
 var solutions=<?php echo empty($solution_json)?'[]':str_replace('</','<\/',$solution_json); ?>;
 function escapeHtml(s){
@@ -252,6 +253,7 @@ function applySolution(s){
     row.el.cells[4].innerHTML=sec2str(row.penalty);
     resortRows();
   }else{
+    if(!CE_PENALTY && parseInt(s["result"])===11) return;
     if(td.getAttribute("data-done")) return;
     var w=parseInt(td.getAttribute("data-wa")||"0")+1;
     td.setAttribute("data-wa",String(w));
@@ -327,8 +329,10 @@ $(function(){
   $("#btn-restart").on("click",function(){ startPlay(true); });
   $("#speed-sel").on("change",function(){ speed=parseFloat(this.value)||60; });
   $("#replay-slider").on("input",function(){
+    var targetTime=parseInt(this.value)||0;
     pausePlay();
-    simTime=parseInt(this.value)||0;
+    simTime=targetTime;
+    $(this).val(simTime);
     $("#replay-time").text(sec2str(simTime)+" / "+sec2str(MAXT));
   });
   $("#replay-slider").on("change",function(){
@@ -348,14 +352,17 @@ function computeTrend(){
     var num=parseInt(s["num"]); var t=parseInt(s["in_date"])||0;
     if(!st[uid]){
       var nk=s["nick"]?String(s["nick"]):"";
-      st[uid]={solved:0,penalty:0,wa:{},nick:nk,star:nk.charAt(0)==="*"};
+      st[uid]={solved:0,penalty:0,wa:{},done:{},nick:nk,star:nk.charAt(0)==="*"};
     }
     var u=st[uid];
+    if(u.done[num]) continue;
     if(parseInt(s["result"])===4){
+      u.done[num]=true;
       var w=u.wa[num]||0;
       u.solved++; u.penalty+=t+w*1200;
       events.push({t:t,uid:uid,solved:u.solved,penalty:u.penalty});
     }else{
+      if(!CE_PENALTY && parseInt(s["result"])===11) continue;
       u.wa[num]=(u.wa[num]||0)+1;
     }
   }

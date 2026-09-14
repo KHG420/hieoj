@@ -6,7 +6,12 @@ $cid = isset($_GET['cid']) ? intval($_GET['cid']) : 0;
 $sql="SELECT t.`title`, `cid`, `pid`, `status`, `top_level` FROM `topic` t left join contest_problem cp on cp.problem_id=t.pid   WHERE `tid` = ? AND `status` <= 1";
 $result=pdo_query($sql,$tid) ;
 $rows_cnt = count($result) ;
-if($rows_cnt==0) err_msg("No such thread!");
+if ($rows_cnt == 0) {
+    http_response_code(404);
+    $view_errors = "帖子不存在或已删除。";
+    require("template/".$OJ_TEMPLATE."/error.php");
+    exit;
+}
 $row= $result[0];
 if($row['cid']>0) $cid=$row['cid'];
 if($row['pid']>0 && $row['cid'] >0 ) {

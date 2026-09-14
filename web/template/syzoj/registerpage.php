@@ -41,6 +41,8 @@
                   <select name="school" id="school_sel" required>
                     <option value="">请先选择学院</option>
                   </select>
+                  <input id="school_manual" name="school" type="text" maxlength="20" aria-label="填写专业班级" aria-describedby="school_hint" hidden disabled>
+                  <p id="school_hint" role="status" hidden>该学院暂未收录班级，请填写完整的真实专业班级名称，提交后由管理员审核。</p>
                 </div>
               <div class="field">
                   <label for="register-phone">手机号*</label>
@@ -73,34 +75,41 @@
             </form>
 </div>
 <script>
-function esc(v){ return $("<div>").text(v).html(); }
+var classRequest;
 function loadClasses(xy){
+    if(classRequest) classRequest.abort();
     var sel = $("#school_sel");
-    sel.empty();
-    if(!xy){ sel.append("<option value=''>请先选择学院</option>"); return; }
-    sel.append("<option value=''>加载中…</option>");
-    $.ajax({
+    sel.empty().prop("disabled", false).prop("hidden", false);
+    $("#school_manual").prop("disabled", true).prop("required", false).prop("hidden", true).val("");
+    $("#school_hint").prop("hidden", true);
+    if(!xy){ sel.append(new Option("请先选择学院", "")); return; }
+    sel.append(new Option("加载中…", ""));
+    classRequest = $.ajax({
         url: "getClass.php",
         data: { xy: xy },
         dataType: "json",
         success: function(data){
             sel.empty();
-            sel.append("<option value=''>请选择专业班级</option>");
             if(data && data.length){
+                sel.append(new Option("请选择专业班级", ""));
                 for (var i=0;i<data.length;i++){
                     var v = data[i].value !== undefined ? data[i].value : data[i];
-                    if(!v) continue;
-                    sel.append("<option value='"+esc(v)+"'>"+esc(v)+"</option>");
+                    if(v) sel.append(new Option(v, v));
                 }
+            }else{
+                sel.prop("disabled", true).prop("hidden", true);
+                $("#school_manual").prop("disabled", false).prop("required", true).prop("hidden", false);
+                $("#school_hint").prop("hidden", false);
             }
         },
-        error: function(){
-            sel.empty();
-            sel.append("<option value=''>班级加载失败，请重选学院</option>");
+        error: function(xhr, status){
+            if(status === "abort") return;
+            sel.empty().append(new Option("班级加载失败，请重选学院", ""));
         }
     });
 }
 $("#xueyuan_sel").change(function(){ loadClasses($(this).val()); });
+$(".oj-registration form").on("reset", function(){ setTimeout(function(){ loadClasses($("#xueyuan_sel").val()); }, 0); });
 $("#sendmail").click(function () {
     var email = $("#email").val();
     if(email.length < 7){

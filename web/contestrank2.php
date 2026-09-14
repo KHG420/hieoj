@@ -16,15 +16,16 @@ class TM{
         var $p_ac_sec;
         var $user_id;
         var $nick;
-        function TM(){
+        function __construct(){
                 $this->solved=0;
                 $this->time=0;
-                $this->p_wa_num=array(0);
-                $this->p_ac_sec=array(0);
+                $this->p_wa_num=array();
+                $this->p_ac_sec=array();
         }
         function Add($pid,$sec,$res){
+                global $OJ_CE_PENALTY;
 //              echo "Add $pid $sec $res<br>";
-                if (isset($this->p_ac_sec[$pid])&&$this->p_ac_sec[$pid]>0)
+                if (isset($this->p_ac_sec[$pid]))
                         return;
                 if ($res!=4){
 			if(isset($OJ_CE_PENALTY)&&!$OJ_CE_PENALTY&&$res==11) return;  // ACM WF punish no ce 
@@ -46,8 +47,8 @@ class TM{
 
 function s_cmp($A,$B){
 //      echo "Cmp....<br>";
-        if ($A->solved!=$B->solved) return $A->solved<$B->solved;
-        else return $A->time>$B->time;
+        if ($A->solved!=$B->solved) return $B->solved <=> $A->solved;
+        return $A->time <=> $B->time;
 }
 
 // contest start time
@@ -140,31 +141,26 @@ if($OJ_MEMCACHE){
         else $rows_cnt=0;
 }
 
-$user_cnt=0;
-$user_name='';
 $U=array();
-for ($i=0;$i<$rows_cnt;$i++){
-        $row=$result[$i];
+foreach ($result as &$row) {
         $n_user=$row['user_id'];
-        if (strcmp($user_name,$n_user)){
-                $user_cnt++;
-                $U[$user_cnt]=new TM();
-
-                $U[$user_cnt]->user_id=$row['user_id'];
-                $U[$user_cnt]->nick=$row['nick'];
-
-                $user_name=$n_user;
+        if (!isset($U[$n_user])) {
+                $U[$n_user]=new TM();
+                $U[$n_user]->user_id=$n_user;
+                $U[$n_user]->nick=$row['nick'];
         }
-        if(time()<$end_time+3600&&$lock<strtotime($row['in_date']))
-        	   $U[$user_cnt]->Add($row['num'],strtotime($row['in_date'])-$start_time,0);
-        else
-        	   $U[$user_cnt]->Add($row['num'],strtotime($row['in_date'])-$start_time,intval($row['result']));
-      
+        $seconds=intval($row['in_date']);
+        if (time()<$end_time+3600 && $lock<$start_time+$seconds) {
+                $row['result']=0;
+        }
+        $U[$n_user]->Add($row['num'],$seconds,intval($row['result']));
 }
-$solution_json= json_encode($result);
-
-if(!$OJ_MEMCACHE) 
+unset($row);
+$user_cnt=count($U);
+$solution_json=json_encode($result);
 usort($U,"s_cmp");
+// Existing rank templates use one-based contestant indices.
+array_unshift($U, null);
 
 ////firstblood
 $first_blood=array();

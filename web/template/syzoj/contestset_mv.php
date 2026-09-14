@@ -4,10 +4,11 @@
 <div class="ui grid" style="margin-bottom: 10px; ">
     <div class="row" style="white-space: nowrap; ">
       <div class="seven wide column">
-          <form method=post action=contest.php >
+          <form method="get" action="contest.php">
+            <?php if (isset($_GET['my'])) { ?><input type="hidden" name="my" value="1"><?php } ?>
             <div class="ui search" style="width: 280px; height: 28px; margin-top: -5.3px; ">
               <div class="ui left icon input" style="width: 100%; ">
-                <input class="prompt" style="width: 100%; " type="text" value="<?php echo htmlspecialchars(isset($_POST['keyword']) ? $_POST['keyword'] : '', ENT_QUOTES, 'UTF-8'); ?>" aria-label="比赛名称" placeholder="搜索比赛或作业名称" name="keyword">
+                <input class="prompt" style="width: 100%; " type="text" value="<?php echo htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8'); ?>" aria-label="比赛名称" placeholder="搜索比赛或作业名称" name="keyword">
                 <i class="search icon"></i>
                 <button class="ui primary button" ><?php echo "查找" ?></button>
               </div>
@@ -34,15 +35,15 @@
     ?>
 <div style="text-align: center; ">
   <div class="ui pagination menu" style="box-shadow: none; ">
-    <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "contest.php?page=".($page-1); ?>" id="page_prev">  
+    <a class="<?php if($page==1) echo "disabled "; ?>icon item" href="<?php if($page<>1) echo "contest.php?page=".($page-1).htmlspecialchars($pagination_query, ENT_QUOTES, "UTF-8"); ?>" id="page_prev">
       <i class="left chevron icon"></i>
     </a>
     <?php
       for ($i=$start;$i<=$end;$i++){
-        echo "<a class=\"".($page==$i?"active ":"")."item\" href=\"contest.php?page=".$i."\">".$i."</a>";
+        echo "<a class=\"".($page==$i?"active ":"")."item\" href=\"contest.php?page=".$i.htmlspecialchars($pagination_query, ENT_QUOTES, "UTF-8")."\">".$i."</a>";
       }
     ?>
-    <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "contest.php?page=".($page+1); ?>" id="page_next">
+    <a class="<?php if($page==$view_total_page) echo "disabled "; ?> icon item" href="<?php if($page<>$view_total_page) echo "contest.php?page=".($page+1).htmlspecialchars($pagination_query, ENT_QUOTES, "UTF-8"); ?>" id="page_next">
     <i class="right chevron icon"></i>
     </a>  
   </div>

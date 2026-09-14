@@ -177,13 +177,13 @@ $(function () {
   			var text = [];
         text.push('<ul style="list-style: none; padding-left: 20px; margin-top: 0; " class="' + chart.id + '-legend">');
             text.push('<li style="font-size: 12px; width: 50%; display: inline-block; color: #666; "><span style="width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; background-color: #32CD32 ; "></span>');
-                text.push('<?php echo "总提交: ".$view_problem[0][1]; ?>');
+                text.push('<?php echo "总提交: ".$total; ?>');
             text.push('</li>');
             text.push('<li style="font-size: 12px; width: 50%; display: inline-block; color: #666; "><span style="width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; background-color: #32CD32 ; "></span>');
-                text.push('<?php echo "用户(提交): ".$view_problem[1][1]; ?>');
+                text.push('<?php echo "用户(提交): ".$total_users; ?>');
             text.push('</li>');
             text.push('<li style="font-size: 12px; width: 50%; display: inline-block; color: #666; "><span style="width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; background-color: #32CD32 ; "></span>');
-                text.push('<?php echo "用户(解决): ".$view_problem[2][1]; ?>');
+                text.push('<?php echo "用户(解决): ".$acuser; ?>');
             text.push('</li>');
         text.push('</ul>');
 

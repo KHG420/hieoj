@@ -28,7 +28,7 @@ if($OJ_ONLINE){
 <head>
     <meta charset="utf-8">
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
-    <meta name="viewport" content="<?php echo ($url === 'index.php' || !empty($OJ_ADVENTURE_VIEWPORT) || !empty($OJ_EDITORIAL_VIEWPORT)) ? 'width=device-width, initial-scale=1' : 'width=1200'; ?>">
+    <meta name="viewport" content="<?php echo (in_array($url, array('index.php', 'loginpage.php', 'registerpage.php', 'lostpassword.php', 'lostpassword2.php', 'modifypage.php'), true) || !empty($OJ_ADVENTURE_VIEWPORT) || !empty($OJ_EDITORIAL_VIEWPORT)) ? 'width=device-width, initial-scale=1' : 'width=1200'; ?>">
     <title><?php echo $show_title ?></title>
     <?php include("template/$OJ_TEMPLATE/css.php");?>
     <script src="<?php echo $OJ_CDN_URL?>/include/jquery-latest.js"></script>

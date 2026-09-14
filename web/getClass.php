@@ -14,14 +14,14 @@ $nj = isset($_GET['nj']) ? $_GET['nj'] : '';
 $xy = isset($_GET['xy']) ? $_GET['xy'] : '';
 $class  = array();
 if ($xy != "" && $nj != "") {
-    $xy_num = $xueYuan[$xy];
+    $xy_num = $xueYuan[$xy] ?? null;
     $school_sql = "SELECT `value` FROM schoolList WHERE SUBSTR(num, 1, 4) = ? AND SUBSTR(num, 5, 2) = ? ORDER BY num";
     $class = pdo_query($school_sql, $nj, $xy_num);
 } else if ($nj != "") {
     $school_sql = "SELECT `value` FROM schoolList WHERE SUBSTR(num, 1, 4) = ? ORDER BY num";
     $class = pdo_query($school_sql, $nj);
 } else if ($xy != "") {
-    $xy_num = $xueYuan[$xy];
+    $xy_num = $xueYuan[$xy] ?? null;
     $school_sql = "SELECT `value` FROM schoolList WHERE SUBSTR(num, 5, 2) = ? ORDER BY num";
     $class = pdo_query($school_sql, $xy_num);
 }

@@ -66,7 +66,10 @@ if(isset($_GET['cid'])){
   if((function_exists('get_magic_quotes_gpc')&&get_magic_quotes_gpc())){ $password = stripslashes($password);}
 
   if($rows_cnt==0){
-    $view_title = "比赛已经关闭!";
+    http_response_code(404);
+    $view_errors = "比赛不存在。";
+    require("template/".$OJ_TEMPLATE."/error.php");
+    exit;
   }else{
     $row = $result[0];
     $view_private = $row['private'];
@@ -207,49 +210,40 @@ if(isset($_GET['cid'])){
     $cnt++;
   }
 }else{
-  $page = 1;
-  if(isset($_GET['page'])) $page = intval($_GET['page']);
+  $page = max(1, intval($_GET['page'] ?? 1));
   $page_cnt = 10;
-  $pstart = $page_cnt*$page-$page_cnt;
-  $pend = $page_cnt;
-  $rows = pdo_query("select count(1) from contest where defunct='N'");
-
-  if($rows) $total = $rows[0][0];
-  $view_total_page = intval($total/$page_cnt)+1;
-  $keyword = "";
-
-  if(isset($_POST['keyword'])){ $keyword="%".$_POST['keyword']."%";}
-  //echo "$keyword";
-
-  $mycontests = "";
-  $len = mb_strlen($OJ_NAME.'_');
-
-  foreach($_SESSION as $key => $value){
-    if(($key[$len]=='m'||$key[$len]=='c')&&intval(mb_substr($key,$len+1))>0){
-      //echo substr($key,1)."<br>";
-      $mycontests.=",".intval(mb_substr($key,$len+1));
+  $keyword = trim($_GET['keyword'] ?? $_POST['keyword'] ?? '');
+  $mycontests = array();
+  $prefix = $OJ_NAME.'_';
+  foreach ($_SESSION as $key => $value) {
+    if (strpos($key, $prefix) !== 0) continue;
+    $right = substr($key, strlen($prefix));
+    if (preg_match('/^[mc]([1-9][0-9]*)$/', $right, $match)) {
+      $mycontests[] = intval($match[1]);
     }
   }
-
-  if(strlen($mycontests)>0) $mycontests=substr($mycontests,1);
-  //echo "$mycontests";
-
-  $wheremy = "";
-  if(isset($_GET['my'])) $wheremy=" and contest_id in ($mycontests)";
-
-  $sql = "SELECT * FROM `contest` WHERE `defunct`='N' ORDER BY `contest_id` DESC LIMIT 1000";
-
-  if($keyword){
-    $sql = "SELECT *  FROM contest LEFT JOIN (SELECT * FROM privilege WHERE rightstr LIKE 'm%') p ON concat('m',contest_id)=rightstr WHERE contest.defunct='N' AND contest.title LIKE ? $wheremy  ORDER BY contest_id DESC";
-
-	$sql .= " limit ".strval($pstart).",".strval($pend);
-
-	$result = pdo_query($sql,$keyword);
-  }else{
-    $sql = "SELECT *  FROM contest LEFT JOIN (SELECT * FROM privilege WHERE rightstr LIKE 'm%') p ON concat('m',contest_id)=rightstr WHERE contest.defunct='N' $wheremy  ORDER BY contest_id DESC";
-	$sql .= " limit ".strval($pstart).",".strval($pend);
-	$result = mysql_query_cache($sql);
+  $where = "contest.defunct='N'";
+  $params = array();
+  if ($keyword !== '') {
+    $where .= " AND contest.title LIKE ?";
+    $params[] = "%".$keyword."%";
   }
+  if (isset($_GET['my'])) {
+    $where .= $mycontests ? " AND contest_id IN (".implode(',', $mycontests).")" : " AND 1=0";
+  }
+  $rows = pdo_query("SELECT COUNT(*) FROM contest WHERE $where", ...$params);
+  $total = intval($rows[0][0]);
+  $view_total_page = max(1, intval(ceil($total/$page_cnt)));
+  $page = min($page, $view_total_page);
+  $pstart = ($page-1)*$page_cnt;
+  // One creator cell per contest, even if it has multiple management grants.
+  $sql = "SELECT contest.*, p.user_id FROM contest LEFT JOIN
+    (SELECT rightstr, MIN(user_id) user_id FROM privilege WHERE rightstr LIKE 'm%' GROUP BY rightstr) p
+    ON CONCAT('m', contest_id)=p.rightstr WHERE $where ORDER BY contest_id DESC LIMIT $pstart,$page_cnt";
+  $result = pdo_query($sql, ...$params);
+  $pagination_query = '';
+  if ($keyword !== '') $pagination_query .= '&keyword='.urlencode($keyword);
+  if (isset($_GET['my'])) $pagination_query .= '&my=1';
 
   $view_contest = Array();
   $i = 0;

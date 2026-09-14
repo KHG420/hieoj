@@ -39,7 +39,7 @@ $chongFu=isset($res[0]['sim_num'])?intval($res[0]['sim_num']):0;
 // count solved and submissions in one pass over this user's records
 $sql="SELECT count(DISTINCT CASE WHEN result=4 THEN problem_id END) as `ac`,
              SUM(problem_id>0) as `Submit`
-      FROM `solution` WHERE `user_id`=?";
+      FROM `solution` WHERE `user_id`=? AND problem_id>0";
 $result=pdo_query($sql,$user);
 $row=$result[0];
 $AC=intval($row['ac']);
@@ -65,7 +65,7 @@ if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
 	echo "</table>";
 
 }
-$sql="SELECT result,count(1) FROM solution WHERE `user_id`=? AND result>=4 group by result order by result";
+$sql="SELECT result,count(1) FROM solution WHERE `user_id`=? AND problem_id>0 AND result>=4 group by result order by result";
 $result=mysql_query_cache($sql,$user);
 $view_userstat=array();
 $i=0;
@@ -76,7 +76,7 @@ foreach($result as $row){
 
 $sql=	"SELECT UNIX_TIMESTAMP(date(in_date))*1000 md,count(1) c,
                 SUM(result=4) ac
-         FROM `solution` where `user_id`=? group by md order by md desc ";
+         FROM `solution` where `user_id`=? AND problem_id>0 group by md order by md desc ";
 $result=mysql_query_cache($sql,$user);//mysql_escape_string($sql));
 $chart_data_all= array();
 $chart_data_ac= array();

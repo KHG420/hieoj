@@ -43,10 +43,14 @@ $discuss_params = array();
 if($keyword!=""){
     // 安全修复：关键字改用绑定参数，并转义 LIKE 通配符
     $kw = str_replace(array('\\','%','_'), array('\\\\','\\%','\\_'), $keyword);
-    $where .= " AND ( `title` LIKE ? OR `author_id` LIKE ? OR `pid`=? )";
+    $where .= " AND (t.`title` LIKE ? OR t.`author_id` LIKE ?";
     $discuss_params[] = "%".$kw."%";
     $discuss_params[] = "%".$kw."%";
-    $discuss_params[] = intval($keyword);
+    if (ctype_digit($keyword)) {
+        $where .= " OR t.`pid`=?";
+        $discuss_params[] = intval($keyword);
+    }
+    $where .= ")";
 }
 
 // 主题列表

@@ -191,7 +191,7 @@ function RemoveXSS($val) {
    // remove all non-printable characters. CR(0a) and LF(0b) and TAB(9) are allowed
    // this prevents some character re-spacing such as <java\0script>
    // note that you have to handle splits with \n, \r, and \t later since they *are* allowed in some inputs
-   $val = preg_replace('/([\x00-\x08,\x0b-\x0c,\x0e-\x19])/', '', $val);
+   $val = preg_replace('/([\x00-\x08\x0b-\x0c\x0e-\x19])/', '', $val);
 
    // straight replacements, the user should never need these since they're normal characters
    // this prevents like <IMG SRC=@avascript:alert('XSS')>
@@ -218,7 +218,9 @@ function RemoveXSS($val) {
    while ($found == true) {
       $val_before = $val;
       for ($i = 0; $i < sizeof($ra); $i++) {
-         $pattern = '/';
+         // Tag names are dangerous as markup, not inside title attributes or URLs.
+         $is_tag = in_array($ra[$i], array('applet','meta','xml','blink','link','script','embed','object','iframe','frame','frameset','ilayer','layer','bgsound','title','base'), true);
+         $pattern = $is_tag ? '/(<\\s*\\/?\\s*)' : '/';
          for ($j = 0; $j < strlen($ra[$i]); $j++) {
             if ($j > 0) {
                $pattern .= '(';
@@ -230,7 +232,7 @@ function RemoveXSS($val) {
             $pattern .= $ra[$i][$j];
          }
          $pattern .= '/i';
-         $replacement = substr($ra[$i], 0, 2).'<x>'.substr($ra[$i], 2); // add in <> to nerf the tag
+         $replacement = ($is_tag ? '$1' : '').substr($ra[$i], 0, 2).'<x>'.substr($ra[$i], 2); // add in <> to nerf the tag
          $val = preg_replace($pattern, $replacement, $val); // filter out the hex tags
          if ($val_before == $val) {
             // no replacements were made, so exit the loop
