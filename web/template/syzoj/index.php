@@ -124,6 +124,14 @@
     <div class="ui three column grid">
         <!-- 左侧内容区域 -->
         <div class="eleven wide column">
+            <section class="syzoj-card">
+                <div class="syzoj-card-header"><i class="ui compass icon" aria-hidden="true"></i><h2>今日冒险</h2></div>
+                <div class="syzoj-card-body">
+                    <p>重战一道旧题，或用三道题走完一段新路。还有影子挑战、反例猎人和本周校园接力。</p>
+                    <a class="ui primary button" href="adventure.php">重战一道旧题</a>
+                    <a class="ui basic button" href="adventure.php?tab=route">开启三题远征</a>
+                </div>
+            </section>
             <!-- 公告卡片 -->
             <div class="syzoj-card">
                 <div class="syzoj-card-header">

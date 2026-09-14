@@ -28,7 +28,7 @@ if($OJ_ONLINE){
 <head>
     <meta charset="utf-8">
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
-    <meta name="viewport" content="width=1200">
+    <meta name="viewport" content="<?php echo !empty($OJ_ADVENTURE_VIEWPORT) ? 'width=device-width, initial-scale=1' : 'width=1200'; ?>">
     <title><?php echo $show_title ?></title>
     <?php include("template/$OJ_TEMPLATE/css.php");?>
     <script src="<?php echo $OJ_CDN_URL?>/include/jquery-latest.js"></script>
@@ -87,6 +87,8 @@ if ($OJ_WHITE_BLACK) { ?>
                                     class="user icon"></i>我的主页</a>
                         <a class="item" href="<?php echo $path_fix?>status.php?user_id=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="file icon"></i>我的提交</a>
+                        <a class="item" href="<?php echo $path_fix?>adventure.php"><i class="compass icon"></i>今日冒险</a>
+                        <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="book icon"></i>解题回忆录</a>
                         <a class="item" href="<?php echo $path_fix?>modifypage.php"><i
                                     class="edit icon"></i><?php echo $MSG_REG_INFO;?></a>
                         <?php if ($OJ_SaaS_ENABLE){ ?>

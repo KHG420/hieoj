@@ -26,7 +26,7 @@
             }
         }
     </style>
-<div class="oj-page-heading"><h1>用户主页</h1></div>
+<div class="oj-page-heading"><h1>用户主页</h1><?php if (isset($_SESSION[$OJ_NAME.'_user_id']) && $_SESSION[$OJ_NAME.'_user_id'] === $user) { ?><a class="ui basic button" href="adventure.php?tab=memoir">我的解题回忆录</a><?php } ?></div>
 <?php
 $sql="SELECT COUNT(distinct date_format(time,'%Y-%m-%d')) as days FROM `loginlog` WHERE user_id=?";
 $result = pdo_query( $sql, $user);

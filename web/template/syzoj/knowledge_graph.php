@@ -14,7 +14,7 @@
     <section class="kg-intro" aria-labelledby="kg-title">
       <div>
         <h1 id="kg-title">把下一道题，放回知识路径里</h1>
-        <p>选择一个领域，查看知识前置关系、真实关联题目和你的掌握依据。图上的状态来自站内判题记录，不是自我打卡。</p>
+        <p>选择一个领域，查看知识前置关系、真实关联题目和你的掌握依据。图上的状态来自站内判题记录，不是自我打卡。<a href="adventure.php?tab=route">开启三题远征</a></p>
         <div class="kg-coverage" title="至少命中一个知识节点的公开题目占比"><b><?php echo intval($knowledge_graph_data['governance']['coverage']); ?>%</b><span>题库知识覆盖 · <?php echo intval($knowledge_graph_data['governance']['mapped_problem_count']); ?>/<?php echo intval($knowledge_graph_data['governance']['active_problem_count']); ?> 题</span></div>
       </div>
       <div class="kg-next" id="kg-next">
