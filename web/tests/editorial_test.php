@@ -22,7 +22,7 @@ $key = bin2hex(random_bytes(16));
 function ed_check($ok,$message) { global $checks; if (!$ok) throw new RuntimeException($message); $checks++; }
 function ed_value($sql,$args=array()) { return editorial_query($sql,$args)->fetchColumn(); }
 function ed_ac($user,$pid,$result=4) { editorial_query('INSERT INTO solution(user_id,problem_id,result,in_date) VALUES(?,?,?,NOW())',array($user,$pid,$result)); return (int)editorial_db()->lastInsertId(); }
-function ed_http($path,$who=null,$post=null,$expected=200) {
+function ed_http($path,$who=null,$post=null,$expected=200,$location=null) {
     global $sessions;
     usleep(160000); // Stay below the local nginx dynamic-request limit.
     $c=curl_init('http://127.0.0.1'.$path);
@@ -30,6 +30,7 @@ function ed_http($path,$who=null,$post=null,$expected=200) {
     if ($who !== null) curl_setopt($c,CURLOPT_COOKIE,'PHPSESSID='.$sessions[$who]);
     if ($post !== null) curl_setopt_array($c,array(CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($post)));
     $text=curl_exec($c); $code=curl_getinfo($c,CURLINFO_HTTP_CODE); $headerSize=curl_getinfo($c,CURLINFO_HEADER_SIZE); curl_close($c);
+    if ($location !== null) ed_check(preg_match('/^Location: '.preg_quote($location,'/').'\r?$/mi',substr((string)$text,0,$headerSize))===1,"$path: expected redirect to $location");
     ed_check($code===$expected,"$path: expected HTTP $expected, got $code: ".substr((string)$text,$headerSize,350));
     ed_check(!preg_match('/Fatal error|Parse error|Warning:|Uncaught /',(string)$text),"$path: PHP error");
     ed_check(stripos(substr((string)$text,0,$headerSize),'no-store')!==false,"$path: private response caching");
@@ -59,6 +60,12 @@ try {
         editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'题目'.$i));
         $pids[]=(int)editorial_db()->lastInsertId();
     }
+    foreach(array('/solutions.php','/solutions.php?tab=published','/solutions.php?page=2','/solutions.php?problem_id=0','/solutions.php?problem_id[]=1') as $route) {
+        $removed=ed_http($route,null,null,302,'problemset.php');
+        ed_check(!str_contains($removed,'ed-row-title') && !str_contains($removed,'problem-search'),'Unscoped public route never renders an editorial directory');
+    }
+    ed_http('/solutions.php',3,null,302,'problemset.php');
+    ed_http('/solutions.php',0,array('action'=>'submit','postkey'=>$key),303,'problemset.php');
     $a=$users[0]; $b=$users[1]; $c=$users[2]; $admin=$users[3];
     ed_ac($a,$pids[0],6); ed_check(editorial_balance($a)===0,'Wrong answer earns no coins');
     $sid=ed_ac($a,$pids[0],0);
@@ -86,13 +93,16 @@ try {
     $id=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
     ed_check(str_contains(ed_http('/solutions.php?id='.$id,0),'SECRET_BODY_'.$prefix),'Author reads own pending article free');
     ed_http('/solutions.php?id='.$id,1,null,404);
-    ed_check(!str_contains(ed_http('/solutions.php'),$prefix),'Pending article not in public list');
+    ed_check(!str_contains(ed_http('/solutions.php?problem_id='.$pids[0]),'href="solutions.php?id='.$id.'"'),'Pending article not in public list');
     ed_http('/solutions.php?id='.$id.'&tab=review',0,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),403);
     ed_http('/solutions.php?id='.$id.'&tab=review',3,array('action'=>'review','postkey'=>'bad','decision'=>'approved'),403);
     ed_http('/solutions.php?id='.$id.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
     ed_check(editorial_balance($a)===14,'Approval pays ten coins');
     ed_http('/solutions.php?id='.$id.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),400);
     ed_check(editorial_balance($a)===14,'Repeated approval pays nothing');
+    $problemList=ed_http('/solutions.php?problem_id='.$pids[0],0);
+    ed_check(str_contains($problemList,'href="problem.php?id='.$pids[0].'"') && str_contains($problemList,'本题题解'),'Problem list provides scoped navigation');
+    ed_check(!str_contains($problemList,'href="solutions.php"') && !str_contains($problemList,'problem-search'),'Global entry and problem search removed');
     $locked=ed_http('/solutions.php?id='.$id,1);
     ed_check(!str_contains($locked,'SECRET_BODY_') && str_contains($locked,'支付 5 金币'),'Locked response has no body');
     ed_check(!str_contains(ed_http('/solutions.php?id='.$id), 'SECRET_BODY_'),'Anonymous response has no body');
@@ -104,8 +114,9 @@ try {
     ed_check(editorial_balance($b)===1,'Concurrent repeated unlock costs exactly five');
     ed_check((int)ed_value("SELECT COUNT(*) FROM coin_ledger WHERE user_id=? AND kind='problem_unlock'",array($b))===1,'One unlock ledger entry');
     $unlocked=ed_http('/solutions.php?id='.$id,1);
+    ed_check(str_contains($unlocked,'href="solutions.php?problem_id='.$pids[0].'"') && str_contains($unlocked,'href="problem.php?id='.$pids[0].'"'),'Article remains attached to its problem');
     ed_check(str_contains($unlocked,'SECRET_BODY_') && str_contains($unlocked,'&lt;script&gt;') && !str_contains($unlocked,"<script>alert('xss')"),'Unlocked body renders escaped code and text');
-    ed_http('/solutions.php?id='.$id,1,array('action'=>'unlock','postkey'=>$key),303);
+    ed_http('/solutions.php?id='.$id,1,array('action'=>'unlock','postkey'=>$key),303,'solutions.php?id='.$id);
     ed_check(editorial_balance($b)===1,'Repeated visit and POST are free');
     ed_http('/solutions.php?id='.$id,0,array('action'=>'unlock','postkey'=>$key),303);
     ed_http('/solutions.php?id='.$id,3,array('action'=>'unlock','postkey'=>$key),303);
@@ -127,6 +138,10 @@ try {
     ed_ac($c,$pids[3]); ed_ac($c,$pids[4]);
     $different=editorial_submit($a,$pids[1],'另一道题的题解','不同题目正文');
     $_SESSION[$OJ_NAME.'_administrator']=true; editorial_review($admin,$different,'approved','');
+    $scoped=ed_http('/solutions.php?problem_id='.$pids[0]);
+    ed_check(str_contains($scoped,'href="solutions.php?id='.$id.'"') && !str_contains($scoped,'href="solutions.php?id='.$different.'"'),'A problem list excludes other problems');
+    $secondProblem=ed_http('/solutions.php?problem_id='.$pids[1]);
+    ed_check(str_contains($secondProblem,'href="solutions.php?id='.$different.'"') && !str_contains($secondProblem,'href="solutions.php?id='.$id.'"'),'Other problem keeps its own editorial list');
     $codes=ed_parallel(array(array('unlock',$c,$id),array('unlock',$c,$different)));
     ed_check(count(array_filter($codes,fn($v)=>$v===0))===1 && editorial_balance($c)===1,'Concurrent different purchases cannot overdraw wallet');
     // Force a ledger uniqueness failure, proving the entire money operation rolls back.
@@ -161,12 +176,13 @@ try {
         $cid=(int)editorial_db()->lastInsertId();$cids[]=$cid;
         editorial_query('INSERT INTO contest_problem(contest_id,problem_id,num) VALUES(?,?,0)',array($cid,$pids[0]));
         ed_http('/solutions.php?id='.$id,1,null,404);
-        ed_check(!str_contains(ed_http('/solutions.php'),'href="solutions.php?id='.$id.'"'),'Private/ongoing titles excluded from listing');
+        ed_check(!str_contains(ed_http('/solutions.php?problem_id='.$pids[0],1,null,404),'href="solutions.php?id='.$id.'"'),'Private/ongoing titles excluded from listing');
         editorial_query('DELETE FROM contest_problem WHERE contest_id=?',array($cid));
     }
     $history=ed_http('/coins.php?tab=history',1);
     ed_check(str_contains($history,'解锁本题全部题解') && str_contains($history,'-5'),'Ledger shows real spending');
     $ranking=ed_http('/coins.php',1);
+    ed_check(!str_contains($ranking,'href="solutions.php"') && str_contains($ranking,'去题库练习'),'Coins navigation returns to problems instead of a global editorial list');
     preg_match('/<tbody>(.*?)<\/tbody>/s',$ranking,$rankBody);
     ed_check(isset($rankBody[1]) && strpos($rankBody[1],$a)<strpos($rankBody[1],$b),'Ranking orders current balances');
     foreach($users as $uid) ed_check(editorial_balance($uid)===(int)ed_value('SELECT COALESCE(SUM(amount),0) FROM coin_ledger WHERE user_id=?',array($uid)),'Wallet reconciles with ledger');

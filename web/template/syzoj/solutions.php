@@ -1,9 +1,12 @@
 <?php include("template/$OJ_TEMPLATE/header.php"); ?>
-<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=1">
+<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=2">
 <div class="ed-page">
-  <div class="ed-heading"><div><h1>题解</h1><p>分享通过之后的思路，让每一次解题都有新的收获。</p></div><a class="ui basic button" href="coins.php<?php echo $user ? '?tab=history' : ''; ?>"><?php echo $user ? '我的金币 · '.intval($balance) : '了解金币奖励'; ?></a></div>
+  <div class="ed-heading"><div><h1><?php echo editorial_escape($heading); ?></h1><p><?php echo $tab==='review' ? '审核投稿，通过后公开并奖励作者 10 金币。' : ($tab==='mine' ? '查看投稿的审核状态，进入对应题目继续阅读。' : '通过本题可免费阅读全部已审核题解，也可以分享你的解题思路。'); ?></p></div><a class="ui basic button" href="coins.php<?php echo $user ? '?tab=history' : ''; ?>"><?php echo $user ? '我的金币 · '.intval($balance) : '了解金币奖励'; ?></a></div>
   <nav class="ed-tabs" aria-label="题解导航">
-    <a href="solutions.php" <?php if($tab==='published') echo 'aria-current="page"'; ?>>公开题解</a>
+    <?php if($contextProblemId){ ?>
+    <a href="problem.php?id=<?php echo $contextProblemId; ?>">返回题目</a>
+    <a href="solutions.php?problem_id=<?php echo $contextProblemId; ?>" <?php if(!$id && $tab==='published') echo 'aria-current="page"'; ?>>本题题解</a>
+    <?php } else { ?><a href="problemset.php">返回题库</a><?php } ?>
     <a href="solutions.php?tab=mine" <?php if($tab==='mine') echo 'aria-current="page"'; ?>>我的题解</a>
     <a href="coins.php">金币榜单</a>
     <?php if($admin){ ?><a href="solutions.php?tab=review" <?php if($tab==='review') echo 'aria-current="page"'; ?>>管理员审核</a><?php } ?>
@@ -12,7 +15,6 @@
   <?php if($error){ ?><div class="ed-notice ed-error" role="alert"><?php echo editorial_escape($error); ?><?php if(!$user){ ?> <a href="loginpage.php">前往登录</a><?php } ?></div><?php } ?>
   <?php if($ready && $article){ ?>
     <article class="ed-panel">
-      <a href="solutions.php?problem_id=<?php echo intval($article['problem_id']); ?>">P<?php echo intval($article['problem_id']).' · '.editorial_escape($article['problem_title']); ?> 的题解</a>
       <h2 class="ed-article-title"><?php echo editorial_escape($article['title']); ?></h2>
       <p class="ed-meta">作者 <?php echo editorial_escape($article['user_id']); ?> · <?php echo editorial_escape($article['created_at']); ?> · <?php echo $statusNames[$article['status']]; ?></p>
       <?php if($canRead){ ?>
@@ -37,10 +39,8 @@
       <?php } ?>
     </article>
   <?php } elseif($ready && (!$error || $rows || $problem)){ ?>
-    <?php if($problem){ ?><div class="ed-section-heading"><h2>P<?php echo intval($problemId).' · '.editorial_escape($problem['title']); ?></h2><a href="problem.php?id=<?php echo intval($problemId); ?>">返回题目</a></div><?php } ?>
-    <?php if(!$problem && $tab==='published'){ ?><form method="get" class="ed-search"><label for="problem-search">按题号查找或提交题解</label><input id="problem-search" name="problem_id" type="number" min="1" required placeholder="例如 1000"><button class="ui basic button" type="submit">查看该题题解</button></form><?php } ?>
     <section class="ed-panel" aria-label="题解列表">
-      <?php if(!$rows){ ?><div class="ed-empty"><h2><?php echo $tab==='review' ? '暂时没有待审核题解' : ($tab==='mine' ? '你还没有提交题解' : '暂时没有公开题解'); ?></h2><p><?php echo $tab==='review' ? '新提交的题解会出现在这里。' : '通过题目后，在题目页面进入题解，分享你的解题思路。'; ?></p></div><?php } ?>
+      <?php if(!$rows){ ?><div class="ed-empty"><h2><?php echo $tab==='review' ? '暂时没有待审核题解' : ($tab==='mine' ? '你还没有提交题解' : '本题暂无已审核题解'); ?></h2><p><?php echo $tab==='review' ? '新提交的题解会出现在这里。' : '通过题目后，在题目页面进入题解，分享你的解题思路。'; ?></p></div><?php } ?>
       <?php foreach($rows as $item){ ?><div class="ed-row"><div><a class="ed-row-title" href="solutions.php?id=<?php echo intval($item['id']).($tab==='review' ? '&amp;tab=review' : ''); ?>"><?php echo editorial_escape($item['title']); ?></a><p class="ed-meta">P<?php echo intval($item['problem_id']).' · '.editorial_escape($item['problem_title']); ?></p><p class="ed-meta"><?php echo editorial_escape($item['user_id']).' · '.editorial_escape($item['created_at']); ?></p></div><span class="ed-status"><?php echo $statusNames[$item['status']]; ?></span></div><?php } ?>
     </section>
     <?php if($page>1 || $hasNext){ ?><nav class="ed-pagination" aria-label="题解分页"><?php if($page>1){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page-1; ?>">上一页</a><?php } ?><span>第 <?php echo $page; ?> 页</span><?php if($hasNext){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page+1; ?>">下一页</a><?php } ?></nav><?php } ?>

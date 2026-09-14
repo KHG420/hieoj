@@ -1,6 +1,6 @@
 .ed-page { color:var(--oj-text);padding-bottom:24px; }
-.ed-heading,.ed-section-heading { display:flex;justify-content:space-between;align-items:center;gap:24px;margin:0 0 24px; }
-.ed-heading h1 { margin:0 0 12px;font-size:32px;letter-spacing:-.02em; }
+.ed-heading { display:flex;justify-content:space-between;align-items:center;gap:24px;margin:0 0 24px; }
+.ed-heading h1 { margin:0 0 12px;font-size:32px;letter-spacing:-.02em;overflow-wrap:anywhere; }
 .ed-heading p,.ed-meta { color:#526177;line-height:1.7; }
 .ed-heading p { margin:0;max-width:72ch; }
 .ed-page a { color:#245dd8;text-underline-offset:4px; }
@@ -25,12 +25,11 @@
 .ed-row .ed-meta { margin:8px 0 0;font-size:13px;overflow-wrap:anywhere; }
 .ed-status { white-space:nowrap;color:#526177;font-size:13px; }
 .ed-form { display:flex;flex-direction:column;gap:12px;margin-top:24px; }
-.ed-form label,.ed-search label { font-weight:600; }
-.ed-form input,.ed-form textarea,.ed-search input { border:1px solid #aab9cc;border-radius:6px;background:#fff;color:#25344a;padding:10px 12px;min-height:44px;caret-color:#245dd8; }
+.ed-form label { font-weight:600; }
+.ed-form input,.ed-form textarea { border:1px solid #aab9cc;border-radius:6px;background:#fff;color:#25344a;padding:10px 12px;min-height:44px;caret-color:#245dd8; }
 .ed-form textarea { resize:vertical;line-height:1.8;tab-size:4; }
 .ed-form .ed-meta { margin:0; }
-.ed-actions,.ed-search,.ed-pagination { display:flex;gap:16px;align-items:center;flex-wrap:wrap; }
-.ed-search input { width:180px;max-width:100%; }
+.ed-actions,.ed-pagination { display:flex;gap:16px;align-items:center;flex-wrap:wrap; }
 .ed-pagination { justify-content:center;margin:24px 0; }
 .ed-body { white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.9;font-size:16px;max-width:75ch;margin:32px 0;tab-size:4; }
 .ed-paywall { padding:32px 0 16px;border-top:1px solid var(--oj-border);margin-top:28px; }
@@ -53,13 +52,11 @@
   .oj-page-solutions #marg,.oj-page-coins #marg { padding-top:24px; }
   .oj-page-solutions .oj-topnav,.oj-page-coins .oj-topnav { overflow-x:auto; }
   .oj-page-solutions .oj-topnav>.ui.container,.oj-page-coins .oj-topnav>.ui.container { width:max-content!important;min-width:max-content;margin:0!important; }
-  .ed-heading,.ed-section-heading { align-items:flex-start;flex-direction:column;gap:16px; }
+  .ed-heading { align-items:flex-start;flex-direction:column;gap:16px; }
   .ed-heading h1 { font-size:28px; }
   .ed-tabs a { padding:12px 10px; }
   .ed-panel { padding:24px 20px; }
   .ed-row { gap:12px; }
-  .ed-search label { width:100%; }
-  .ed-search input { flex:1;min-width:100px; }
   .ed-actions { align-items:stretch;flex-direction:column; }
   .ed-nick { display:block;margin:4px 0; }
   .ed-table th,.ed-table td { padding:12px 6px; }

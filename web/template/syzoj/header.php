@@ -66,10 +66,6 @@ if ($OJ_WHITE_BLACK) { ?>
 	<a class="item <?php if ($url=="knowledge_graph.php") echo "active";?>"
 	   href="<?php echo $path_fix?>knowledge_graph.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="share alternate icon"></i><?php echo "知识地图"?> </a>
 
-        <?php if(!isset($OJ_ON_SITE_CONTEST_ID)){ ?>
-        <a class="item <?php if ($url=="solutions.php") echo "active"; ?>" href="solutions.php" style="padding:0 6px!important">题解</a>
-        <?php } ?>
-
 <!-- <a class="item <?php if ($url=="acmerlist.php") echo "active";?>" -->
            <!-- href="<?php echo $path_fix?>acmerlist.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="signal icon"></i> <?php echo "测试"?></a> -->
         <!-- <a class="item <?php //if ($url=="contest.php") echo "active";?>" href="/discussion/global"><i class="comments icon"></i> 讨论</a> -->

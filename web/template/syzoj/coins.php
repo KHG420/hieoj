@@ -1,8 +1,8 @@
 <?php include("template/$OJ_TEMPLATE/header.php"); ?>
-<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=1">
+<link rel="stylesheet" href="template/syzoj/css/editorial.css?v=2">
 <div class="ed-page">
   <div class="ed-heading"><div><h1>金币榜单</h1><p>首次通过一道题 +2 金币，题解审核通过 +10 金币，解锁一道题的全部题解 −5 金币，通过该题免费查看。</p></div><?php if($user){ ?><a class="ui basic button" href="coins.php?tab=history">我的金币 · <?php echo intval($balance); ?></a><?php } ?></div>
-  <nav class="ed-tabs" aria-label="金币导航"><a href="coins.php" <?php if($tab==='ranking') echo 'aria-current="page"'; ?>>金币榜单</a><a href="coins.php?tab=history" <?php if($tab==='history') echo 'aria-current="page"'; ?>>我的金币明细</a><a href="solutions.php">浏览题解</a></nav>
+  <nav class="ed-tabs" aria-label="金币导航"><a href="coins.php" <?php if($tab==='ranking') echo 'aria-current="page"'; ?>>金币榜单</a><a href="coins.php?tab=history" <?php if($tab==='history') echo 'aria-current="page"'; ?>>我的金币明细</a><a href="problemset.php">去题库练习</a></nav>
   <?php if(!$ready){ ?><div class="ed-notice">金币模块暂未开放，请稍后再来。</div><?php } elseif($error){ ?><div class="ed-notice ed-error" role="alert"><?php echo editorial_escape($error); ?><?php if(!$user){ ?> <a href="loginpage.php">前往登录</a><?php } ?></div><?php } else { ?>
     <section class="ed-panel">
       <?php if($tab==='ranking'){ ?><h2>按当前余额排名</h2><p class="ed-meta">消费后余额和排名会变化。余额相同时按用户名排序。</p><?php } else { ?><h2>我的金币明细</h2><p class="ed-meta">仅展示功能上线后的收支，历史通过题目不补发金币。同一题首次通过、同一篇题解审核通过均只奖励一次。</p><?php } ?>

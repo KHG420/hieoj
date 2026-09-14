@@ -13,10 +13,10 @@
 
 ## 页面入口
 
-- `solutions.php`：公开题解、按题号查找。
+- 不提供全站题解浏览和按题号查找题解的页面；题解入口位于各自题目页，直接访问 `solutions.php` 会跳转到题库。
 - `solutions.php?problem_id=1000`：指定题目的题解和投稿表单。
 - `solutions.php?tab=mine`：自己的题解及审核状态。
-- `solutions.php?id=1`：题解正文或按题目解锁入口。
+- `solutions.php?id=1`：题解正文或按题目解锁入口，标题与返回链接始终指向该题解所属题目。
 - `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏提供入口。
 - `coins.php`：金币榜单。
 - `coins.php?tab=history`：自己的余额和金币流水。

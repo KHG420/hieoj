@@ -12,6 +12,10 @@ $tab = isset($_GET['tab']) && is_string($_GET['tab']) && in_array($_GET['tab'],a
 $id = isset($_GET['id']) && is_scalar($_GET['id']) ? max(0,intval($_GET['id'])) : 0;
 $problemId = isset($_GET['problem_id']) && is_scalar($_GET['problem_id']) ? max(0,intval($_GET['problem_id'])) : 0;
 $page = isset($_GET['page']) && is_scalar($_GET['page']) ? min(100000,max(1,intval($_GET['page']))) : 1;
+// Public editorial browsing always belongs to a specific problem.
+if ($tab === 'published' && !$id && !$problemId) {
+    header('Location: problemset.php', true, $_SERVER['REQUEST_METHOD'] === 'POST' ? 303 : 302); exit;
+}
 $ready = editorial_ready();
 $error = null; $article = null; $problem = null; $rows = array(); $canRead = false; $passed = false; $hasNext = false;
 $balance = 0; $titleInput = ''; $contentInput = '';
@@ -61,9 +65,9 @@ elseif ($ready) {
             if (!$problemId || $problem) {
                 $args = array();
                 $where = $tab === 'review' ? "e.status='pending'" : editorial_public_sql();
-                if ($tab === 'published') $where .= " AND e.status='approved'";
+                if ($tab === 'published') { $where .= " AND e.status='approved' AND e.problem_id=?"; $args[] = $problemId; }
                 if ($tab === 'mine') { $where .= ' AND e.user_id=?'; $args[] = $user; }
-                if ($problemId) { $where .= ' AND e.problem_id=?'; $args[] = $problemId; }
+                if ($problemId && $tab !== 'published') { $where .= ' AND e.problem_id=?'; $args[] = $problemId; }
                 $offset = ($page-1)*20;
                 $rows = editorial_query("SELECT e.id,e.problem_id,e.user_id,e.title,e.status,e.created_at,p.title problem_title
                     FROM problem_editorial e JOIN problem p ON p.problem_id=e.problem_id WHERE $where ORDER BY e.id DESC LIMIT 21 OFFSET $offset",$args)->fetchAll(PDO::FETCH_ASSOC);
@@ -72,6 +76,8 @@ elseif ($ready) {
         }
     } catch (Throwable $e) { http_response_code(503); error_log('Editorial read failed: '.$e->getMessage()); $error = '题解暂时无法加载，请稍后刷新。'; $rows = array(); $article = null; }
 }
-$show_title = '题解 - '.editorial_escape($OJ_NAME);
+$contextProblemId = $article ? intval($article['problem_id']) : ($problem ? $problemId : 0);
+$heading = $contextProblemId ? 'P'.$contextProblemId.' · '.($article ? $article['problem_title'] : $problem['title']).' · 题解' : ($tab === 'mine' ? '我的题解' : ($tab === 'review' ? '题解审核' : '题解'));
+$show_title = editorial_escape($heading).' - '.editorial_escape($OJ_NAME);
 $OJ_EDITORIAL_VIEWPORT = true;
 require 'template/syzoj/solutions.php';
