@@ -39,6 +39,7 @@ GRANT ALL PRIVILEGES ON jol.* TO 'hustoj'@'%';
 SQL
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/schema.sql
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/knowledge-graph.sql
+  mariadb --socket="$SOCK" -uroot jol < /opt/oj/solutions-coins.sql
   # Use the existing application's salted password format, not a new auth scheme.
   SALT=$(openssl rand -hex 2)
   mariadb --socket="$SOCK" -uroot jol <<SQL

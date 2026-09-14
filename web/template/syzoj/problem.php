@@ -212,6 +212,14 @@
         <?php } ?>
       </div>
 
+      <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>
+      <div class="oj-card">
+        <div class="oj-side-title">题解</div>
+        <p>通过本题后可提交题解，审核通过奖励 10 金币。通过本题免费查看全部题解，也可支付 5 金币永久解锁本题全部题解。</p>
+        <a class="oj-btn oj-btn-ghost" href="solutions.php?problem_id=<?php echo intval($id); ?>">查看 / 提交题解</a>
+      </div>
+      <?php } ?>
+
       <!-- 相关讨论 -->
       <div class="oj-card">
         <div class="oj-side-title">相关讨论</div>

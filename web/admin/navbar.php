@@ -174,6 +174,7 @@
                                 <li class="nav-item">
                                     <a class='nav-link bg-primary' href="knowledge_graph.php" id="a-knowledge"><b>知识地图管理</b></a>
                                 </li>
+                                <li class="nav-item"><a class="nav-link bg-primary" href="../solutions.php?tab=review" target="_top"><b>题解审核</b></a></li>
                             <?php }
                             if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])||isset($_SESSION[$OJ_NAME.'_'.'contest_creator'])||isset($_SESSION[$OJ_NAME.'_'.'problem_editor'])){?>
                             <li class="nav-item">
