@@ -73,7 +73,6 @@
 
 .status i.icon {
   color: #6c757d;
-  pointer-events: none;
 }
 
 .tag-container {
@@ -141,6 +140,7 @@
 }
 
 .search-box .search-icon {
+  pointer-events: none;
   position: absolute;
   left: 12px;
   top: 50%;
