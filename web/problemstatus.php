@@ -8,11 +8,19 @@ $cache_time=30;
 require_once("./include/const.inc.php");
 
 if(!isset($_GET['id'])){
+        http_response_code(404);
         $view_errors="No such problem!";
         require("template/".$OJ_TEMPLATE."/error.php");
         exit(0);
 }
 $id=intval($_GET['id']);
+$problem = pdo_query("SELECT source FROM problem WHERE problem_id=?", $id);
+if (!$problem) {
+    http_response_code(404);
+    $view_errors = "题目不存在。";
+    require("template/".$OJ_TEMPLATE."/error.php");
+    exit;
+}
 if (isset($_GET['page']))
         $page=strval(intval($_GET['page']));
 else $page=0;
@@ -175,9 +183,7 @@ $view_recommand=Array();
 if(isset($_GET['id'])){
   $id=intval($_GET['id']);
         if(isset($_SESSION[$OJ_NAME.'_'.'user_id']))$user_id=($_SESSION[$OJ_NAME.'_'.'user_id']);
-	$sql="select source from problem where problem_id=?";
-	$result=pdo_query($sql,$id);
-	$source=$result[0][0];
+	$source=$problem[0][0];
         $sql="select problem_id from problem where source like ? and problem_id!=? limit 10";
 
         $result=pdo_query( $sql,"%$source%",$id);

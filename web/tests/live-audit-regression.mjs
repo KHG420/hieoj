@@ -24,7 +24,12 @@ const base=rows(await get(statusPath)).map(r=>r[0]);
 assert.ok(base.length>0,'fixture problem has submissions');
 assert.deepEqual(rows(await get(statusPath+'&user_id=')).map(r=>r[0]),base,'blank user filter');
 assert.deepEqual(rows(await get(statusPath+'&user_id=not_authorized_user')).map(r=>r[0]),base,'ignored anonymous user filter');
-await get('/contest.php?cid=99999999',404); await get('/thread.php?tid=99999999',404);
+await get('/contest.php?cid=99999999',404);
+const missingThread = await get('/thread.php?tid=99999999',404);
+assert.match(missingThread, /主页/); assert.match(missingThread, /问题/);
+for (const path of ['/viewnews.php','/viewnews.php?id=99999999','/problem.php?id=99999999','/problemstatus.php?id=99999999','/userinfo.php?user=__missing_audit_user__','/contestrank.php?cid=99999999','/contestrank2.php?cid=99999999','/contestrank3.php?cid=99999999','/contestrank-oi.php?cid=99999999']) {
+  await get(path,404);
+}
 const contests=rows(await get('/contest.php?keyword=2024&page=2'));
 assert.ok(contests.length>0); assert.ok(contests.every(r=>r[1].includes('2024')),'page 2 retains search');
 const contestFirst=await get('/contest.php?keyword=2024');

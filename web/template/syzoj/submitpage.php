@@ -80,7 +80,7 @@ textarea#source { padding: 12px; font-family: Consolas, Monaco, "Courier New", m
                 else
                   $langmask=$OJ_LANGMASK;
                 $lang=(~((int)$langmask))&((1<<($lang_count))-1);
-                if(isset($_COOKIE['lastlang'])) $lastlang=$_COOKIE['lastlang'];
+                if(isset($_COOKIE['lastlang'])) $lastlang=intval($_COOKIE['lastlang']);
                 else $lastlang=0;
                 for($i=0;$i<$lang_count;$i++){
                   if($lang&(1<<$i))
@@ -332,7 +332,7 @@ function switchLang(lang){
 }
 function reloadtemplate(lang){
    console.log("lang="+lang);
-   document.cookie="lastlang="+lang.value;
+   document.cookie="lastlang="+lang+"; path=/; SameSite=Lax";
    var url=window.location.href;
    var i=url.indexOf("sid=");
    if(i!=-1) url=url.substring(0,i-1);
@@ -377,7 +377,7 @@ function loadFromBlockly(){
     ace.require("ace/ext/language_tools");
     var editor = ace.edit("source");
     editor.setTheme("ace/theme/chrome");
-    switchLang(<?php echo $lastlang ?>);
+    switchLang($("#language").val());
     editor.setOptions({
 	    enableBasicAutocompletion: true,
 	    enableSnippets: true,

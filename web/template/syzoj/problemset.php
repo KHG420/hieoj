@@ -180,6 +180,11 @@
 }
 
 @media (max-width: 768px) {
+  .pagination-container .ui.pagination.menu {
+    flex-wrap: wrap;
+    max-width: 100%;
+    justify-content: center;
+  }
   .control-panel {
     flex-direction: column;
     align-items: flex-start;

@@ -233,9 +233,10 @@ git diff --check
 仅在可丢弃或经授权的本地测试数据库执行，脚本使用临时记录并清理自己创建的夹具。运行前仍需确保所连环境正确及对应模块表已初始化。
 
 ```bash
-docker compose exec -T web php /home/judge/src/web/tests/lab_rank_test.php --fixtures
-docker compose exec -T web php /home/judge/src/web/tests/editorial_test.php --fixtures
-docker compose exec -T web php /home/judge/src/web/tests/profile_task_test.php --fixtures
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/lab_rank_test.php --fixtures
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/editorial_test.php --fixtures
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/profile_task_test.php --fixtures
+docker compose exec -T -u www-data web php /home/judge/src/web/tests/page_boundaries_test.php --fixtures
 docker compose exec -T web php /home/judge/src/web/tests/registration_approval_http_test.php --fixtures
 docker compose exec -T -u www-data web php /home/judge/src/web/tests/adventure_http_test.php --fixtures
 ```
@@ -265,6 +266,8 @@ COMPOSE_PROJECT_NAME=hnieoj-unified-test WEB_PORT=18888 node docker/tests/smoke.
 两条命令必须使用相同项目名和端口。脚本拒绝默认生产项目和包含真实用户/题目的数据库，会建测试题、提交各语言、验证 AC/WA/CE，并强制重建容器检查数据库、凭据、题目数据、上传和登录持久化。它不是只读健康检查，也不会自动删除数据卷。
 
 ### 发布后浏览器检查
+
+`web/tests/form-controls.browser.js` 可通过 Playwright CLI 的 `run-code` 在已登录、含历史测试数据的浏览器会话中执行，覆盖语言记忆、回复/引用、班级输入切换及手机页面溢出；只操作浏览器字段，不发布内容或发送邮件。
 
 至少检查匿名访问和登录、题库筛选/翻页、比赛与榜单、提交状态、公告、管理菜单，以及本次变更涉及的表单和错误分支。检查控制台异常、失败请求和图片加载；修改响应式布局时补测手机宽度。判题改动需验证真实提交和使用中的 SPJ，HTTP 200 或 judge 进程健康不能代替结果正确。
 

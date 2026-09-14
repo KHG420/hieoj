@@ -8,8 +8,9 @@ require_once('./include/setlang.php');
 require_once("./include/const.inc.php");
 require_once("./include/my_func.inc.php");
 // check user
-$user=$_GET['user'];
+$user=isset($_GET['user']) && is_string($_GET['user']) ? $_GET['user'] : '';
 if (!is_valid_user_name($user)){
+	http_response_code(404);
 	$view_errors= "No such User!";
 	require("template/".$OJ_TEMPLATE."/error.php");
 	exit(0);
@@ -19,6 +20,7 @@ $sql="SELECT `school`,`email`,`nick`,`qq` FROM `users` WHERE `user_id`=?";
 $result=pdo_query($sql,$user);
 $row_cnt=count($result);
 if ($row_cnt==0){
+	http_response_code(404);
 	$view_errors= "No such User!";
 	require("template/".$OJ_TEMPLATE."/error.php");
 	exit(0);

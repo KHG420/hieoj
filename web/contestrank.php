@@ -53,7 +53,7 @@ function s_cmp($A,$B){
 }
 
 // contest start time
-if (!isset($_GET['cid'])) die("No Such Contest!");
+if (!isset($_GET['cid'])) { http_response_code(404); die("No Such Contest!"); }
 $cid=intval($_GET['cid']);
 
 if($OJ_MEMCACHE){
@@ -87,6 +87,7 @@ if ($rows_cnt>0){
 }
 if(!$OJ_MEMCACHE)
 if ($start_time==0){
+        http_response_code(404);
         $view_errors= "No Such Contest";
         require("template/".$OJ_TEMPLATE."/error.php");
         exit(0);

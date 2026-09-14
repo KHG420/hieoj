@@ -9,7 +9,7 @@
         <b style="margin-right: 30px; "><i class="calendar icon"></i> <?php echo $news_date ?></b>
     </p>
     <div class="ui existing segment">
-        <div id="content" class="font-content"><?php echo $news_content?></div>
+        <div id="content" class="font-content" style="overflow-wrap: anywhere;"><?php echo $news_content?></div>
     </div>
 </div>
 

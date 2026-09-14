@@ -58,7 +58,8 @@ if (isset($_GET['id'])) {
 
     $result = pdo_query($sql, $cid);
     $rows_cnt = empty($result) ? 0 : count($result);
-    if (empty($result) && !$OJ_FREE_PRACTICE && !isset($_SESSION[$OJ_NAME . '_administrator']) && !isset($_SESSION[$OJ_NAME . "_c" . $cid])) {
+    if (empty($result)) {
+        http_response_code(404);
         $view_errors = "<title>$MSG_CONTEST</title><h2>No such Contest!</h2>";
         require("template/" . $OJ_TEMPLATE . "/error.php");
         exit(0);
@@ -93,7 +94,7 @@ if (isset($_GET['id'])) {
 		)";
 
         $result = pdo_query($sql, $cid, $pid);
-        $id = $result[0]['problem_id'];
+        $id = $result[0]['problem_id'] ?? 0;
     }
 
     //public
@@ -105,12 +106,14 @@ if (isset($_GET['id'])) {
 
     $co_flag = true;
 } else {
+    http_response_code(404);
     $view_errors = "<title>$MSG_NO_SUCH_PROBLEM</title><h2>$MSG_NO_SUCH_PROBLEM</h2>";
     require("template/" . $OJ_TEMPLATE . "/error.php");
     exit(0);
 }
 
 if (count($result) != 1) {
+    http_response_code(404);
     $view_errors = "";
 
     if (isset($_GET['id'])) {
@@ -135,10 +138,8 @@ if (count($result) != 1) {
         $view_title = "<title>$MSG_NO_SUCH_PROBLEM!</title>";
         $view_errors .= "<h2>$MSG_NO_SUCH_PROBLEM!</h2>";
     }
-    if (!(isset($_SESSION[$OJ_NAME . '_administrator']) || isset($_SESSION[$OJ_NAME . '_problem_editor']))) {
-        require("template/" . $OJ_TEMPLATE . "/error.php");
-        exit(0);
-    }
+    require("template/" . $OJ_TEMPLATE . "/error.php");
+    exit(0);
 } else {
     $row = $result[0];
     $view_title = $row['title'];

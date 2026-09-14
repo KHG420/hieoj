@@ -123,6 +123,7 @@ function team2Array($team) {
 
 // 请求未带参数
 if (!isset($_GET['cid'])) {
+    http_response_code(404);
     $view_errors = "No Such Contest";
     require("template/" . $OJ_TEMPLATE . "/error.php");
     exit(0);
@@ -185,6 +186,7 @@ if ($rows_cnt > 0) {
 if (!$OJ_MEMCACHE) {
     // 开始时间仍然为零 说明 比赛不存在
     if ($start_time == 0) {
+        http_response_code(404);
         $view_errors = "No Such Contest";
         require("template/" . $OJ_TEMPLATE . "/error.php");
         exit(0);

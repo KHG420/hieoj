@@ -2,7 +2,7 @@
 ////////////////////////////Common head
 $cache_time=300;
 $OJ_CACHE_SHARE = true;
-$news_id=$_GET["id"];
+$news_id = isset($_GET["id"]) && is_string($_GET["id"]) && ctype_digit($_GET["id"]) ? intval($_GET["id"]) : 0;
 require_once( './include/cache_start.php' );
 require_once( './include/db_info.inc.php' );
 require_once( './include/memcache.php' );
@@ -18,12 +18,15 @@ if ( isset( $OJ_ON_SITE_CONTEST_ID ) ) {
 $view_news = "";
 $sql = "select * "
     . "FROM `news` "
-    . "WHERE `defunct`!='Y' && `news_id`='$news_id'"
+    . "WHERE `defunct`!='Y' AND `news_id`=?"
     . "ORDER BY `importance` ASC,`time` DESC "
     . "LIMIT 50";
-$result = mysql_query_cache( $sql ); //mysql_escape_string($sql));
-if ( !$result ) {
-    $new_title = $news_content = "公告不存在!";
+$result = mysql_query_cache($sql, $news_id);
+if (!$result) {
+    http_response_code(404);
+    $view_errors = "公告不存在或已下架。";
+    require("template/".$OJ_TEMPLATE."/error.php");
+    exit;
 } else {
     foreach ( $result as $row ) {
         $news_title=$row['title'];

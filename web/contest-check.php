@@ -39,6 +39,12 @@ $sql = "SELECT * FROM `contest` WHERE `contest_id`=?";
 //$result = mysql_query_cache($sql, $cid);
 $result = pdo_query($sql, $cid);
 $rows_cnt = count($result);
+if ($rows_cnt === 0) {
+    http_response_code(404);
+    $view_errors = "比赛不存在。";
+    require("template/" . $OJ_TEMPLATE . "/error.php");
+    exit;
+}
 //echo $cid;
 if ($rows_cnt > 0) {
     $row = $result[0];

@@ -34,9 +34,9 @@ if(isset($OJ_LANG)){
                 $ids = intval($row['ids']);
 
                 $idsperpage = 25;
-                $pages = intval(ceil($ids/$idsperpage));
+                $pages = max(1, intval(ceil($ids/$idsperpage)));
 
-                if(isset($_GET['page'])){ $page = intval($_GET['page']);}
+                if(isset($_GET['page'])){ $page = min($pages, max(1, intval($_GET['page'])));}
                 else{ $page = 1;}
 
                 $pagesperframe = 5;

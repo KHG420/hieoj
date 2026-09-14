@@ -159,7 +159,7 @@ $ainit = oj_initial($meta['author_id']);
   function reply(rid){
     var origin=$("#post"+rid).text();
     origin="Reply to :"+origin+"\n----------------------\n";
-    $("#replyContent").text(origin);
+    $("#replyContent").val(origin);
     $("#replyContent").focus();
   }
   function quote(rid){

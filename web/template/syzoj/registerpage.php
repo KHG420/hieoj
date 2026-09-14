@@ -1,5 +1,6 @@
 <?php $show_title="注册 - $OJ_NAME"; ?>
 <?php include("template/$OJ_TEMPLATE/header.php");?>
+<style>.oj-registration [hidden] { display: none !important; }</style>
 <div class="padding oj-registration">
   <h1>注册</h1>
   <div class="ui error message" id="error" data-am-alert hidden>
@@ -37,7 +38,7 @@
                   </select>
                 </div>
                 <div class="field">
-                  <label for="school_sel">专业班级*</label>
+                  <label id="school_label" for="school_sel">专业班级*</label>
                   <select name="school" id="school_sel" required>
                     <option value="">请先选择学院</option>
                   </select>
@@ -80,6 +81,7 @@ function loadClasses(xy){
     if(classRequest) classRequest.abort();
     var sel = $("#school_sel");
     sel.empty().prop("disabled", false).prop("hidden", false);
+    $("#school_label").attr("for", "school_sel");
     $("#school_manual").prop("disabled", true).prop("required", false).prop("hidden", true).val("");
     $("#school_hint").prop("hidden", true);
     if(!xy){ sel.append(new Option("请先选择学院", "")); return; }
@@ -98,6 +100,7 @@ function loadClasses(xy){
                 }
             }else{
                 sel.prop("disabled", true).prop("hidden", true);
+                $("#school_label").attr("for", "school_manual");
                 $("#school_manual").prop("disabled", false).prop("required", true).prop("hidden", false);
                 $("#school_hint").prop("hidden", false);
             }
