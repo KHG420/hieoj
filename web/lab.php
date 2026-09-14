@@ -19,6 +19,7 @@ function lab_text($name,$max=3000,$required=true) {
 }
 $error=null; $settings=null; $request=null; $rows=array(); $hasNext=false; $formData=array();
 try {
+    editorial_db()->exec('SET NAMES utf8mb4');
     $settings=editorial_query('SELECT * FROM acm_lab_settings WHERE id=1')->fetch(PDO::FETCH_ASSOC);
     if (!$settings) throw new RuntimeException('Missing laboratory settings');
     if (in_array($tab,array('manage','settings'),true) && !$admin) { http_response_code(403); throw new DomainException('只有管理员可以进入实验室管理。'); }

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS acm_lab_request (
  user_id VARCHAR(48) NOT NULL,
  kind ENUM('join','bug','suggestion') NOT NULL,
  title VARCHAR(120) NOT NULL,
- details TEXT NOT NULL,
+ details MEDIUMTEXT NOT NULL,
  status VARCHAR(24) NOT NULL DEFAULT 'pending',
  reply TEXT NOT NULL,
  admin_note TEXT NOT NULL,
@@ -21,3 +21,6 @@ CREATE TABLE IF NOT EXISTS acm_lab_request (
  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
  INDEX owner_requests(user_id,id), INDEX queue_requests(kind,status,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Per-field Unicode/JSON limits can exceed the 64 KB TEXT capacity.
+ALTER TABLE acm_lab_request MODIFY COLUMN details MEDIUMTEXT NOT NULL;

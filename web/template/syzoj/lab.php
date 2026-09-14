@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="template/syzoj/css/lab.css?v=3">
 <?php
 function lab_value($name,$fallback='') { global $formData; return editorial_escape(is_string($_POST[$name] ?? null)?$_POST[$name]:($formData[$name] ?? $fallback)); }
-function lab_token() { require './include/set_post_key.php'; }
+function lab_token() { global $OJ_NAME; require './include/set_post_key.php'; }
 ?>
 <main class="ed-page lab-page">
   <div class="ed-heading"><div><h1>ACM 实验室</h1><p>学习算法、参与训练，也一起完善我们的在线评测平台。</p></div></div>

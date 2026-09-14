@@ -10,10 +10,12 @@ function lab_http($path,$who=null,$post=null,$status=200){global $sessions;$ch=c
 try{
  foreach($users as $i=>$u){editorial_query("INSERT INTO users(user_id,nick,school,defunct,register_num) VALUES(?,?,?,'N',1)",array($u,$u,$prefix));$sessions[$i]='lab'.bin2hex(random_bytes(16));session_id($sessions[$i]);session_start();$_SESSION=array($OJ_NAME.'_user_id'=>$u,$OJ_NAME.'_postkey'=>$key);if($i===2)$_SESSION[$OJ_NAME.'_administrator']=true;session_write_close();}
  editorial_query('UPDATE acm_lab_settings SET recruitment_open=1 WHERE id=1');
+ $joinForm=lab_http('/lab.php?tab=join',0);check_lab(str_contains($joinForm,'value="'.$key.'"'),'Rendered form uses the same CSRF token as the controller');
  lab_http('/lab.php');lab_http('/lab.php?tab=mine',null,null,401);lab_http('/lab.php?tab=manage',0,null,403);lab_http('/lab.php?tab=settings',0,null,403);
  $join=array('action'=>'submit','postkey'=>$key,'name'=>'测试同学','department'=>'测试专业','grade'=>'2026','contact'=>'test@example.test','experience'=>'零基础','reason'=>'学习算法','availability'=>'每周三小时');
  $bad=$join;$bad['postkey']='bad';lab_http('/lab.php?tab=join',0,$bad,403);
  lab_http('/lab.php?tab=join',0,$join,303);$id=editorial_query('SELECT id FROM acm_lab_request WHERE user_id=?',array($users[0]))->fetchColumn();
+ $longJoin=$join;foreach(array('name','department','grade','contact','experience','reason','availability') as $field)$longJoin[$field]=str_repeat('😀',3000);lab_http('/lab.php?tab=join',0,$longJoin,303);
  $join['reason']='更新申请';lab_http('/lab.php?tab=join',0,$join,303);check_lab((int)editorial_query('SELECT COUNT(*) FROM acm_lab_request WHERE user_id=?',array($users[0]))->fetchColumn()===1,'Repeated join updates original request');
  check_lab(str_contains(lab_http('/lab.php?tab=mine&id='.$id,0),'更新申请'),'Owner sees update');lab_http('/lab.php?tab=mine&id='.$id,1,null,404);lab_http('/lab.php?tab=about&id='.$id,null,null,404);
  $review=array('action'=>'review','postkey'=>$key,'status'=>'talking','reply'=>'请来沟通','admin_note'=>'PRIVATE_NOTE_'.$prefix);
