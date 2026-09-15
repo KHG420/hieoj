@@ -31,19 +31,27 @@
                   <select name="xueYuan" id="xueyuan_sel" required>
                     <option value="">请选择学院</option>
                     <?php
-                    foreach ($xueYuan as $row) {
+                    foreach ($register_xueYuan as $row) {
                         echo '<option value="' . htmlentities($row[0],ENT_QUOTES,"UTF-8") . '">' . htmlentities($row[0],ENT_QUOTES,"UTF-8") . '</option>';
                     }
                     ?>
                   </select>
                 </div>
+                <?php if ($register_policy_error !== ''): ?>
+                <div class="ui error message visible" role="alert">
+                  <p><?php echo htmlentities($register_policy_error, ENT_QUOTES, "UTF-8"); ?></p>
+                </div>
+                <?php elseif (count($register_xueYuan) === 0): ?>
+                <div class="ui warning message visible" role="alert">
+                  <p>当前开放年级范围（<?php echo htmlentities($register_year_min . ' - ' . $register_year_max, ENT_QUOTES, "UTF-8"); ?>）内没有可注册的学院，请联系管理员。</p>
+                </div>
+                <?php endif; ?>
                 <div class="field">
                   <label id="school_label" for="school_sel">专业班级*</label>
                   <select name="school" id="school_sel" required>
                     <option value="">请先选择学院</option>
                   </select>
-                  <input id="school_manual" name="school" type="text" maxlength="20" aria-label="填写专业班级" aria-describedby="school_hint" hidden disabled>
-                  <p id="school_hint" role="status" hidden>该学院暂未收录班级，请填写完整的真实专业班级名称，提交后由管理员审核。</p>
+                  <p id="school_status" class="ui message" role="status" hidden></p>
                 </div>
               <div class="field">
                   <label for="register-phone">手机号*</label>
@@ -77,37 +85,63 @@
 </div>
 <script>
 var classRequest;
+function setClassStatus(text, isError){
+    var el = $("#school_status");
+    if(!text){
+        el.text("").removeClass("error warning visible").prop("hidden", true);
+        return;
+    }
+    // .ui.form 下的 error / warning 消息默认 display:none，必须带 visible 才会显示。
+    el.text(text)
+      .removeClass("error warning")
+      .addClass(isError ? "error" : "warning")
+      .addClass("visible")
+      .prop("hidden", false);
+}
+// 始终清空旧选项并保留 value="" 的占位项：不会静默选中第一个班级，也不会残留学院切换前的旧班级。
+function resetClassSelect(placeholder){
+    var sel = $("#school_sel");
+    sel.empty().append(new Option(placeholder, ""));
+    sel.prop("disabled", false).prop("required", true);
+    sel.val("");
+}
 function loadClasses(xy){
     if(classRequest) classRequest.abort();
+    resetClassSelect("请先选择学院");
+    setClassStatus("", false);
+    if(!xy){ return; }
     var sel = $("#school_sel");
-    sel.empty().prop("disabled", false).prop("hidden", false);
-    $("#school_label").attr("for", "school_sel");
-    $("#school_manual").prop("disabled", true).prop("required", false).prop("hidden", true).val("");
-    $("#school_hint").prop("hidden", true);
-    if(!xy){ sel.append(new Option("请先选择学院", "")); return; }
-    sel.append(new Option("加载中…", ""));
+    resetClassSelect("加载中…");
     classRequest = $.ajax({
         url: "getClass.php",
-        data: { xy: xy },
+        data: { xy: xy, registration: 1 },
         dataType: "json",
         success: function(data){
-            sel.empty();
+            classRequest = null;
+            var values = [];
             if(data && data.length){
-                sel.append(new Option("请选择专业班级", ""));
                 for (var i=0;i<data.length;i++){
                     var v = data[i].value !== undefined ? data[i].value : data[i];
-                    if(v) sel.append(new Option(v, v));
+                    if(v) values.push(v);
                 }
+            }
+            sel.prop("disabled", false).prop("required", true);
+            if(values.length){
+                sel.empty().append(new Option("请选择专业班级", ""));
+                for (var j=0;j<values.length;j++){ sel.append(new Option(values[j], values[j])); }
+                sel.val("");
             }else{
-                sel.prop("disabled", true).prop("hidden", true);
-                $("#school_label").attr("for", "school_manual");
-                $("#school_manual").prop("disabled", false).prop("required", true).prop("hidden", false);
-                $("#school_hint").prop("hidden", false);
+                // 范围内没有可注册班级：清空旧班级，保留必填占位，明确提示联系管理员，不提供手填兜底。
+                resetClassSelect("暂无可注册班级");
+                setClassStatus("该学院在当前开放年级范围内暂无可注册班级，请联系管理员。", true);
             }
         },
         error: function(xhr, status){
             if(status === "abort") return;
-            sel.empty().append(new Option("班级加载失败，请重选学院", ""));
+            classRequest = null;
+            // 失败也必须清掉旧班级，避免把上一次的班级继续提交。
+            resetClassSelect("班级加载失败");
+            setClassStatus("班级加载失败，请重试或联系管理员。", true);
         }
     });
 }

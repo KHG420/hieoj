@@ -96,6 +96,9 @@ function adp_no_php_errors($logFile, $message)
     }
 }
 
+// 父进程也需要策略模块，用于计算期望的有效范围文案。
+require_once dirname(__DIR__) . '/include/academic_registration.php';
+
 // ---------------------------------------------------------------------------
 // 临时隔离目录
 // ---------------------------------------------------------------------------
@@ -104,6 +107,9 @@ mkdir($root, 0700, true);
 mkdir($root . '/admin', 0700);
 mkdir($root . '/include', 0700);
 mkdir($root . '/sessions', 0700);
+mkdir($root . '/data', 0700);
+putenv('AD_TEST_DATA=' . $root . '/data');
+$policyFile = academic_registration_policy_path($root . '/data');
 
 foreach (array(
     '/admin/academic_directory.php',
@@ -111,6 +117,7 @@ foreach (array(
     '/include/academic_directory.php',
     '/include/academic_directory_sync.php',
     '/include/academic_directory_source.php',
+    '/include/academic_registration.php',
     '/include/set_post_key.php',
 ) as $relative) {
     copy(dirname(__DIR__) . $relative, $root . $relative);
@@ -139,6 +146,10 @@ $OJ_ONLINE = false;
 $dbh = null;
 $AD_TEST_DSN = getenv('AD_TEST_DSN');
 $AD_TEST_INFO = getenv('AD_TEST_INFO');
+$OJ_DATA = getenv('AD_TEST_DATA');
+if (!is_string($OJ_DATA) || $OJ_DATA === '') {
+    $OJ_DATA = '/home/judge/data';
+}
 
 foreach (array(
     'MSG_HELP_SEEOJ', 'MSG_SEEOJ', 'MSG_HELP_SETMESSAGE', 'MSG_HELP_SETPASSWORD', 'MSG_SETPASSWORD',
@@ -583,6 +594,181 @@ try {
     adp_check((int)$verify->query('SELECT COUNT(*) FROM schoolList')->fetchColumn() === 0, 'H 零匹配零写入（schoolList 无变化）');
     adp_check((int)$verify->query('SELECT COUNT(*) FROM collegiate')->fetchColumn() === 1, 'H 零匹配零写入（学院无变化）');
     adp_no_php_errors($caseH['errlog'], 'H 没有 PHP 警告');
+
+    // ---------------- I..P. 注册开放年级策略：GET 只读、CSRF、保存 / 拒绝、状态保留 ----------------
+    $policyDb = $root . '/oj-policy.sqlite';
+    adp_oj_db($policyDb, 'legacy');
+    $policyCounts = function () use ($policyDb) {
+        $pdo = new PDO('sqlite:' . $policyDb);
+        return array(
+            (int)$pdo->query('SELECT COUNT(*) FROM collegiate')->fetchColumn(),
+            (int)$pdo->query('SELECT COUNT(*) FROM schoolList')->fetchColumn(),
+        );
+    };
+    // 非预览的同步会话状态：策略保存不应清空它。
+    $preservedSyncState = array(
+        'challenge_nonce' => null,
+        'challenge_expiry' => null,
+        'cookies' => array(),
+        'captcha_uri' => '',
+        'preview_nonce' => '',
+        'preview_expiry' => 0,
+        'snapshot' => null,
+    );
+
+    // I. GET 只读：渲染策略卡片但不创建 / 修改文件
+    $caseI = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'GET',
+        'post' => array(),
+        'session' => array('test_administrator' => true, 'test_postkey' => $postkey),
+        'out' => $root . '/out-i.html',
+        'state_out' => $root . '/state-i.json',
+        'errlog' => $root . '/err-i.log',
+    );
+    $i = adp_run($root, $caseI);
+    adp_check($i['exit'] === 0, 'I 策略 GET 正常结束');
+    adp_has($i['body'], '注册开放年级范围', 'I 渲染注册年级策略卡片');
+    adp_has($i['body'], 'name="action" value="save_registration_policy"', 'I 提供保存策略表单');
+    adp_has($i['body'], '自动更新', 'I 说明自动更新规则');
+    adp_check(!file_exists($policyFile), 'I GET 只读，不创建策略文件');
+    adp_no_php_errors($caseI['errlog'], 'I 策略 GET 没有 PHP 警告');
+
+    // J. 合法自定义保存：成功、落盘、同步状态保留、数据库零写入
+    $caseJ = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'save_registration_policy', 'mode' => 'custom', 'min' => '2025', 'max' => '2026', 'postkey' => $postkey),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => $preservedSyncState,
+        ),
+        'out' => $root . '/out-j.html',
+        'state_out' => $root . '/state-j.json',
+        'errlog' => $root . '/err-j.log',
+    );
+    $j = adp_run($root, $caseJ);
+    adp_check($j['exit'] === 0, 'J 自定义范围保存正常结束');
+    adp_has($j['body'], '已保存', 'J 显示保存成功');
+    adp_has($j['body'], '2025 - 2026', 'J 显示新的生效范围');
+    adp_check(is_array($j['state']) && $j['state']['has_state'] === true, 'J 策略保存不清空同步 session 状态');
+    $rawPolicy = json_decode((string)file_get_contents($policyFile), true);
+    adp_check($rawPolicy['mode'] === 'custom' && $rawPolicy['min'] === 2025 && $rawPolicy['max'] === 2026, 'J 落盘为自定义 2025..2026');
+    adp_check($policyCounts() === array(1, 0), 'J 策略保存零数据库写入');
+    adp_no_php_errors($caseJ['errlog'], 'J 自定义保存没有 PHP 警告');
+
+    // K. 非法范围：显式报错且旧文件原样
+    $beforeK = (string)file_get_contents($policyFile);
+    $caseK = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'save_registration_policy', 'mode' => 'custom', 'min' => '2026', 'max' => '2025', 'postkey' => $postkey),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => $preservedSyncState,
+        ),
+        'out' => $root . '/out-k.html',
+        'state_out' => $root . '/state-k.json',
+        'errlog' => $root . '/err-k.log',
+    );
+    $k = adp_run($root, $caseK);
+    adp_check($k['exit'] === 0, 'K 非法范围请求正常结束');
+    adp_has($k['body'], '保存失败', 'K 非法范围显式报错');
+    adp_check((string)file_get_contents($policyFile) === $beforeK, 'K 非法范围不修改旧文件');
+    adp_check(is_array($k['state']) && $k['state']['has_state'] === true, 'K 拒绝后同步 session 状态仍在');
+    adp_no_php_errors($caseK['errlog'], 'K 非法范围没有 PHP 警告');
+
+    // L. CSRF 失败：403 且零写入
+    $caseL = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'save_registration_policy', 'mode' => 'auto', 'postkey' => 'wrong-key'),
+        'session' => array('test_administrator' => true, 'test_postkey' => $postkey),
+        'out' => $root . '/out-l.html',
+        'state_out' => $root . '/state-l.json',
+        'errlog' => $root . '/err-l.log',
+    );
+    $l = adp_run($root, $caseL);
+    adp_has($l['stdout'], '403', 'L 错误 postkey 返回 403');
+    adp_check((string)file_get_contents($policyFile) === $beforeK, 'L CSRF 失败零写入');
+    adp_no_php_errors($caseL['errlog'], 'L CSRF 失败没有 PHP 警告');
+
+    // M. 切回自动：落盘 auto，重新读取的有效范围与页面一致
+    $caseM = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'save_registration_policy', 'mode' => 'auto', 'postkey' => $postkey),
+        'session' => array(
+            'test_administrator' => true,
+            'test_postkey' => $postkey,
+            'test_academic_directory_sync' => $preservedSyncState,
+        ),
+        'out' => $root . '/out-m.html',
+        'state_out' => $root . '/state-m.json',
+        'errlog' => $root . '/err-m.log',
+    );
+    $m = adp_run($root, $caseM);
+    adp_check($m['exit'] === 0, 'M 切回自动正常结束');
+    adp_has($m['body'], '已保存', 'M 切回自动保存成功');
+    $autoPolicy = academic_registration_policy_load($policyFile);
+    adp_check($autoPolicy['mode'] === 'auto', 'M 落盘为自动模式');
+    adp_has($m['body'], academic_registration_policy_effective_label($autoPolicy), 'M 页面显示重新读取后的自动有效范围');
+    adp_check(is_array($m['state']) && $m['state']['has_state'] === true, 'M 切回自动不清空同步会话');
+    adp_no_php_errors($caseM['errlog'], 'M 切回自动没有 PHP 警告');
+
+    // N. 非管理员：403 且零写入
+    $beforeN = (string)file_get_contents($policyFile);
+    $caseN = array(
+        'sid' => 'adp' . bin2hex(random_bytes(6)),
+        'dsn' => $policyDb,
+        'info' => $infoPath,
+        'method' => 'POST',
+        'post' => array('action' => 'save_registration_policy', 'mode' => 'custom', 'min' => '2024', 'max' => '2024', 'postkey' => $postkey),
+        'session' => array('test_postkey' => $postkey),
+        'out' => $root . '/out-n.html',
+        'state_out' => $root . '/state-n.json',
+        'errlog' => $root . '/err-n.log',
+    );
+    $n = adp_run($root, $caseN);
+    adp_has($n['stdout'], '403', 'N 非管理员被拒绝');
+    adp_check((string)file_get_contents($policyFile) === $beforeN, 'N 非管理员零写入');
+    adp_no_php_errors($caseN['errlog'], 'N 非管理员没有 PHP 警告');
+
+    // O. 损坏文件：显式提示，不伪装成成功
+    file_put_contents($policyFile, '{ broken json');
+    $caseO = $caseI;
+    $caseO['sid'] = 'adp' . bin2hex(random_bytes(6));
+    $caseO['out'] = $root . '/out-o.html';
+    $caseO['state_out'] = $root . '/state-o.json';
+    $caseO['errlog'] = $root . '/err-o.log';
+    $o = adp_run($root, $caseO);
+    adp_has($o['body'], '无法解析', 'O 损坏配置被显式提示');
+    adp_lacks($o['body'], '已保存', 'O 损坏配置不会被当作保存成功');
+    adp_no_php_errors($caseO['errlog'], 'O 损坏配置没有 PHP 警告');
+
+    // P. 用合法配置修复损坏文件：说明已替换
+    $caseP = $caseJ;
+    $caseP['sid'] = 'adp' . bin2hex(random_bytes(6));
+    $caseP['post'] = array('action' => 'save_registration_policy', 'mode' => 'custom', 'min' => '2024', 'max' => '2026', 'postkey' => $postkey);
+    $caseP['out'] = $root . '/out-p.html';
+    $caseP['state_out'] = $root . '/state-p.json';
+    $caseP['errlog'] = $root . '/err-p.log';
+    $p = adp_run($root, $caseP);
+    adp_has($p['body'], '已用本次有效配置替换', 'P 修复损坏文件时显式说明');
+    adp_check(academic_registration_policy_load($policyFile)['ok'] === true, 'P 修复后配置可正常读取');
+    adp_no_php_errors($caseP['errlog'], 'P 修复保存没有 PHP 警告');
 
     // ---------------- 源码级负向对照：旧实现必须无法通过这些断言 ----------------
     $pageSrc = (string)file_get_contents($root . '/admin/academic_directory.php');

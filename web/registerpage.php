@@ -1,21 +1,41 @@
 <?php
 ////////////////////////////Common head
-	$cache_time=10;
-	$OJ_CACHE_SHARE=false;
-	require_once('./include/cache_start.php');
+// 注册页不使用页面输出缓存：管理员调整开放年级范围后必须立即生效，
+// 不能命中旧缓存继续展示已毕业年级。这里只保留会话 Cookie 加固。
+@ini_set("session.cookie_httponly", "1");
+@ini_set("session.cookie_samesite", "Lax");
+if(!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off') @ini_set("session.cookie_secure", "1");
+if(session_status()===PHP_SESSION_NONE) @session_start();
     require_once('./include/db_info.inc.php');
 if(isset($OJ_REGISTER)&&!$OJ_REGISTER) exit(0);
 	require_once('./include/setlang.php');
 	require_once('./include/academic_directory.php');
+	require_once('./include/academic_registration.php');
 	$view_title= "Registe a new account";
 	
 ///////////////////////////MAIN
 
 // 学院与班级统一来自 collegiate / schoolList，年级只按可识别编号前 4 位派生
+// （以下变量保持既有契约，供其它模板继续使用）
 $xueYuan = academic_directory_colleges();
 $latest_year = academic_directory_latest_year();
 $n_nj = ($latest_year !== null ? intval(substr($latest_year, 2, 2)) : intval(date('y'))) - 4;
 $class = academic_directory_recent_classes(2000 + $n_nj);
+
+// 注册专用：仅当前开放年级范围内“确有合格班级”的学院（无合格班级时不回退全量）
+$register_policy = academic_registration_policy_load(
+	academic_registration_policy_path(academic_registration_policy_data_dir())
+);
+$register_policy_ok = $register_policy['ok'];
+$register_year_min = $register_policy['effective_min'];
+$register_year_max = $register_policy['effective_max'];
+$register_policy_error = '';
+if (!$register_policy_ok) {
+	$register_policy_error = '注册年级范围配置异常：' . $register_policy['error'] . ' 请联系管理员处理。';
+	$register_xueYuan = array();
+} else {
+	$register_xueYuan = academic_directory_registration_colleges($register_year_min, $register_year_max);
+}
 
 ////////从教务系统爬取班级信息导入数据库中
 //$url = 'http://59.71.0.16/jwweb/ZNPK/KBFB_ClassSel.aspx';
@@ -87,7 +107,4 @@ $class = academic_directory_recent_classes(2000 + $n_nj);
 
 /////////////////////////Template
 require("template/".$OJ_TEMPLATE."/registerpage.php");
-/////////////////////////Common foot
-if(file_exists('./include/cache_end.php'))
-	require_once('./include/cache_end.php');
 ?>

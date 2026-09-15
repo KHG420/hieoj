@@ -13,6 +13,7 @@ require_once dirname(__FILE__) . '/../include/db_info.inc.php';
 require_once dirname(__FILE__) . '/../include/academic_directory.php';
 require_once dirname(__FILE__) . '/../include/academic_directory_sync.php';
 require_once dirname(__FILE__) . '/../include/academic_directory_source.php';
+require_once dirname(__FILE__) . '/../include/academic_registration.php';
 
 // ---------- 1. 权限：必须在任何输出 / 远端调用之前 ----------
 if (!academic_directory_source_is_admin($_SESSION, $OJ_NAME)) {
@@ -42,6 +43,18 @@ $preview = null;
 $planView = null;
 $previewReady = false;
 $syncResult = null;
+
+// ---------- 注册开放年级范围策略（GET 只读；保存只写 OJ_DATA 下的小 JSON 文件） ----------
+$registrationDataDir = academic_registration_policy_data_dir();
+$registrationPolicyFile = academic_registration_policy_path($registrationDataDir);
+$registrationPolicy = academic_registration_policy_load($registrationPolicyFile);
+$policyNotice = '';
+$policyError = '';
+$policyWarning = '';
+if ($registrationPolicy['exists'] && !$registrationPolicy['ok']) {
+    $policyWarning = '现有注册年份配置文件无法解析：' . $registrationPolicy['error']
+        . ' 保存一份有效配置会替换该文件，当前注册页暂不可用。';
+}
 
 /** 清空本次临时状态（页面局部变量与 session 同步）。 */
 function ad_sync_reset_state(&$state, &$previewNonce, &$challengeNonce, &$captchaUri, $ojName)
@@ -162,6 +175,21 @@ if ($action !== '') {
                 ad_sync_reset_state($state, $previewNonce, $challengeNonce, $captchaUri, $OJ_NAME);
             }
         }
+    } elseif ($action === 'save_registration_policy') {
+        // 仅更新注册年级策略：不访问网络 / 数据库，也不清理同步 session 状态。
+        $policySave = academic_registration_policy_save($registrationPolicyFile, $_POST);
+        if ($policySave['ok']) {
+            $registrationPolicy = $policySave['state'];
+            $policyNotice = '注册年份范围已保存，当前生效：'
+                . academic_registration_policy_effective_label($registrationPolicy)
+                . '（' . ($registrationPolicy['mode'] === 'auto' ? '自动更新' : '自定义范围') . '）。';
+            if (!empty($policySave['replaced_invalid'])) {
+                $policyWarning = '原配置文件损坏（' . $policySave['existing_error'] . '），已用本次有效配置替换。';
+            }
+        } else {
+            $registrationPolicy = $policySave['state'];
+            $policyError = '注册年份范围保存失败：' . $policySave['error'];
+        }
     } else {
         $error = '未知操作。';
     }
@@ -213,7 +241,7 @@ require_once dirname(__FILE__) . '/admin-header.php';
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>同步学院班级</title>
 <style>
-.ad-sync{padding:18px;max-width:1100px;margin:auto}.ad-sync h1{font-size:25px}.ad-card{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:16px;margin-bottom:16px}.ad-card h2{font-size:17px;margin:0 0 12px}.ad-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ad-grid .wide{grid-column:1/-1}.ad-grid label{display:block;font-size:13px;color:#40516a}.ad-grid input{width:100%;height:38px;border:1px solid #cfd6df;border-radius:5px;padding:8px 10px;box-sizing:border-box}.ad-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ad-btn{border:0;border-radius:5px;padding:9px 14px;background:#2864d7;color:#fff;cursor:pointer}.ad-btn.secondary{background:#eef2f7;color:#28405f;border:1px solid #cfd6df}.ad-btn.danger{background:#b93e48}.ad-btn[disabled]{opacity:.6;cursor:default}.ad-btn:hover{filter:brightness(.94)}.ad-btn:focus{outline:2px solid #123a7a;outline-offset:2px}.ad-grid input:focus{border-color:#2864d7;outline:2px solid #9dbcf0;outline-offset:1px}.ad-thumb{max-width:200px;border:1px solid #cfd6df;border-radius:6px;background:#fff;padding:4px}.ad-table{width:100%;border-collapse:collapse;font-size:13px}.ad-table th,.ad-table td{border-bottom:1px solid #edf0f3;padding:7px 8px;text-align:left}.ad-badge{display:inline-block;background:#edf3fc;color:#31558d;border-radius:20px;padding:3px 8px;margin:2px}.ad-success{background:#eaf8f1;color:#126342;padding:10px;border-radius:7px}.ad-warning{background:#fff6e7;color:#8a5000;padding:10px;border-radius:7px}.ad-error{background:#fff0f1;color:#9c2934;padding:10px;border-radius:7px}.ad-muted{color:#5b6b80;font-size:13px}.ad-stats{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 10px}.ad-stats b{font-size:20px;color:#1f3f74;display:block}@media(max-width:700px){.ad-grid{grid-template-columns:1fr}}
+.ad-sync{padding:18px;max-width:1100px;margin:auto}.ad-sync h1{font-size:25px}.ad-card{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:16px;margin-bottom:16px}.ad-card h2{font-size:17px;margin:0 0 12px}.ad-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ad-grid .wide{grid-column:1/-1}.ad-grid label{display:block;font-size:13px;color:#40516a}.ad-grid input,.ad-grid select{width:100%;height:38px;border:1px solid #cfd6df;border-radius:5px;padding:8px 10px;box-sizing:border-box}.ad-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ad-btn{border:0;border-radius:5px;padding:9px 14px;background:#2864d7;color:#fff;cursor:pointer}.ad-btn.secondary{background:#eef2f7;color:#28405f;border:1px solid #cfd6df}.ad-btn.danger{background:#b93e48}.ad-btn[disabled]{opacity:.6;cursor:default}.ad-btn:hover{filter:brightness(.94)}.ad-btn:focus{outline:2px solid #123a7a;outline-offset:2px}.ad-grid input:focus{border-color:#2864d7;outline:2px solid #9dbcf0;outline-offset:1px}.ad-thumb{max-width:200px;border:1px solid #cfd6df;border-radius:6px;background:#fff;padding:4px}.ad-table{width:100%;border-collapse:collapse;font-size:13px}.ad-table th,.ad-table td{border-bottom:1px solid #edf0f3;padding:7px 8px;text-align:left}.ad-badge{display:inline-block;background:#edf3fc;color:#31558d;border-radius:20px;padding:3px 8px;margin:2px}.ad-success{background:#eaf8f1;color:#126342;padding:10px;border-radius:7px}.ad-warning{background:#fff6e7;color:#8a5000;padding:10px;border-radius:7px}.ad-error{background:#fff0f1;color:#9c2934;padding:10px;border-radius:7px}.ad-muted{color:#5b6b80;font-size:13px}.ad-stats{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 10px}.ad-stats b{font-size:20px;color:#1f3f74;display:block}@media(max-width:700px){.ad-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -230,6 +258,42 @@ require_once dirname(__FILE__) . '/admin-header.php';
 <?php if ($notice !== '') { ?><p class="ad-success" role="status"><?php echo htmlentities($notice, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
 <?php if ($warning !== '') { ?><p class="ad-warning" role="alert"><?php echo htmlentities($warning, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
 <?php if ($error !== '') { ?><p class="ad-error" role="alert"><?php echo htmlentities($error, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
+
+<?php
+$policyMode = $registrationPolicy['mode'];
+$policyCustom = ($policyMode === 'custom');
+$policyMinValue = ($policyCustom && $registrationPolicy['min'] !== null) ? (string)(int)$registrationPolicy['min'] : '';
+$policyMaxValue = ($policyCustom && $registrationPolicy['max'] !== null) ? (string)(int)$registrationPolicy['max'] : '';
+?>
+<section class="ad-card">
+<h2>注册开放年级范围</h2>
+<p class="ad-muted">只影响新注册用户可选的学院 / 班级；已注册用户资料、历史班级记录与其它页面查询不受影响。</p>
+<?php if ($policyNotice !== '') { ?><p class="ad-success" role="status"><?php echo htmlentities($policyNotice, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
+<?php if ($policyWarning !== '') { ?><p class="ad-warning" role="alert"><?php echo htmlentities($policyWarning, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
+<?php if ($policyError !== '') { ?><p class="ad-error" role="alert"><?php echo htmlentities($policyError, ENT_QUOTES, 'UTF-8'); ?></p><?php } ?>
+<p>当前生效范围：<b><?php echo htmlentities(academic_registration_policy_effective_label($registrationPolicy), ENT_QUOTES, 'UTF-8'); ?></b>
+（<?php echo $policyCustom
+    ? '自定义范围（起始 / 截止入学年份均含）'
+    : '自动更新：当前年份 - 2 至当前年份，含两端；当前年份为 ' . (int)$registrationPolicy['current_year'] . '，跨年自动滚动'; ?>）</p>
+<form method="post" class="ad-grid">
+    <?php require dirname(__FILE__) . '/../include/set_post_key.php'; ?>
+    <input type="hidden" name="action" value="save_registration_policy">
+    <label class="wide">更新方式
+    <select name="mode">
+        <option value="auto"<?php echo $policyCustom ? '' : ' selected'; ?>>自动更新（当前年份 - 2 至当前年份，含）</option>
+        <option value="custom"<?php echo $policyCustom ? ' selected' : ''; ?>>自定义范围</option>
+    </select>
+    </label>
+    <label>起始入学年份（含，1900..2099）
+    <input type="number" name="min" min="1900" max="2099" step="1" value="<?php echo htmlentities($policyMinValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="自动：<?php echo (int)$registrationPolicy['auto_min']; ?>">
+    </label>
+    <label>截止入学年份（含，1900..2099）
+    <input type="number" name="max" min="1900" max="2099" step="1" value="<?php echo htmlentities($policyMaxValue, ENT_QUOTES, 'UTF-8'); ?>" placeholder="自动：<?php echo (int)$registrationPolicy['auto_max']; ?>">
+    </label>
+    <p class="wide ad-muted">选择“自定义范围”时，起始与截止年份都必须填写且起始不晚于截止；选择“自动更新”时忽略这两个输入框。保存后立即对新的注册生效。</p>
+    <div class="wide ad-actions"><button class="ad-btn" type="submit">保存注册年份范围</button></div>
+</form>
+</section>
 
 <?php if ($syncResult !== null) { ?>
 <section class="ad-card" role="status">

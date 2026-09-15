@@ -3,14 +3,18 @@ header("Content-Type: text/html; charset=UTF-8");
 require_once("./include/db_info.inc.php");
 if(isset($OJ_REGISTER)&&!$OJ_REGISTER) exit(0);
 require_once("./include/my_func.inc.php");
+require_once("./include/academic_directory.php");
+require_once("./include/academic_registration.php");
 $err_str="";
 $err_cnt=0;
 $len;
 $user_id=trim($_POST['user_id']);
 $len=strlen($user_id);
 $email=trim($_POST['email']);
-$xueYuan=trim($_POST['xueYuan']);
-$school=trim($_POST['school']);
+// 学院 / 班级按“安全标量”读取：缺失 / 数组 / 非标量输入不会触发 PHP 警告，
+// 而是标记为非标量，交由下面的模板校验显式拒绝。
+$xueYuan=academic_registration_policy_scalar_request($_POST,'xueYuan',$xueYuan_scalar);
+$school=academic_registration_policy_scalar_request($_POST,'school',$school_scalar);
 $phone=trim($_POST['phone']);
 $qq=trim($_POST['qq']);
 $vcode=trim($_POST['vcode']);
@@ -54,7 +58,7 @@ if (strlen($_POST['password'])<6){
     $err_str=$err_str.$str."\\n";
     $err_cnt++;
 }
-$len=strlen($_POST['school']);
+$len=strlen($school);
 if ($len>100){
 	$err_str=$err_str."School Name Too Long!\\n";
 	$err_cnt++;
@@ -92,6 +96,33 @@ if($_SESSION['time'] >=  time()){ //判断验证码的时间是都大于当前�
     #$str=mb_convert_encoding($str ,"gbk","utf-8");
     $err_str=$err_str.$str."\\n";
     $err_cnt++;
+}
+
+// 注册年级范围校验：提交的“学院 + 专业班级”必须匹配当前开放范围内、该学院下确有
+// 的合格班级，拒绝已毕业 / 未来 / 任意拼凑 / 不属于该学院的组合。策略读取失败时
+// 失败关闭（不写 users）。
+// 是否启用只取决于可信的 OJ_TEMPLATE 配置：syzoj / sta_sty 使用“学院 + 专业班级”
+// 下拉，因此即使学院 / 班级字段为空、缺失或是数组也必须拒绝，不能凭请求自带字段
+// 绕过策略；bs3 / sweet 等自由填写班级的旧模板保持既有行为不受影响。
+if (academic_registration_policy_template_requires_selection(isset($OJ_TEMPLATE) ? $OJ_TEMPLATE : '')) {
+    $reg_policy = academic_registration_policy_load(
+        academic_registration_policy_path(academic_registration_policy_data_dir())
+    );
+    if (!$reg_policy['ok']) {
+        $str="注册年级范围配置异常，请联系管理员。";
+        $err_str=$err_str.$str."\\n";
+        $err_cnt++;
+    } else if (!$xueYuan_scalar || !$school_scalar || $xueYuan === '' || $school === ''
+        || !academic_directory_registration_class_allowed(
+            $xueYuan,
+            $school,
+            $reg_policy['effective_min'],
+            $reg_policy['effective_max']
+        )) {
+        $str="学院与专业班级不匹配，或该班级已不在当前开放年级范围内，请返回重新选择。";
+        $err_str=$err_str.$str."\\n";
+        $err_cnt++;
+    }
 }
 
 $ip = ($_SERVER['REMOTE_ADDR']);

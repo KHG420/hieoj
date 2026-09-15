@@ -183,6 +183,175 @@ function academic_directory_classes($nj = '', $xy = '')
 }
 
 /**
+ * 注册专用：严格“有效数字编号”表达式。
+ *
+ * 只有长度 10/11 位、以 19/20 开头、且**全部为数字**的 num 才算有效编号。
+ * 数字判断逐字符做 `SUBSTR(col, k, 1) BETWEEN '0' AND '9'`，MySQL 与 SQLite
+ * 语义一致，不依赖 REGEXP / GLOB 等方言函数：
+ *   - 前 10 位必须逐位是数字；
+ *   - 11 位编号再单独校验第 11 位。
+ */
+function academic_directory_registration_num_expr($column)
+{
+    $parts = array(
+        "CHAR_LENGTH($column) IN (10,11)",
+        "SUBSTR($column,1,2) IN ('19','20')",
+    );
+    for ($i = 1; $i <= 10; $i++) {
+        $parts[] = "SUBSTR($column,$i,1) BETWEEN '0' AND '9'";
+    }
+    $parts[] = "(CHAR_LENGTH($column) = 10 OR SUBSTR($column,11,1) BETWEEN '0' AND '9')";
+    return '(' . implode(' AND ', $parts) . ')';
+}
+
+/**
+ * 注册专用：权限归属去重条件（与 academic_directory_classes 完全一致）。
+ *
+ *   - 已同步（source_id 非空）的记录始终保留，按其所归属学院查询；
+ *   - 未同步的历史旧行，若同名班级已存在归属其它学院的源行，则不再返回；
+ *   - 完全没有源行时保留旧行行为。
+ */
+function academic_directory_registration_ownership_expr($alias)
+{
+    return "($alias.`source_id` IS NOT NULL OR NOT EXISTS ("
+        . " SELECT 1 FROM `schoolList` t WHERE t.`value` = $alias.`value` AND t.`source_id` IS NOT NULL"
+        . " AND (t.`collegiate_id` <> $alias.`collegiate_id` OR $alias.`collegiate_id` IS NULL)"
+        . "))";
+}
+
+/**
+ * 注册专用：某学院在当前开放年份范围内的合格班级。
+ *
+ * 与共享查询的区别（注册页面专用，不影响 getClass 默认契约）：
+ *   - 只认“有效数字 10/11 位编号”，年份只从 num 前 4 位派生；
+ *   - 只保留 [minYear, maxYear] 闭区间内的年级（历史 / 未来年级排除）；
+ *   - 按年份倒序（最新年级在前），同年按编号升序，稳定可预期；
+ *   - 按班级名称去重，保留权威源行的学院归属语义。
+ *   - xy 为空时返回空数组：注册模式没有“无筛选返回全部”的旁路。
+ *
+ * @param string $xy 学院名称或两位代码
+ * @param string $nj 可选，4 位入学年份；过滤其与开放范围的交集
+ * @param int $minYear 开放范围起始（含）
+ * @param int $maxYear 开放范围截止（含）
+ * @return array 元素为 array('value' => 班级名称)
+ */
+function academic_directory_registration_classes($xy, $nj, $minYear, $maxYear)
+{
+    $xy = (string)$xy;
+    if ($xy === '') {
+        return array();
+    }
+    $minYear = (int)$minYear;
+    $maxYear = (int)$maxYear;
+    if ($minYear < 1900 || $maxYear > 2099 || $minYear > $maxYear) {
+        return array();
+    }
+    $collegiateId = academic_directory_collegiate_id_by_name_or_code($xy);
+    if ($collegiateId === null) {
+        return array();
+    }
+
+    $conds = array();
+    $params = array();
+    $numExpr = academic_directory_registration_num_expr('s.`num`');
+    $yearExpr = academic_directory_year_expr('s.`num`');
+
+    $conds[] = $numExpr;
+    $conds[] = "$yearExpr BETWEEN ? AND ?";
+    $params[] = sprintf('%04d', $minYear);
+    $params[] = sprintf('%04d', $maxYear);
+
+    if ((string)$nj !== '') {
+        $nj = (string)$nj;
+        if (preg_match('/^(19|20)\d{2}$/', $nj) !== 1) {
+            return array();
+        }
+        $njYear = (int)$nj;
+        if ($njYear < $minYear || $njYear > $maxYear) {
+            return array();
+        }
+        $conds[] = "$yearExpr = ?";
+        $params[] = $nj;
+    }
+
+    $conds[] = 's.`collegiate_id` = ?';
+    $params[] = $collegiateId;
+
+    $ownership = academic_directory_registration_ownership_expr('s');
+    $sql = "SELECT s.`value` AS `value` FROM `schoolList` s"
+        . " WHERE $ownership AND " . implode(' AND ', $conds)
+        . " GROUP BY s.`value`"
+        . " ORDER BY MAX($yearExpr) DESC, MIN(s.`num`) ASC, s.`value` ASC";
+
+    $rows = count($params) > 0 ? pdo_query($sql, ...$params) : pdo_query($sql);
+    $out = array();
+    if (is_array($rows)) {
+        foreach ($rows as $row) {
+            if (isset($row['value'])) {
+                $out[] = array('value' => $row['value']);
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * 注册专用：当前开放范围内“确有合格班级”的学院列表。
+ *
+ * 返回 array(array(名称, 两位代码), ...)，与 academic_directory_colleges()
+ * 形状一致；没有任何合格班级时返回空数组，**不回退**到 17 学院全量列表，
+ * 以保证下拉与可注册班级严格一致。
+ */
+function academic_directory_registration_colleges($minYear, $maxYear)
+{
+    $minYear = (int)$minYear;
+    $maxYear = (int)$maxYear;
+    if ($minYear < 1900 || $maxYear > 2099 || $minYear > $maxYear) {
+        return array();
+    }
+    $numExpr = academic_directory_registration_num_expr('s.`num`');
+    $yearExpr = academic_directory_year_expr('s.`num`');
+    $ownership = academic_directory_registration_ownership_expr('s');
+    $sql = "SELECT DISTINCT c.`id` AS `id`, c.`name` AS `name`"
+        . " FROM `schoolList` s JOIN `collegiate` c ON c.`id` = s.`collegiate_id`"
+        . " WHERE $ownership AND $numExpr AND $yearExpr BETWEEN ? AND ?"
+        . " ORDER BY c.`id`";
+    $rows = pdo_query($sql, sprintf('%04d', $minYear), sprintf('%04d', $maxYear));
+    $out = array();
+    if (is_array($rows)) {
+        foreach ($rows as $row) {
+            if (!isset($row['id']) || !isset($row['name'])) {
+                continue;
+            }
+            $out[] = array((string)$row['name'], str_pad((string)intval($row['id']), 2, '0', STR_PAD_LEFT));
+        }
+    }
+    return $out;
+}
+
+/**
+ * 注册专用：校验“学院 + 班级”是否为当前开放范围内的合法组合。
+ *
+ * 使用与下拉完全相同的查询，保证服务端校验与前端选项一致：
+ * 不匹配 / 已毕业 / 未来年级 / 任意拼凑的组合一律返回 false。
+ */
+function academic_directory_registration_class_allowed($college, $school, $minYear, $maxYear)
+{
+    $college = (string)$college;
+    $school = (string)$school;
+    if ($college === '' || $school === '') {
+        return false;
+    }
+    $rows = academic_directory_registration_classes($college, '', $minYear, $maxYear);
+    foreach ($rows as $row) {
+        if ((string)$row['value'] === $school) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * 近若干年的班级（按可识别入学年份过滤），元素含 value。
  *
  * @param int|string $minYearExclusive 严格大于该年份

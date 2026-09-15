@@ -158,7 +158,37 @@ docker compose exec -T web php /home/judge/src/web/cli/academic_directory_import
   - `nj` 与 `xy` 都为空时返回 `[]`（保持原 `getClass.php` 无筛选契约，不返回全部班级）。
 - 注册 / 修改资料 / 排名 / 登录的学院下拉统一来自 `collegiate`；年级选项来自编号派生。
 - 修改资料页保留用户当前历史学院值（即使已不在动态列表中）并默认选中，避免不改却被提交成
-  其它学院；注册页保留“手填班级”兜底。
+  其它学院；新注册的学院 / 班级选择见 5.1（仅开放年级范围内，不再提供手填班级兜底）。
+
+### 5.1 注册开放年级范围（策略文件，不改数据库）
+
+新用户注册只允许选择“当前开放年级范围”内的学院 / 班级；历史（已毕业）与未来年级不再出现在
+注册下拉中，既有用户数据、历史班级与其它页面（登录 / 修改资料 / 排名 / 默认 `getClass.php`）
+行为完全不变。
+
+- 策略保存在既有 `OJ_DATA` 持久目录（生产 `/home/judge/data`，由 `judge-data` 卷挂载、
+  `www-data` 可写）下的小 JSON 文件 `registration_year_policy.json`，**不建表、不加列、不迁移**；
+  文件位于 webroot 之外，随卷在容器重建后保留。
+- 文件缺失时使用**自动模式**：开放 `[当前日历年 - 2, 当前日历年]`（含两端），按当前年份逐年
+  滚动，与导入的旧数据无关；2026 年即 2024..2026，2027 年即 2025..2027，**不需要改写文件**。
+- 管理员可在后台「同步学院班级」页面改为**自定义范围**：起始 / 截止入学年份均为闭区间，
+  取值 1900..2099，且起始不晚于截止；页面同时说明自动规则与当前生效范围。
+- 读取（注册页、`getClass.php`、`register.php` 校验）**绝不写文件**；保存走 POST + 现有
+  `postkey`（`hash_equals`），只有 administrator 可保存，使用“同目录临时文件 + `rename`”原子
+  替换并在写入后复读校验；保存不访问教务网络、不写数据库，也不清理同步 session 状态。
+- 非法年份 / 数组等非法输入一律拒绝且旧文件保持原样；现有文件损坏 / 不可读时页面显式提示，
+  保存有效配置会替换损坏文件并在页面说明（不静默假装成功）。
+- 注册专用查询只认“有效数字 10/11 位编号”（长度 10/11、以 19/20 开头、逐位为数字），年份只从
+  `num` 前 4 位派生，不从名称 / 源 ID 猜；沿用权威源行归属去重语义；结果年份倒序、同年按编号
+  升序、按名称去重。学院下拉只包含当前范围内确有合格班级的学院，无合格班级时不回退 17 学院全量。
+- `getClass.php` 增加 opt-in 参数 `registration=1`（默认行为与 JSON 数组 `value` 契约不变）；
+  注册模式没有 `xy` 时返回 `[]`，不提供无筛选旁路。注册页 AJAX 始终带 `registration=1`，不再
+  使用手填班级兜底：列表为空 / 失败时清空旧班级、保留必填占位并提示联系管理员。
+- `register.php` 在写入 `users` 之前用同一份当前策略校验提交的“学院 + 班级”，拒绝已毕业 /
+  未来 / 不匹配 / 任意拼凑组合并给出中文错误；策略读取失败时失败关闭。是否强制校验只依据可信的
+  `OJ_TEMPLATE` 配置：使用学院 / 班级下拉的模板（syzoj / sta_sty）**无论请求里学院 / 班级字段
+  为空、缺失还是数组都必须拒绝**，不能凭请求自带字段绕过；bs3 / sweet 等自由填写班级的旧模板
+  保持原行为。注册页不再使用输出缓存，管理员保存后立即生效。
 
 ## 6. 旧采集器（macOS Chrome，保留但非默认）
 
@@ -201,6 +231,11 @@ docker run --rm --network none --user www-data --entrypoint php -v "$PWD:/work:r
 docker run --rm --network none --user www-data --entrypoint php -v "$PWD:/work:ro" -w /work \
   hnieoj-unified-web web/tests/academic_directory_admin_page_test.php
 
+# 注册年级范围离线回归（SQLite 查询语义 + 策略文件往返 + getClass 注册模式 +
+# register.php 服务端校验，临时目录 / 临时数据库，无网络 / 无真实数据库）
+docker run --rm --network none --user www-data --entrypoint php -v "$PWD:/work:ro" -w /work \
+  hnieoj-unified-web web/tests/academic_registration_test.php
+
 # Python 采集器解析 / 分页完整性 / 失败不覆盖测试
 python3 scripts/academic-directory-sync/test_collector.py
 
@@ -228,7 +263,16 @@ ACADEMIC_ITEST_SNAPSHOT=/path/to/live-directory.json \
 （采集成功后清理远端 cookie、密码不进入快照 / session 状态）。
 页面级回归在临时目录复制当前产品页面 / navbar / include，用测试夹具复现 `$dbh` 惰性初始化，
 真实执行页面：初始页不显示同步结果、合法预览计数正确且无 PHP 警告、确认结果不被 navbar
-覆盖、migration 不完整时无确认按钮、伪造确认被拒绝且零写入。
+覆盖、migration 不完整时无确认按钮、伪造确认被拒绝且零写入；并额外覆盖注册年级策略卡片
+（GET 只读、自定义保存与切回自动、非法范围与 CSRF 失败零写入、非管理员 403、策略保存不清空
+同步 session 状态、损坏文件显式提示并可被有效配置替换）。
+注册年级范围离线测试覆盖：有效数字 10/11 位编号、年份只从 `num` 派生、开放范围闭区间、
+历史 / 未来 / 畸形编号排除、来源归属去重、年份倒序 + 同年编号升序、学院列表严格匹配、
+策略文件缺失 = 自动滚动、自定义往返、非法输入不落盘、损坏文件显式报错、原子替换无残留；
+并以隔离夹具真实执行 `getClass.php`（注册模式与默认模式）与 `register.php`（合法写入、
+已毕业 / 未来 / 不匹配 / 任意组合拒绝，syzoj / sta_sty 空 / 缺失 / 数组学院班级均拒绝且无 PHP
+警告，bs3 / sweet 旧模板显式配置后自由填写保留，策略损坏失败关闭），全部使用临时路径 /
+临时数据库，不修改任何真实数据。
 集成测试在**一次性、任务专属**的 `oj-academic-test-*` MariaDB 容器里真实验证
 `GET_LOCK` 并发、InnoDB 事务回滚、半迁移拒绝、引擎 / 索引 / 字段宽度检查，并可追加真实
 **全量**（例如 `22 学院 / 4141 班级`）快照的两次 apply 幂等场景；该场景按新语义断言只写入
