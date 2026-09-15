@@ -109,25 +109,40 @@
                 outline: 2px solid #3d4c63;
                 outline-offset: 1px;
             }
+            /* Admin-only judger column: break long unbroken hostnames inside the cell. */
+            #result-tab.oj-status-judger-admin th:last-child,
+            #result-tab.oj-status-judger-admin td:last-child {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+            }
         </style>
-        <table id="result-tab" class="ui very basic center aligned table" style=" table-layout: fixed;">
+        <?php
+        // Admin renders a 12th "judger" column. Reserve ~8% for it by trimming the
+        // widest text columns so all twelve fixed-layout widths still total 97%.
+        // Public (11 columns) keeps the original allocation untouched.
+        $status_is_admin = isset($_SESSION[$OJ_NAME.'_'.'administrator']);
+        $status_col_widths = $status_is_admin
+            ? array(6, 9, 7, 5, 12, 14, 5.5, 5.5, 8, 7, 10, 8)
+            : array(6, 11, 8, 6, 16, 14, 5.5, 5.5, 8, 7, 10);
+        ?>
+        <table id="result-tab" class="ui very basic center aligned table<?php echo $status_is_admin ? ' oj-status-judger-admin' : ''; ?>" style=" table-layout: fixed;">
             <thead>
             <tr>
-                <th style="word-wrap: break-word; width: 6%;"><?php echo $MSG_RUNID?></th>
-                <th style="word-wrap: break-word; width: 11%;"><?php echo "学号"?></th>
-                <th style="word-wrap: break-word; width: 8%;">
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[0]; ?>%;"><?php echo $MSG_RUNID?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[1]; ?>%;"><?php echo "学号"?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[2]; ?>%;">
                     <?php echo "姓名"?>
                 </th>
-                <th style="word-wrap: break-word; width: 6%;"><?php echo $MSG_PROBLEM_ID?></th>
-                <th style="word-wrap: break-word; width: 16%;">标题</th>
-                <th style="word-wrap: break-word; width: 14%;"><?php echo $MSG_RESULT?></th>
-                <th style="word-wrap: break-word; width: 5.5%;"><?php echo $MSG_MEMORY?></th>
-                <th style="word-wrap: break-word; width: 5.5%;"><?php echo $MSG_TIME?></th>
-                <th style="word-wrap: break-word; width: 8%;"><?php echo $MSG_LANG?></th>
-                <th style="word-wrap: break-word; width: 7%;"><?php echo $MSG_CODE_LENGTH?></th>
-                <th style="word-wrap: break-word; width: 10%;"><?php echo $MSG_SUBMIT_TIME?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[3]; ?>%;"><?php echo $MSG_PROBLEM_ID?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[4]; ?>%;">标题</th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[5]; ?>%;"><?php echo $MSG_RESULT?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[6]; ?>%;"><?php echo $MSG_MEMORY?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[7]; ?>%;"><?php echo $MSG_TIME?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[8]; ?>%;"><?php echo $MSG_LANG?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[9]; ?>%;"><?php echo $MSG_CODE_LENGTH?></th>
+                <th style="word-wrap: break-word; width: <?php echo $status_col_widths[10]; ?>%;"><?php echo $MSG_SUBMIT_TIME?></th>
                 <?php	if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])) {
-                    echo "<th class='text-left'>";
+                    echo "<th class='text-left' style='width: ".$status_col_widths[11]."%;'>";
                     echo $MSG_JUDGER;
                     echo "</th>";
                 } ?>
