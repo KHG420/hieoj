@@ -85,6 +85,31 @@
         <?php if(count($view_status)==0){ ?>
         <div class="oj-empty" style="text-align:center;color:#8a93a6;padding:24px 0;">暂无提交记录</div>
         <?php } ?>
+        <style>
+            /* Muted, unboxed similarity line for similar submissions (syzoj status only). */
+            #result-tab .oj-status-similarity {
+                display: block;
+                width: fit-content;
+                margin-top: 4px;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #596a82;
+                background: none;
+                border: 0;
+                box-shadow: none;
+                padding: 0;
+                text-decoration: none;
+            }
+            #result-tab a.oj-status-similarity:hover,
+            #result-tab a.oj-status-similarity:focus {
+                color: #3d4c63;
+                text-decoration: underline;
+            }
+            #result-tab a.oj-status-similarity:focus-visible {
+                outline: 2px solid #3d4c63;
+                outline-offset: 1px;
+            }
+        </style>
         <table id="result-tab" class="ui very basic center aligned table" style=" table-layout: fixed;">
             <thead>
             <tr>

@@ -353,24 +353,46 @@ for ($i=0;$i<$rows_cnt;$i++){
 
     }else{
         if(!$lock||$lock_time>$row['in_date']||$row['user_id']==$_SESSION[$OJ_NAME.'_'.'user_id']){
+            /* OJ_STATUS_SIMILARITY_BEGIN (bounded render block for web/tests/status_similarity_test.php) */
             if($OJ_SIM&&$row['sim']>50&&$row['sim_s_id']!=$row['s_id']) {
-                $view_status[$i][5].= "<span class='".$judge_color[$row['result']]."'  title='$MSG_Tips'>*".$judge_result[$row['result']]."";
-                if ($row['result']!=4&&isset($row['pass_rate'])&&$row['pass_rate']>0&&$row['pass_rate']<.98)
-                    $view_status[$i][5].= (100-$row['pass_rate']*100)."%</span>";
-                else
-                    $view_status[$i][5].="</span>";
+                if ($OJ_TEMPLATE == 'syzoj') {
+                    // syzoj: plain result badge (no redundant similarity asterisk) plus a muted second line.
+                    $view_status[$i][5].= "<span class='".$judge_color[$row['result']]."'  title='$MSG_Tips'>".$judge_result[$row['result']]."";
+                    if ($row['result']!=4&&isset($row['pass_rate'])&&$row['pass_rate']>0&&$row['pass_rate']<.98)
+                        $view_status[$i][5].= (100-$row['pass_rate']*100)."%</span>";
+                    else
+                        $view_status[$i][5].="</span>";
 
-                if( isset($_SESSION[$OJ_NAME.'_'.'source_browser'])){
-
-                    $view_status[$i][5].= "<a href=comparesource.php?left=".$row['sim_s_id']."&right=".$row['solution_id']."  class='btn-info'  target=original>".$row['sim_s_id']."(".$row['sim']."%)</a>";
+                    $oj_similarity_label = "相似度 ".intval($row['sim'])."%";
+                    if(isset($_SESSION[$OJ_NAME.'_'.'source_browser'])){
+                        $oj_similarity_title = "查看代码相似度详情（原提交 #".intval($row['sim_s_id'])."）";
+                        $view_status[$i][5].= "<a href='comparesource.php?left=".intval($row['sim_s_id'])."&right=".intval($row['solution_id'])."' class='oj-status-similarity' target=original title='".htmlspecialchars($oj_similarity_title, ENT_QUOTES, 'UTF-8')."'>".$oj_similarity_label."</a>";
+                    }else{
+                        $view_status[$i][5].= "<span class='oj-status-similarity'>".$oj_similarity_label."</span>";
+                    }
+                    if(isset($_GET['showsim'])&&isset($row['sim_s_id'])){
+                        $view_status[$i][5].= "<span sid='".intval($row['sim_s_id'])."' class='original'></span>";
+                    }
                 }else{
+                    // Legacy templates keep the original asterisk + btn-info markup unchanged.
+                    $view_status[$i][5].= "<span class='".$judge_color[$row['result']]."'  title='$MSG_Tips'>*".$judge_result[$row['result']]."";
+                    if ($row['result']!=4&&isset($row['pass_rate'])&&$row['pass_rate']>0&&$row['pass_rate']<.98)
+                        $view_status[$i][5].= (100-$row['pass_rate']*100)."%</span>";
+                    else
+                        $view_status[$i][5].="</span>";
 
-                    $view_status[$i][5].= "<span class='btn-info'>(".$row['sim']."%)</span>";
+                    if( isset($_SESSION[$OJ_NAME.'_'.'source_browser'])){
 
-                }
-                if(isset($_GET['showsim'])&&isset($row['sim_s_id'])){
-                    $view_status[$i][5].= "<span sid='".$row['sim_s_id']."' class='original'></span>";
+                        $view_status[$i][5].= "<a href=comparesource.php?left=".$row['sim_s_id']."&right=".$row['solution_id']."  class='btn-info'  target=original>".$row['sim_s_id']."(".$row['sim']."%)</a>";
+                    }else{
 
+                        $view_status[$i][5].= "<span class='btn-info'>(".$row['sim']."%)</span>";
+
+                    }
+                    if(isset($_GET['showsim'])&&isset($row['sim_s_id'])){
+                        $view_status[$i][5].= "<span sid='".$row['sim_s_id']."' class='original'></span>";
+
+                    }
                 }
             }else{
 
@@ -380,6 +402,7 @@ for ($i=0;$i<$rows_cnt;$i++){
                 else
                     $view_status[$i][5].="</span>";
             }
+            /* OJ_STATUS_SIMILARITY_END */
         }else{
             $view_status[$i][5]="----";
         }
