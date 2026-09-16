@@ -1,0 +1,14 @@
+[Unit]
+Description=HnieOJ public outage/recovery email notification via PushPlus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# 显式用 /usr/bin/python3 调用（脚本本身无需可执行位，0644 即可）。
+ExecStart=/usr/bin/python3 /usr/local/sbin/hnieoj-frp-notify.py
+# systemd 以 0700 创建 /var/lib/hnieoj-frp-notify。
+StateDirectory=hnieoj-frp-notify
+StateDirectoryMode=0700
+# 预算：探针 25s + HTTPS 10s = 35s，短于 timer 周期（60s）且留有余量。
+TimeoutStartSec=50s

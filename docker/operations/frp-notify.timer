@@ -1,0 +1,11 @@
+[Unit]
+Description=Run HnieOJ public outage/recovery notification every 60 seconds
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=60s
+AccuracySec=1s
+Unit=frp-notify.service
+
+[Install]
+WantedBy=timers.target
