@@ -1,0 +1,10 @@
+[Unit]
+Description=HnieOJ FRP external health check and bounded frpc recovery
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hnieoj-frp-healthcheck
+# 必须短于 timer 周期（60s），避免上一轮未结束而堆积。
+TimeoutStartSec=55s

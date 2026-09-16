@@ -1,0 +1,11 @@
+[Unit]
+Description=Run HnieOJ FRP external health check every 60 seconds
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=60s
+AccuracySec=1s
+Unit=frp-healthcheck.service
+
+[Install]
+WantedBy=timers.target
