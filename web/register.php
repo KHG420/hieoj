@@ -5,6 +5,40 @@ if(isset($OJ_REGISTER)&&!$OJ_REGISTER) exit(0);
 require_once("./include/my_func.inc.php");
 require_once("./include/academic_directory.php");
 require_once("./include/academic_registration.php");
+
+/**
+ * 注册请求指纹：顶层 POST 字段按 key 排序后规范化，取 SHA-256。
+ *
+ * 成功回执只保存该单向哈希，绝不保存明文密码 / 验证码；同一会话内两次完全
+ * 相同的提交得到同一哈希，任一字段（含密码、验证码）变化都会得到不同哈希，
+ * 因而不会误命中回执。
+ */
+function register_request_payload_hash($post)
+{
+	if(!is_array($post)) return '';
+	ksort($post,SORT_STRING);
+	return hash('sha256',serialize($post));
+}
+
+/**
+ * 输出注册成功提示 / 跳转。首次注册与同会话重放共用，保证重放返回与首次
+ * 完全一致的 JS 行为（免审自动登录跳首页；需审核提示等待通知）。
+ */
+function register_success_response($pending_approval)
+{
+	if($pending_approval){
+		$str="提交成功，等待管理员审核通过邮箱通知。";
+		$action="history.go(-2);";
+	}else{
+		$str="注册成功，已自动登录。";
+		$action="window.location.href='index.php';";
+	}
+	echo "<script>\r\n";
+	echo "    alert('".$str."');\r\n";
+	echo "        ".$action."\r\n";
+	echo "    </script>\r\n";
+}
+
 $err_str="";
 $err_cnt=0;
 $len;
@@ -17,8 +51,38 @@ $xueYuan=academic_registration_policy_scalar_request($_POST,'xueYuan',$xueYuan_s
 $school=academic_registration_policy_scalar_request($_POST,'school',$school_scalar);
 $phone=trim($_POST['phone']);
 $qq=trim($_POST['qq']);
-$vcode=trim($_POST['vcode']);
+// vcode 为可选字段：沿用学院 / 班级的安全标量读取，缺失 / 数组 / 非标量输入
+// 不再触发 PHP 警告，而是按空串走既有的验证码校验分支。
+$vcode=academic_registration_policy_scalar_request($_POST,'vcode',$vcode_scalar);
 $code =  isset($_POST['code'])?$_POST['code']:'';
+
+// 同会话成功回执重放：请求载荷指纹与上一次成功注册完全一致时，直接返回相同
+// 的成功响应并结束，避免响应丢失后的重试再次 SELECT 命中已建用户而误报
+// UserExisted。重放不查库、不写库、不重新登录：
+//   - 免审模式必须先确认当前会话仍登录在同一用户名下，登出 / 换号后不得重放；
+//   - 审核模式本就只写库并提示等待，重放只返回相同提示、不登录；
+//   - 任何字段变化都会改变指纹，新会话也没有该回执，因而不会命中。
+$register_payload_hash=register_request_payload_hash($_POST);
+$register_receipt_key=$OJ_NAME.'_'.'register_success_receipt';
+$register_receipt=isset($_SESSION[$register_receipt_key])&&is_array($_SESSION[$register_receipt_key])
+	?$_SESSION[$register_receipt_key]:null;
+if($register_receipt!==null
+	&&isset($register_receipt['hash'])
+	&&is_string($register_receipt['hash'])
+	&&hash_equals($register_receipt['hash'],$register_payload_hash)){
+	if(!empty($register_receipt['confirm'])){
+		register_success_response(true);
+		exit(0);
+	}
+	$register_logged_in=isset($_SESSION[$OJ_NAME.'_'.'user_id'])
+		&&is_string($_SESSION[$OJ_NAME.'_'.'user_id'])
+		?$_SESSION[$OJ_NAME.'_'.'user_id']:'';
+	if($register_logged_in!==''&&isset($register_receipt['user_id'])
+		&&(string)$register_receipt['user_id']===$register_logged_in){
+		register_success_response(false);
+		exit(0);
+	}
+}
 if($OJ_VCODE&&(!isset($_SESSION[$OJ_NAME.'_'."vcode"])||$vcode!==$_SESSION[$OJ_NAME.'_'."vcode"]||$vcode==""||$vcode==null) ){
 	$_SESSION[$OJ_NAME.'_'."vcode"]=null;
 	$err_str=$err_str."Verification Code Wrong!\\n";
@@ -192,18 +256,15 @@ if(!isset($OJ_REG_NEED_CONFIRM)||!$OJ_REG_NEED_CONFIRM){
 		$_SESSION[$OJ_NAME.'_'.'ac']=Array();
 		$_SESSION[$OJ_NAME.'_'.'sub']=Array();
 }
-// 交互连贯：提示与实际行为一致（免审自动登录跳首页；需审核提示等待通知）
-if(!isset($OJ_REG_NEED_CONFIRM)||!$OJ_REG_NEED_CONFIRM){
-    $str="注册成功，已自动登录。";
-}else{
-    $str="提交成功，等待管理员审核通过邮箱通知。";
-}
+// 成功回执：仅在用户 / 登录日志确实写入（免审时还已建立登录会话）之后保存，
+// 校验失败或重复用户不会走到这里。只存请求指纹、成功用户与确认模式，绝无明文
+// 密码 / 验证码；供同一会话在响应丢失后重放同一 POST 时幂等返回成功。
+$_SESSION[$register_receipt_key]=array(
+	'hash'=>$register_payload_hash,
+	'user_id'=>$user_id,
+	'confirm'=>(isset($OJ_REG_NEED_CONFIRM)&&$OJ_REG_NEED_CONFIRM)?1:0,
+);
+// 交互连贯：提示与实际行为一致（免审自动登录跳首页；需审核提示等待通知）。
+// 同一函数供首次注册与同会话重放共用，保证重放返回完全相同的提示 / 跳转。
+register_success_response(isset($OJ_REG_NEED_CONFIRM)&&$OJ_REG_NEED_CONFIRM);
 ?>
-<script>
-    alert('<?php echo $str; ?>');
-    <?php if(!isset($OJ_REG_NEED_CONFIRM)||!$OJ_REG_NEED_CONFIRM){ ?>
-    window.location.href='index.php';
-    <?php }else{ ?>
-    history.go(-2);
-    <?php } ?>
-</script>
