@@ -35,6 +35,9 @@ services:
       OJ_MEMCACHE: "0"
       OJ_MEMSERVER: cache
       OJ_MEMPORT: "11211"
+      # 注册验证码邮件（腾讯云 SES）：真实值只保存在服务器 .env，缺省为空即视为未配置
+      TENCENTCLOUD_SECRET_ID: ${TENCENTCLOUD_SECRET_ID:-}
+      TENCENTCLOUD_SECRET_KEY: ${TENCENTCLOUD_SECRET_KEY:-}
     volumes:
       - credentials:/run/oj-secrets:ro
       - judge-data:/home/judge/data
