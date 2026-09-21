@@ -12,6 +12,7 @@ $pids = array(); $cids = array(); $failed = false;
 function check_adv($ok, $message) { if (!$ok) throw new RuntimeException($message); }
 function request_adv($path, $post=null, $auth=true, $expected=200) {
     global $sid;
+    usleep(160000); // Stay below the local nginx dynamic-request limit.
     $curl = curl_init('http://127.0.0.1'.$path);
     curl_setopt_array($curl, array(CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>15));
     if ($auth) curl_setopt($curl, CURLOPT_COOKIE, 'PHPSESSID='.$sid);
@@ -105,6 +106,8 @@ finally {
     pdo_query('DELETE FROM solution WHERE user_id=?',$uid);
     foreach ($cids as $id) { pdo_query('DELETE FROM contest_problem WHERE contest_id=?',$id); pdo_query('DELETE FROM contest WHERE contest_id=?',$id); }
     foreach ($pids as $id) pdo_query('DELETE FROM problem WHERE problem_id=?',$id);
+    // The AC trigger and the route reward write money rows for this fixture user.
+    foreach (array('coin_ledger','coin_first_ac','coin_wallet') as $table) pdo_query("DELETE FROM $table WHERE user_id=?",$uid);
     pdo_query('DELETE FROM users WHERE user_id=?',$uid);
     $file=ini_get('session.save_path').'/sess_'.$sid; if (is_file($file)) unlink($file);
     echo "Temporary adventure fixtures and session removed.\n";

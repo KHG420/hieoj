@@ -4,6 +4,7 @@ $OJ_CACHE_SHARE = false;
 require_once './include/db_info.inc.php';
 require_once './include/setlang.php';
 require_once './include/adventure.inc.php';
+require_once './include/editorial.inc.php';
 header('Cache-Control: private, no-store');
 if (isset($OJ_ON_SITE_CONTEST_ID)) {
     header('Location: contest.php?cid='.intval($OJ_ON_SITE_CONTEST_ID));
@@ -92,12 +93,39 @@ if ($tab === 'enemy' && $user) {
     $victories = array_slice($victories, 0, 5);
 }
 $route = isset($state['route']) ? $state['route'] : null;
-$routeDone = array(); $routeInvalid = false;
+$routeDone = array();
+$routeInvalid = false;
+$routeComplete = false;
+$rewardDay = adv_reward_day($now);
+$rewardClaimed = false;
+$rewardPaid = false;
+$rewardError = null;
 if ($tab === 'route' && $route) {
-    foreach ($route['problems'] as $p) if (!isset($public[$p['id']])) $routeInvalid = true;
+    foreach ($route['problems'] as $p) {
+        if (!isset($public[$p['id']])) {
+            $routeInvalid = true;
+        }
+    }
     if (!$routeInvalid) {
-        $rows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)', $user, $route['cursor'], date('Y-m-d H:i:s', $route['start']));
+        $rows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)',$user,$route['cursor'],date('Y-m-d H:i:s',$route['start']));
         $routeDone = array_map('intval', array_column($rows, 'problem_id'));
+        $routeIds = array_map(function ($p) {return intval($p['id']);}, $route['problems']);
+        $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
+        // Coins are earned by the current day's own accepted solutions. The
+        // stored route only supplies the three problems and the start cursor;
+        // neither old progress nor a session flag may pay or block twice.
+        $rewardRows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND in_date>=? AND in_date<? AND (contest_id IS NULL OR contest_id=0) AND problem_id IN ('.implode(',', $routeIds).')',$user,$route['cursor'],date('Y-m-d H:i:s',$route['start']),$rewardDay['start'],$rewardDay['end']);
+        $rewardQualified = $rewardRows !== false && count(array_diff($routeIds, array_map('intval', array_column($rewardRows, 'problem_id')))) === 0;
+        $rewardClaimed = (bool)pdo_query('SELECT 1 FROM coin_ledger WHERE user_id=? AND kind=? AND reference_id=? LIMIT 1',$user,'adventure_reward',$rewardDay['reference']);
+        if ($rewardQualified) {
+            try {
+                $rewardPaid = editorial_adventure_reward($user, $rewardDay['reference'], 10);
+                $rewardClaimed = true;
+            } catch (Throwable $e) {
+                $rewardError = $e->getMessage();
+                error_log('Adventure reward failed: '.$e->getMessage());
+            }
+        }
     }
 }
 $shadow = null;

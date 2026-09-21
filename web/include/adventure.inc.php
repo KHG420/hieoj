@@ -89,6 +89,18 @@ function adv_week($now) {
     return array(date('Y-m-d 00:00:00', $start), date('Y-m-d 00:00:00', strtotime('+7 days', $start)));
 }
 
+// Adventure coins belong to the server's own calendar day: the reference makes
+// the ledger's unique key claim once per user per day, and the half-open window
+// [00:00:00, next 00:00:00) decides which accepted solutions count.
+function adv_reward_day($now) {
+    $day = date('Y-m-d', $now);
+    return array(
+        'reference' => intval(date('Ymd', $now)),
+        'start' => $day.' 00:00:00',
+        'end' => date('Y-m-d', strtotime($day.' +1 day')).' 00:00:00',
+    );
+}
+
 function adv_week_problems($problems, $week) {
     usort($problems, function ($a, $b) use ($week) {
         return strcmp(hash('sha256', $week.':'.$a['id']), hash('sha256', $week.':'.$b['id']));

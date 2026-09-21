@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS problem_unlock (
 CREATE TABLE IF NOT EXISTS coin_ledger (
   id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
   user_id varchar(48) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,
-  kind enum('first_ac','editorial_reward','problem_unlock') NOT NULL,
+  kind enum('first_ac','editorial_reward','problem_unlock','adventure_reward') NOT NULL,
   reference_id bigint unsigned NOT NULL,
   amount int NOT NULL,
   created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,

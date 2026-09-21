@@ -128,3 +128,30 @@ function editorial_review($reviewer, $id, $decision, $note) {
         throw $e;
     }
 }
+function editorial_adventure_reward($user, $referenceId, $amount = 10) {
+    if (!$user || !$referenceId || $amount <= 0) { return false; }
+    $db = editorial_db();
+    $db->beginTransaction();
+    try {
+        // A server without the focused migration would silently coerce the kind
+        // to '' outside strict mode and still pay, so require the real value.
+        $kind = editorial_query("SELECT COLUMN_TYPE FROM information_schema.columns
+            WHERE table_schema=DATABASE() AND table_name='coin_ledger' AND column_name='kind'")->fetchColumn();
+        if (!$kind || strpos($kind, "'adventure_reward'") === false) {
+            throw new RuntimeException('coin_ledger.kind lacks adventure_reward; apply docker/db/adventure-coins.sql.');
+        }
+        try {
+            editorial_query("INSERT INTO coin_ledger(user_id,kind,reference_id,amount) VALUES(?,'adventure_reward',?,?)",array($user, $referenceId, $amount));
+        } catch (PDOException $e) {
+            // The only unique key here is the per-event claim itself.
+            if (intval($e->errorInfo[1] ?? 0) === 1062) { $db->rollBack(); return false; }
+            throw $e;
+        }
+        editorial_query('INSERT INTO coin_wallet(user_id,balance) VALUES(?,?) ON DUPLICATE KEY UPDATE balance=balance+VALUES(balance)',array($user, $amount));
+        $db->commit();
+        return true;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) { $db->rollBack();}
+        throw $e;
+    }
+}
