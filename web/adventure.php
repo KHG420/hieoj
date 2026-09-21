@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (count($route) < 3) $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
             else {
                 $cursor = pdo_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', $user);
-                $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>intval($cursor[0][0]),'reward_id'=>random_int(1, PHP_INT_MAX));
+                $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>intval($cursor[0][0]));
             }
         } elseif ($action === 'shadow' && $tab === 'shadow') {
             $cid = isset($_POST['contest']) && is_scalar($_POST['contest']) ? intval($_POST['contest']) : 0;
@@ -96,7 +96,10 @@ $route = isset($state['route']) ? $state['route'] : null;
 $routeDone = array();
 $routeInvalid = false;
 $routeComplete = false;
-$routeRewarded = false;
+$rewardDay = adv_reward_day($now);
+$rewardClaimed = false;
+$rewardPaid = false;
+$rewardError = null;
 if ($tab === 'route' && $route) {
     foreach ($route['problems'] as $p) {
         if (!isset($public[$p['id']])) {
@@ -108,14 +111,18 @@ if ($tab === 'route' && $route) {
         $routeDone = array_map('intval', array_column($rows, 'problem_id'));
         $routeIds = array_map(function ($p) {return intval($p['id']);}, $route['problems']);
         $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
-        if ($routeComplete && isset($route['reward_id']) && empty($route['rewarded'])) {
+        // Coins are earned by the current day's own accepted solutions. The
+        // stored route only supplies the three problems and the start cursor;
+        // neither old progress nor a session flag may pay or block twice.
+        $rewardRows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND in_date>=? AND in_date<? AND (contest_id IS NULL OR contest_id=0) AND problem_id IN ('.implode(',', $routeIds).')',$user,$route['cursor'],date('Y-m-d H:i:s',$route['start']),$rewardDay['start'],$rewardDay['end']);
+        $rewardQualified = $rewardRows !== false && count(array_diff($routeIds, array_map('intval', array_column($rewardRows, 'problem_id')))) === 0;
+        $rewardClaimed = (bool)pdo_query('SELECT 1 FROM coin_ledger WHERE user_id=? AND kind=? AND reference_id=? LIMIT 1',$user,'adventure_reward',$rewardDay['reference']);
+        if ($rewardQualified) {
             try {
-                $routeRewarded = editorial_adventure_reward($user, intval($route['reward_id']), 10);
-                if ($routeRewarded) {
-                    $state['route']['rewarded'] = true;
-                    $_SESSION[$stateKey] = $state;
-                }
+                $rewardPaid = editorial_adventure_reward($user, $rewardDay['reference'], 10);
+                $rewardClaimed = true;
             } catch (Throwable $e) {
+                $rewardError = $e->getMessage();
                 error_log('Adventure reward failed: '.$e->getMessage());
             }
         }
