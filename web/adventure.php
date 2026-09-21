@@ -16,6 +16,24 @@ $tab = isset($_GET['tab']) && is_string($_GET['tab']) && isset($tabs[$_GET['tab'
 $now = time();
 $stateKey = $OJ_NAME.'_adventure_'.$user;
 $state = $user && isset($_SESSION[$stateKey]) ? $_SESSION[$stateKey] : array();
+if ($user && !isset($state['route'])) {
+    $today = date('Y-m-d', $now);
+    $daily = pdo_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', $user, $today);
+    if ($daily) {
+        $ids = array(intval($daily[0]['problem1']), intval($daily[0]['problem2']), intval($daily[0]['problem3']));
+        $problems = array();
+        foreach ($ids as $id) {
+            $rows = pdo_query('SELECT problem_id id,title,source,accepted,submit FROM problem WHERE problem_id=?', $id);
+            if ($rows) {
+                $problems[] = $rows[0];
+            }
+        }
+        if (count($problems) === 3) {
+            $state['route'] = array('problems'=>$problems, 'start'=>strtotime($daily[0]['start_time']), 'mode'=>$daily[0]['mode'], 'node'=>$daily[0]['node'], 'cursor'=>intval($daily[0]['cursor_id']), 'reward_id'=>intval($daily[0]['reward_id']), 'rewarded'=>intval($daily[0]['rewarded']));
+            $_SESSION[$stateKey]=$state;
+        }
+    }
+}
 $error = null;
 $public = array();
 foreach (adv_public_problems() as $p) $public[intval($p['id'])] = $p;
@@ -47,8 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $route = adv_route($graph, $public, $results, $slug, $mode);
             if (count($route) < 3) $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
             else {
-                $cursor = pdo_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', $user);
-                $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>intval($cursor[0][0]),'reward_id'=>random_int(1, PHP_INT_MAX));
+                $daily = pdo_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', $user, date('Y-m-d', $now));
+                if ($daily) {
+                    $state['route'] = array('problems'=>$route, 'start'=>strtotime($daily[0]['start_time']), 'mode'=>$daily[0]['mode'], 'node'=>$daily[0]['node'], 'cursor'=>intval($daily[0]['cursor_id']), 'reward_id'=>intval($daily[0]['reward_id']), 'rewarded'=>intval($daily[0]['rewarded']));
+                } else {
+                    $cursor = pdo_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', $user);
+                    $cursorId = intval($cursor[0][0]);
+                    $rewardId = random_int(1, PHP_INT_MAX);
+                    pdo_query('INSERT INTO adventure_route_daily(user_id, route_date, node, mode, problem1, problem2, problem3, start_time, cursor_id, reward_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', $user, date('Y-m-d', $now), $slug, $mode, intval($route[0]['id']), intval($route[1]['id']), intval($route[2]['id']), date('Y-m-d H:i:s', $now), $cursorId, $rewardId);
+                    $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>$cursorId, 'reward_id'=>$rewardId, 'rewarded'=>0);
+                }
             }
         } elseif ($action === 'shadow' && $tab === 'shadow') {
             $cid = isset($_POST['contest']) && is_scalar($_POST['contest']) ? intval($_POST['contest']) : 0;

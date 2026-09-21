@@ -42,6 +42,7 @@ SQL
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/solutions-coins.sql
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/community-hunts.sql
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/acm-lab.sql
+  mariadb --socket="$SOCK" -uroot jol < /opt/oj/adventure-route.sql
   # Use the existing application's salted password format, not a new auth scheme.
   SALT=$(openssl rand -hex 2)
   mariadb --socket="$SOCK" -uroot jol <<SQL
