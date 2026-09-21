@@ -4,6 +4,7 @@ $OJ_CACHE_SHARE = false;
 require_once './include/db_info.inc.php';
 require_once './include/setlang.php';
 require_once './include/adventure.inc.php';
+require_once './include/editorial.inc.php';
 header('Cache-Control: private, no-store');
 if (isset($OJ_ON_SITE_CONTEST_ID)) {
     header('Location: contest.php?cid='.intval($OJ_ON_SITE_CONTEST_ID));
@@ -47,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (count($route) < 3) $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
             else {
                 $cursor = pdo_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', $user);
-                $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>intval($cursor[0][0]));
+                $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>intval($cursor[0][0]),'reward_id'=>random_int(1, PHP_INT_MAX));
             }
         } elseif ($action === 'shadow' && $tab === 'shadow') {
             $cid = isset($_POST['contest']) && is_scalar($_POST['contest']) ? intval($_POST['contest']) : 0;
@@ -92,12 +93,32 @@ if ($tab === 'enemy' && $user) {
     $victories = array_slice($victories, 0, 5);
 }
 $route = isset($state['route']) ? $state['route'] : null;
-$routeDone = array(); $routeInvalid = false;
+$routeDone = array();
+$routeInvalid = false;
+$routeComplete = false;
+$routeRewarded = false;
 if ($tab === 'route' && $route) {
-    foreach ($route['problems'] as $p) if (!isset($public[$p['id']])) $routeInvalid = true;
+    foreach ($route['problems'] as $p) {
+        if (!isset($public[$p['id']])) {
+            $routeInvalid = true;
+        }
+    }
     if (!$routeInvalid) {
-        $rows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)', $user, $route['cursor'], date('Y-m-d H:i:s', $route['start']));
+        $rows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)',$user,$route['cursor'],date('Y-m-d H:i:s',$route['start']));
         $routeDone = array_map('intval', array_column($rows, 'problem_id'));
+        $routeIds = array_map(function ($p) {return intval($p['id']);}, $route['problems']);
+        $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
+        if ($routeComplete && isset($route['reward_id']) && empty($route['rewarded'])) {
+            try {
+                $routeRewarded = editorial_adventure_reward($user, intval($route['reward_id']), 10);
+                if ($routeRewarded) {
+                    $state['route']['rewarded'] = true;
+                    $_SESSION[$stateKey] = $state;
+                }
+            } catch (Throwable $e) {
+                error_log('Adventure reward failed: '.$e->getMessage());
+            }
+        }
     }
 }
 $shadow = null;

@@ -128,3 +128,21 @@ function editorial_review($reviewer, $id, $decision, $note) {
         throw $e;
     }
 }
+function editorial_adventure_reward($user, $referenceId, $amount = 10) {
+    if (!$user || !$referenceId || $amount <= 0) { return false; }
+    $db = editorial_db();
+    $db->beginTransaction();
+    try {
+        $ledger = editorial_query("INSERT IGNORE INTO coin_ledger(user_id,kind,reference_id,amount) VALUES(?,'adventure_reward',?,?)",array($user, $referenceId, $amount));
+        if ($ledger->rowCount() === 1) {
+            editorial_query('INSERT INTO coin_wallet(user_id,balance) VALUES(?,?) ON DUPLICATE KEY UPDATE balance=balance+VALUES(balance)',array($user, $amount));
+            $db->commit();
+            return true;
+        }
+        $db->commit();
+        return false;
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) { $db->rollBack();}
+        throw $e;
+    }
+}
