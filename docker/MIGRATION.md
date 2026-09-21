@@ -4,6 +4,40 @@
 以下保留为后续迁移、恢复时的操作原则。
 不能把根 Compose 直接覆盖到旧生产编排目录：卷名、密码管理、源码来源与判题挂载均已变化。
 
+## 现有卷升级：今日冒险金币（adventure_reward）
+
+`coin_ledger.kind` 的旧 enum 不含 `adventure_reward`。只重建镜像或重启容器**不会**升级已有数据卷：
+`docker/db/entrypoint.sh` 仅在全新安装时导入初始 SQL，旧卷上的 `coin_ledger` 保持原样。
+不要为了这次升级重跑 `solutions-coins.sql`：`CREATE TABLE IF NOT EXISTS` 不会改动已存在的表，
+而其中的历史首次通过回填是另一项独立行为。改用只扩展 enum 的聚焦迁移
+`docker/db/adventure-coins.sql`（钱包余额、账本行、金额与 `one_event` 唯一键都不受影响，可重复执行）。
+
+enum 升级不需要重建或重启数据库：直接在运行中的旧 db 容器上执行聚焦迁移，
+确认 enum 扩展完成后，再部署新 web 镜像（新 web 会在入账时写入 `adventure_reward`）。
+
+```bash
+# 1. 把仓库中的聚焦迁移直接送进运行中的 db 容器（不重启数据库）。
+#    若数据库已停止，先 docker compose up -d --wait db，--wait 依赖 db 的 healthcheck。
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol' < docker/db/adventure-coins.sql
+# 2. 核对 enum 已包含 adventure_reward，再继续下一步。
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol -e "SHOW COLUMNS FROM coin_ledger LIKE \"kind\""'
+# 3. 聚焦迁移确认后才部署新 web 镜像；--no-deps 不触碰 db，--wait 等健康检查通过。
+docker compose up -d --no-deps --build --wait web
+```
+
+只有在 db 镜像本身也需要更新时（例如改用镜像内置的 `/opt/oj/adventure-coins.sql`）才重建 db；
+升级已有卷时 entrypoint 不会自动执行迁移，仍需手动跑聚焦迁移：
+
+```bash
+docker compose up -d --build --wait db
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol < /opt/oj/adventure-coins.sql'
+```
+
+迁移末尾的两条只读查询用于人工复核，不会改写历史数据：
+`empty_kind_rows` 是旧 enum 下被 `INSERT IGNORE` 静默写成空字符串、但钱包已加钱的账本行；
+`duplicate_day_rewards` 是同一天被旧会话随机奖励 ID 重复发放冒险金币的用户。
+发现结果后先备份并人工确认补偿方式，不要直接删改账本行。`ALTER TABLE` 期间会短暂锁写，建议在低峰执行。
+
 ## 备份范围
 
 在旧生产服务器执行只读备份，并将备份复制到另一台机器，核对 SHA-256。

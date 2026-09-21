@@ -25,12 +25,16 @@
       <label>目的地<select name="node" required><?php foreach ($graph['nodes'] as $node) { $available = false; foreach ($node['progress']['problems'] as $p) if (isset($public[$p['id']])) { $available = true; break; } if (!$available) continue; ?><option value="<?php echo adv_escape($node['slug']); ?>" <?php if (($route['node'] ?? '') === $node['slug']) echo 'selected'; ?>><?php echo adv_escape($node['domain'].' · '.$node['name']); ?></option><?php } ?></select></label>
       <label>这次想怎么练<select name="mode"><option value="challenge" <?php if (($route['mode'] ?? 'challenge') === 'challenge') echo 'selected'; ?>>挑战自己</option><option value="review" <?php if (($route['mode'] ?? '') === 'review') echo 'selected'; ?>>巩固一下</option></select></label>
       <button class="ui primary button" type="submit"><?php echo $route ? '重新选取三题' : '开启三题远征'; ?></button></form>
-      <p class="adv-note">路线保存在当前登录会话中；重新选题会开始新一轮计时。只有本轮开始后的练习 AC 才点亮路标。</p>
+      <p class="adv-note">路线保存在当前登录会话中；重新选题会开始新一轮计时。只有本轮开始后的练习 AC 才点亮路标。三道题都在当天通过可领取 10 金币，每位用户每天最多奖励一次，按北京时间 00:00 换日。</p>
     <?php } ?>
     </section>
     <?php if ($routeInvalid) { ?><p class="adv-feedback">路线中有题目已不再公开，请重新选取三题。</p><?php } elseif ($route) { $done = count(array_intersect(array_column($route['problems'], 'id'), $routeDone)); ?>
     <section class="adv-panel"><div class="adv-section-head"><h2><?php echo $done === 3 ? '远征完成，这段路属于你。' : '你的本次路线'; ?></h2><span><?php echo $done; ?> / 3 站已通过</span></div>
     <ol class="adv-route"><?php foreach ($route['problems'] as $i=>$p) { $accepted = in_array($p['id'], $routeDone); ?><li class="<?php echo $accepted ? 'is-done' : ''; ?>"><span class="adv-stop"><?php echo $i+1; ?></span><div><span class="adv-note"><?php echo adv_escape($p['node_name']); ?></span><h3><a href="problem.php?id=<?php echo intval($p['id']); ?>" target="_blank" rel="noopener"><?php echo adv_escape($public[$p['id']]['title']); ?><span class="sr-only">（在新标签页打开）</span></a></h3><span><?php echo $accepted ? '已通过 · 路标点亮' : '等待你的答案'; ?></span></div></li><?php } ?></ol>
+    <?php if ($rewardPaid) { ?><p class="adv-success" role="status">今日冒险奖励已到账：+10 金币。明天完成新的三道题可以再次领取。</p>
+    <?php } elseif ($rewardClaimed) { ?><p class="adv-note">今日冒险奖励已领取。每位用户每天最多奖励一次，明天再来。</p>
+    <?php } elseif ($routeComplete) { ?><p class="adv-note">今日 10 金币尚未发放：需要三道题都在今天通过，刷新本页即可领取。</p>
+    <?php } if ($rewardError) { ?><p class="adv-feedback adv-error" role="alert">金币奖励暂时无法发放，请稍后刷新重试。</p><?php } ?>
     <?php if ($done === 3) { ?><button type="button" class="ui primary button" data-save-card="route">保存通关卡</button><?php } else { ?><a class="ui basic button" href="adventure.php?tab=route">刷新判题进度</a><?php } ?></section><?php } ?>
   <?php } elseif ($tab === 'shadow') { ?>
     <section class="adv-panel"><h2>和过去的自己，打一场</h2><p>重练一场参加过的公开比赛，让当时的提交时间线陪你跑完全程。</p>

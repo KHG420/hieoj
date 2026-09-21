@@ -24,6 +24,14 @@ adv_expect(adv_route($graph,$public,$results,'target','challenge')===array(), 'H
 adv_expect(adv_week(strtotime('2026-09-13 23:59:59'))[0]==='2026-09-07 00:00:00', 'Sunday belongs to previous week');
 adv_expect(adv_week(strtotime('2026-09-14 00:00:00'))[0]==='2026-09-14 00:00:00', 'Monday rolls over');
 adv_expect(adv_week_problems(array_values($public),'2026-09-14')===adv_week_problems(array_reverse(array_values($public)),'2026-09-14'), 'Weekly selection independent of input order');
+foreach (array(
+    array('2026-09-14 23:59:59', 20260914, '2026-09-14 00:00:00', '2026-09-15 00:00:00'),
+    array('2026-09-15 00:00:00', 20260915, '2026-09-15 00:00:00', '2026-09-16 00:00:00'),
+    array('2026-12-31 12:00:00', 20261231, '2026-12-31 00:00:00', '2027-01-01 00:00:00'),
+) as $edge) {
+    $day = adv_reward_day(strtotime($edge[0]));
+    adv_expect($day['reference']===$edge[1] && $day['start']===$edge[2] && $day['end']===$edge[3], 'Reward day window and reference at '.$edge[0]);
+}
 $start = strtotime('2026-09-14 12:00:00');
 $rows = array(array('problem_id'=>1,'result'=>4,'in_date'=>'2026-09-14 11:59:59'),array('problem_id'=>1,'result'=>6,'in_date'=>'2026-09-14 12:00:05'),array('problem_id'=>1,'result'=>4,'in_date'=>'2026-09-14 12:00:10'),array('problem_id'=>1,'result'=>4,'in_date'=>'2026-09-14 12:00:20'),array('problem_id'=>2,'result'=>4,'in_date'=>'2026-09-14 12:01:01'));
 $score = adv_shadow_score($rows,$start,$start+60);
