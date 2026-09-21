@@ -188,3 +188,153 @@ docker run --rm -v "$PWD":/work:ro --entrypoint bash hnieoj-unified-web:latest \
 docker run --rm -v "$PWD":/work:ro --entrypoint bash hnieoj-unified-web:latest \
     /work/docker/tests/frp-healthcheck.test.sh
 ```
+
+## 网络证据记录（`frp-network-diagnostics`，应用服务器，只读）
+
+2026-09-21 10:22–10:39 CST 实测事实：应用服务器 172.31.0.96 能到网关
+172.31.0.1 与本地 Web，但到腾讯 42.194.237.240 的 TCP 22/7000 与公网 DNS
+都失败；SYN 已离开网卡、没有回包；10:39:45 同一个 frpc PID 自行恢复重连，
+networkd 没有任何事件。上游触发原因未知。为把「当时本机看到了什么」逐分钟
+留证，新增这条**只读**证据链路：每分钟追加一行 JSONL，供事后与云侧/校园网
+上游日志对齐，而不是在本机猜测结论。
+
+它与 `frp-healthcheck`（自动恢复）、`frp-notify`（公网邮件）完全独立：
+不重启、不登录、不改配置、不读任何配置文件、不读环境变量，只执行固定只读
+命令（`curl` / `ip` / `ping` / `getent` / `journalctl` / `systemctl show`），
+诊断结果不触发任何动作。
+
+| 文件 | 部署位置 | 模式 |
+|---|---|---|
+| `frp-network-diagnostics.py` | 应用服务器 `/usr/local/sbin/hnieoj-frp-network-diagnostics.py` | 0644 |
+| `frp-network-diagnostics.service` | 应用服务器 `/etc/systemd/system/frp-network-diagnostics.service` | 0644 |
+| `frp-network-diagnostics.timer` | 应用服务器 `/etc/systemd/system/frp-network-diagnostics.timer` | 0644 |
+
+### 每次快照记录什么
+
+10 项固定检查，每项 3–5s 硬超时、固定 8 线程有界并发，正常一轮 <15s：
+
+| 检查 | 命令 / 边界 | `ok` 的条件 |
+|---|---|---|
+| `local_http` | `curl -4 --noproxy '*'` 请求 `http://127.0.0.1/`，正文写临时文件、只读前 256KiB | HTTP 恰为 200 且含页面标记「算法设计在线评测系统」 |
+| `tcp_frp_7000` | 字面 IP socket 连接 42.194.237.240:7000 | 握手成功 |
+| `tcp_ssh_22` | 字面 IP socket 连接 42.194.237.240:22 | 握手成功 |
+| `tcp_dns_53` | 字面 IP socket 连接 223.5.5.5:53 | 握手成功 |
+| `resolver` | `getent ahostsv4 www.baidu.com`（5s 上限） | 至少解析出一个 IPv4 地址 |
+| `default_route` | `ip -4 route show default` | 存在 `dev ens160` 的默认路由（其他网卡的默认路由只记录、不算 ok） |
+| `gateway_ping` | `ping -4 -n -q -c 1 -W 2 -w 4 <网关>` | 有回包 |
+| `neighbor` | `ip -4 neigh show dev ens160` | 网关条目不是 FAILED/INCOMPLETE（无条目不算异常） |
+| `interface` | `ip -4 -o addr show dev ens160` + `ip -s -o link show dev ens160` | operstate UP 且有 IPv4 地址；同时记录 RX/TX 字节、包、错误、丢包计数 |
+| `frpc_service` | `systemctl show frpc -p LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestamp,...` | `LoadState=loaded` 且 `ActiveState=active`，记录 MainPID 与启动时间 |
+
+路由/地址/链路/邻居观测都围绕应用网卡 `ens160`。TCP 探测只对字面 IPv4
+构造 `AF_INET` socket，**不做 DNS 解析**（诊断本身不依赖解析器）；
+curl 显式 `--noproxy '*'`，不受代理环境变量影响。
+
+每行 JSONL 字段：
+
+- `ts`（带时区 ISO8601）、`epoch`、`elapsed_ms`、`hostname`、`iface`；
+- `checks.<name>`：`ok` / `error` / `observed` / `duration_ms` 加该检查的原始
+  观测（HTTP 只记状态码、是否含标记、正文字节数，**绝不记正文**）；
+- `failed_checks`：所有 `ok=false` 的检查名；`issues`：`<检查名>: <error>`
+  形式的建议标签，仅描述本机观测，不做因果推断；
+- `primary_issues` / `primary_failure`：只看 `local_http`、`tcp_frp_7000`、
+  `tcp_ssh_22`、`tcp_dns_53`、`resolver` 这 5 项主判据；
+- `probes_complete`：所有检查是否都真正跑出了观测（命令缺失、子进程超时等
+  情况为 false）。`failed_checks` 非空或 `probes_complete=false` 都不能被
+  读成「一切正常」。
+
+`error` 标签刻意区分：`refused`（拒绝）、`timeout`（超时/无回包）、
+`dns_error`（解析失败）、`missing_command`（命令缺失）、`http_5xx`、
+`marker_missing`、`no_default_route`、`down`、`not_active` 等。
+
+### 旁证与结论的边界
+
+- **网关 ping 单独失败不构成任何结论。** 它只是旁证；`primary_failure` 只由
+  上面 5 项主判据决定。网关/邻居/接口/frpc 服务异常会如实进入
+  `failed_checks` 与 `issues`，但不据此判定「公网不可用」。
+- 本记录只反映**应用服务器本机的观测**。上游（腾讯云 VPC/安全组、运营商、
+  校园网出口、DNS 服务商）是否异常，必须用上游日志对齐后才能定论；
+  没有上游日志时只能说「本机在哪些时刻看到了什么」。
+- 不推断「校园网大面积故障」「门户认证过期」等结论；`issues` 只是原始观测标签。
+- 不含配置、环境变量、凭据。journal 行中的 `token=` / `password:` 等键值会
+  脱敏为 `<redacted>`，且只保留最近 30 行 / 2 分钟内 / 最多 8KiB。
+
+### journal 附带规则
+
+仅两种情况附带 frpc journal（`journalctl -u frpc -n 30 --since '2 min ago'`）：
+
+1. 本轮任一主判据失败 → `journal.reason=primary_failure`；
+2. 上一轮主判据失败、本轮恢复 → `journal.reason=recovery`。
+
+上一轮状态保存在日志目录 `state.json`（仅 `last_epoch`、`primary_failure`、
+`issues`）。journalctl 本身失败只记 `journal.error`，不影响快照落盘。
+
+### 有界性与权限
+
+- 目录 `/var/log/hnieoj-frp-network` 0700；`events.jsonl`、`state.json`、
+  `lock` 0600（脚本显式 chmod，service `UMask=0077` 兜底）。
+- `events.jsonl` 按 4MiB 轮转：写新行前若会超过 4MiB，则
+  `events.jsonl` → `.1` → … → `.7`，最旧的 `.7` 被覆盖，总量 ≤32MiB。
+- service `Type=oneshot`、`TimeoutStartSec=45s`；timer `OnBootSec=30s`、
+  `OnUnitActiveSec=60s`、`AccuracySec=1s`。
+- `flock` 非阻塞独占锁：手动执行与 timer 重叠时跳过本轮，不写半份证据。
+- 无法写证据（目录不可建、`events.jsonl` 不可写）→ stderr 可见、退出非零；
+  探测失败但证据写入成功 → 退出 0；state 写失败只告警，证据仍保留。
+
+### 安装（仅应用服务器；不重建 Web 镜像）
+
+```bash
+install -m 0644 docker/operations/frp-network-diagnostics.py \
+    /usr/local/sbin/hnieoj-frp-network-diagnostics.py
+install -m 0644 docker/operations/frp-network-diagnostics.service \
+    docker/operations/frp-network-diagnostics.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now frp-network-diagnostics.timer
+```
+
+不涉及 Web 镜像或前端产物，不需要重建/重启 Web 容器，也不改动
+`frp-healthcheck`、`frp-notify` 的 unit、状态与判定逻辑。
+
+### 状态、查看与读取
+
+```bash
+systemctl status frp-network-diagnostics.timer --no-pager
+systemctl list-timers frp-network-diagnostics.timer --no-pager
+journalctl -u frp-network-diagnostics.service -n 20 --no-pager  # 每轮一行摘要；写失败为 WARN
+tail -n 5 /var/log/hnieoj-frp-network/events.jsonl              # 最近 5 分钟快照
+ls -l /var/log/hnieoj-frp-network/                             # events.jsonl + .1..7
+```
+
+```bash
+# 用 Python 读取 JSONL，挑出主判据失败或观测不完整的行（jq 非必需）
+python3 - <<'PY'
+import json
+for line in open('/var/log/hnieoj-frp-network/events.jsonl'):
+    rec = json.loads(line)
+    if rec['primary_failure'] or not rec['probes_complete']:
+        print(rec['ts'], rec['issues'])
+PY
+```
+
+轮转说明：超过 4MiB 时在写新行前轮转，`.1` 最新、`.7` 最旧并被覆盖；
+按每行约 2–4KiB 估算，32MiB 总量可回溯数天。
+
+### 回滚
+
+```bash
+systemctl disable --now frp-network-diagnostics.timer
+rm -f /etc/systemd/system/frp-network-diagnostics.service \
+      /etc/systemd/system/frp-network-diagnostics.timer
+systemctl daemon-reload
+rm -f /usr/local/sbin/hnieoj-frp-network-diagnostics.py
+rm -rf /var/log/hnieoj-frp-network   # 需要保留证据时不要执行
+```
+
+### 回归测试
+
+```bash
+python3 docker/tests/frp-network-diagnostics-test.py
+```
+
+只 mock 子进程与 TCP socket 两个外部边界；快照组装、输出解析、state、权限与
+4MiB 轮转都跑真实逻辑，全部使用临时目录，不接触 `/var/log` 与真实网络。

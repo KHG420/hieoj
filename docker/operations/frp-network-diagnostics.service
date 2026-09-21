@@ -1,0 +1,14 @@
+[Unit]
+Description=HnieOJ FRP network evidence logging (read-only diagnostics)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# 显式用 /usr/bin/python3 调用（脚本 0644，无需可执行位）。
+ExecStart=/usr/bin/python3 /usr/local/sbin/hnieoj-frp-network-diagnostics.py
+# 只读诊断：不重启、不登录、不改配置。正常一轮 <15s（每项 3-5s 硬超时、
+# 固定 8 线程并发），最坏一轮 5s 上下文 + 5s 并行 + 3s journal << 45s。
+TimeoutStartSec=45s
+# 目录 0700、文件 0600 由脚本显式设置；UMask 作为额外兜底。
+UMask=0077
