@@ -122,6 +122,9 @@ $route = isset($state['route']) ? $state['route'] : null;
 $routeDone = array();
 $routeInvalid = false;
 $routeComplete = false;
+$rewardDay = adv_reward_day($now);
+$rewardPaid = false;
+$rewardError = null;
 $routeRewarded = false;
 if ($tab === 'route' && $route) {
     foreach ($route['problems'] as $p) {
@@ -134,7 +137,12 @@ if ($tab === 'route' && $route) {
         $routeDone = array_map('intval', array_column($rows, 'problem_id'));
         $routeIds = array_map(function ($p) {return intval($p['id']);}, $route['problems']);
         $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
-        if ($routeComplete && isset($route['reward_id']) && empty($route['rewarded'])) {
+        // Coins are earned by the current day's own accepted solutions. The
+        // stored route only supplies the three problems and the start cursor;
+        // neither old progress nor a session flag may pay or block twice.
+        $rewardRows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)AND problem_id IN ('.implode(',', $routeIds).')', $user, $route['cursor'], date('Y-m-d H:i:s',$route['start']));
+        $rewardQualified = $rewardRows !== false && count(array_diff($routeIds, array_map('intval', array_column($rewardRows,'problem_id')))) === 0;
+        if ($routeComplete && $rewardQualified && isset($route['reward_id']) && empty($route['rewarded'])) {
             try {
                 $routeRewarded = editorial_adventure_reward($user, intval($route['reward_id']), 10);
                 if ($routeRewarded) {
@@ -142,6 +150,7 @@ if ($tab === 'route' && $route) {
                     $_SESSION[$stateKey] = $state;
                 }
             } catch (Throwable $e) {
+                $rewardError = $e->getMessage();
                 error_log('Adventure reward failed: '.$e->getMessage());
             }
         }
