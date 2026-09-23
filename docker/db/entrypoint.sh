@@ -38,11 +38,16 @@ CREATE USER 'hustoj'@'%' IDENTIFIED BY '$DB_PASS';
 GRANT ALL PRIVILEGES ON jol.* TO 'hustoj'@'%';
 SQL
   mariadb --socket="$SOCK" -uroot jol < /opt/oj/schema.sql
-  mariadb --socket="$SOCK" -uroot jol < /opt/oj/knowledge-graph.sql
-  mariadb --socket="$SOCK" -uroot jol < /opt/oj/solutions-coins.sql
-  mariadb --socket="$SOCK" -uroot jol < /opt/oj/community-hunts.sql
-  mariadb --socket="$SOCK" -uroot jol < /opt/oj/acm-lab.sql
-  mariadb --socket="$SOCK" -uroot jol < /opt/oj/adventure-route.sql
+  # knowledge-graph.sql maps nodes to `category` labels that nothing else seeds,
+  # so a fresh volume needs them first or knowledge_node_category stays empty.
+  # Both files carry Chinese names: force the client to utf8mb4 so the import
+  # cannot be decoded with the latin1 default.
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/category-seed.sql
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/knowledge-graph.sql
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/solutions-coins.sql
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/community-hunts.sql
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/acm-lab.sql
+  mariadb --socket="$SOCK" --default-character-set=utf8mb4 -uroot jol < /opt/oj/adventure-route.sql
   # Use the existing application's salted password format, not a new auth scheme.
   SALT=$(openssl rand -hex 2)
   mariadb --socket="$SOCK" -uroot jol <<SQL
