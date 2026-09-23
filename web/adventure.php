@@ -17,6 +17,7 @@ $now = time();
 $stateKey = $OJ_NAME.'_adventure_'.$user;
 $state = $user && isset($_SESSION[$stateKey]) ? $_SESSION[$stateKey] : array();
 $error = null;
+$routeRestoreError = null;
 $today = date('Y-m-d', $now);
 $rewardDay = adv_reward_day($now);
 function adventure_route_from_daily($daily) {
@@ -24,10 +25,9 @@ function adventure_route_from_daily($daily) {
     $problems = array();
     foreach ($ids as $id) {
         $row = editorial_query('SELECT problem_id id,title,source,accepted,submit FROM problem WHERE problem_id=?', array($id))->fetch(PDO::FETCH_ASSOC);
-        if (!$row) {
-            throw new RuntimeException('算法远征持久化记录中的题目不存在。');
-        }
-        $problems[] = $row;
+        // A stop whose problem disappeared is kept as a placeholder so the day's
+        // route stays readable and can be rebuilt, instead of failing the page.
+        $problems[] = $row ?: array('id' => $id, 'title' => '', 'source' => '', 'accepted' => 0, 'submit' => 0);
     }
     return array('day' => $daily['route_date'], 'problems' => $problems, 'start' => strtotime($daily['start_time']), 'mode' => $daily['mode'], 'node' => $daily['node'], 'cursor' => intval($daily['cursor_id']));
 }
@@ -35,7 +35,75 @@ function adventure_daily_route($user, $day) {
     $row = editorial_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', array($user, $day))->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
 }
-if ($user) {
+// Every node exposes the problems that belong to it, so the reverse map is what
+// restores the knowledge point each stored stop came from.
+function adventure_build_node_map($nodes) {
+    $map = array();
+    foreach ($nodes as $node) {
+        foreach ($node['progress']['problems'] as $problem) {
+            if (!isset($map[$problem['id']])) $map[$problem['id']] = $node['name'];
+        }
+    }
+    return $map;
+}
+// The three stops may come from the target knowledge point and from its
+// prerequisites, so each one gets the node that owns it rather than one shared
+// label. A restored stop keeps a generic label when no node owns it any more.
+function adventure_tag_route($route, $nodes) {
+    if (!$route || !$nodes) return $route;
+    $map = adventure_build_node_map($nodes);
+    foreach ($route['problems'] as &$problem) {
+        $problem['node_name'] = isset($map[$problem['id']]) ? $map[$problem['id']] : '关联知识点';
+    }
+    unset($problem);
+    return $route;
+}
+// A route stays fixed for the day, so it may only be rebuilt when one of its
+// stops stopped being public practice: the day's knowledge point is kept and
+// re-resolved against the current graph, because a saved node can disappear too.
+function adventure_route_problems($route) {
+    $ids = array();
+    foreach ($route['problems'] as $p) $ids[] = intval($p['id']);
+    return $ids;
+}
+// A route is unusable when a stop is no longer public practice or when its
+// problem row is gone; both are replaced by the same controlled rebuild.
+function adventure_route_broken($route, $public) {
+    if (!isset($route['problems']) || count($route['problems']) !== 3) return true;
+    foreach ($route['problems'] as $p) {
+        if (empty($p['title']) || !isset($public[intval($p['id'])])) return true;
+    }
+    return false;
+}
+// $slug and $mode are the destination and practice mode picked on the submitting
+// form while the route was unusable; empty or unknown choices keep the day's
+// saved ones.
+function adventure_rebuild_route($user, $today, $now, $graph, $public, $results, $daily, $slug = '', $mode = '') {
+    $nodes = $graph['nodes'];
+    $available = array();
+    foreach ($nodes as $node) $available[$node['slug']] = true;
+    $savedSlug = isset($daily['node']) && is_string($daily['node']) ? $daily['node'] : '';
+    $target = isset($available[$slug]) ? $slug : (isset($available[$savedSlug]) ? $savedSlug : '');
+    $targetMode = $mode === 'review' ? 'review' : ($mode === 'challenge' ? 'challenge' : ($daily['mode'] === 'review' ? 'review' : 'challenge'));
+    $oldRoute = adventure_route_from_daily($daily);
+    $oldIds = adventure_route_problems($oldRoute);
+    $newRoute = adv_route($graph, $public, $results, $target, $targetMode);
+    $newIds = adventure_route_problems(array('problems' => $newRoute));
+    if (count($newIds) < 3 || array_diff($newIds, $oldIds) === array()) return false;
+    $cursorId = intval(editorial_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', array($user))->fetchColumn());
+    // Replace only the exact route that was just read. Problems, destination,
+    // mode, start time and submission cursor move together, so only ACS after
+    // this rebuild count, and a concurrent rebuild makes this a no-op instead of
+    // a second set.
+    $replace = editorial_query('UPDATE adventure_route_daily SET problem1=?,problem2=?,problem3=?,node=?,mode=?,start_time=?,cursor_id=?
+        WHERE user_id=? AND route_date=? AND problem1=? AND problem2=? AND problem3=? AND cursor_id=?',
+        array($newIds[0], $newIds[1], $newIds[2], $target, $targetMode, date('Y-m-d H:i:s', $now), $cursorId, $user, $today, $oldIds[0], $oldIds[1], $oldIds[2], intval($oldRoute['cursor'])));
+    return $replace->rowCount() === 1;
+}
+// Restoring and repairing the day's route belongs to the route tab alone, and
+// its failures stay in $routeRestoreError: the other tabs keep saving their own
+// state when the route table or a referenced problem is unavailable.
+if ($user && $tab === 'route') {
     try {
         $daily = adventure_daily_route($user, $today);
         if ($daily) {
@@ -64,7 +132,9 @@ if ($user) {
             }
         }
     } catch (Throwable $e) {
-        $error = '算法远征持久化不可用，请稍后重试。';
+        // Reported on the route tab only; the session keeps whatever route was
+        // stored before, so other tabs and actions are untouched.
+        $routeRestoreError = '算法远征持久化不可用，请稍后重试。';
         error_log('Adventure route persistence failed: '.$e->getMessage());
     }
 }
@@ -72,6 +142,18 @@ $public = array();
 foreach (adv_public_problems() as $p) $public[intval($p['id'])] = $p;
 $results = in_array($tab, array('enemy','route','campus','memoir'), true) ? adv_results($user) : array();
 $graph = $tab === 'route' && kg_schema_ready() ? kg_load_graph() : array('nodes'=>array(), 'edges'=>array());
+// The daily route is fixed, but a stop that left public practice cannot be
+// practised any more: only such a route may be rebuilt, and the POST handler
+// below is the only place allowed to replace it. It is derived from the session
+// before and after the POST, so an error path still renders the newest route,
+// and each stop is tagged with the knowledge point it belongs to.
+function adventure_route_state($state, $tab, $public, $nodes) {
+    $route = $tab === 'route' && isset($state['route']) ? $state['route'] : null;
+    $invalid = $route && adventure_route_broken($route, $public);
+    return array(adventure_tag_route($route, $nodes), $invalid, $invalid && $nodes !== array());
+}
+list($route, $routeInvalid, $routeNeedsRebuild) = adventure_route_state($state, $tab, $public, $graph['nodes']);
+$routeReady = $tab === 'route' && $route && !$routeRestoreError;
 $contests = array();
 if ($user && $tab === 'shadow') {
     $rows = pdo_query("SELECT c.contest_id,c.title,c.start_time,c.end_time FROM contest c
@@ -116,9 +198,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             throw new RuntimeException('算法远征路线创建失败。');
                         }
                     }
-                }
-                if (!$error && $daily) {
-                    $state['route'] = adventure_route_from_daily($daily);
+                } else {
+                    // The day's route is fixed, so a usable route never
+                    // regenerates its problems, destination, start time or
+                    // cursor.
+                    $saved = adventure_route_from_daily($daily);
+                    if (adventure_route_broken($saved, $public)) {
+                        // An unusable stop is replaced with a fresh route; the
+                        // destination and mode picked on this submission are
+                        // honoured when they are valid, otherwise the day's are
+                        // kept. A request that raced this one may have repaired
+                        // it first, in which case this replaces nothing.
+                        adventure_rebuild_route($user, $today, $now, $graph, $public, $results, $daily, $slug, $mode);
+                        $daily = adventure_daily_route($user, $today);
+                        if (!$daily) {
+                            throw new RuntimeException('算法远征路线替换后无法读回。');
+                        }
+                        $saved = adventure_route_from_daily($daily);
+                        if (adventure_route_broken($saved, $public)) {
+                            $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
+                        }
+                    }
+                    $state['route'] = $saved;
                 }
             } catch (Throwable $e) {
                 $error = '算法远征路线保存失败，请刷新页面后重试。';
@@ -145,6 +246,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+list($route, $routeInvalid, $routeNeedsRebuild) = adventure_route_state($state, $tab, $public, $graph['nodes']);
+$routeReady = $tab === 'route' && $route && !$routeRestoreError;
 $enemy = null; $victories = array(); $growth = 0;
 if ($tab === 'enemy' && $user) {
     $day = date('Y-m-d', $now);
@@ -166,21 +269,13 @@ if ($tab === 'enemy' && $user) {
     usort($victories, function ($a, $b) { return strcmp($b['record']['first_ac'], $a['record']['first_ac']); });
     $victories = array_slice($victories, 0, 5);
 }
-$route = isset($state['route']) ? $state['route'] : null;
 $routeDone = array();
-$routeInvalid = false;
 $routeComplete = false;
 $rewardDay = adv_reward_day($now);
 $rewardPaid = false;
 $rewardClaimed = false;
 $rewardError = null;
-if ($tab === 'route' && $route) {
-    foreach ($route['problems'] as $p) {
-        if (!isset($public[$p['id']])) {
-            $routeInvalid = true;
-            break;
-        }
-    }
+if ($tab === 'route' && $route && !$routeRestoreError) {
     try {
         $rewardClaimed = (bool) editorial_query("SELECT 1 FROM coin_ledger WHERE user_id=? AND kind='adventure_reward' AND reference_id=? LIMIT 1", array($user, $rewardDay['reference']))->fetchColumn();
         if (!$routeInvalid) {
