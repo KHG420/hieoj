@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS adventure_route_daily (
     problem3 INT NOT NULL,
     start_time DATETIME NOT NULL,
     cursor_id BIGINT NOT NULL DEFAULT 0,
-    reward_id BIGINT NOT NULL,
-    rewarded TINYINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_user_day(user_id, route_date)
 );

@@ -16,25 +16,58 @@ $tab = isset($_GET['tab']) && is_string($_GET['tab']) && isset($tabs[$_GET['tab'
 $now = time();
 $stateKey = $OJ_NAME.'_adventure_'.$user;
 $state = $user && isset($_SESSION[$stateKey]) ? $_SESSION[$stateKey] : array();
-if ($user && !isset($state['route'])) {
-    $today = date('Y-m-d', $now);
-    $daily = pdo_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', $user, $today);
-    if ($daily) {
-        $ids = array(intval($daily[0]['problem1']), intval($daily[0]['problem2']), intval($daily[0]['problem3']));
-        $problems = array();
-        foreach ($ids as $id) {
-            $rows = pdo_query('SELECT problem_id id,title,source,accepted,submit FROM problem WHERE problem_id=?', $id);
-            if ($rows) {
-                $problems[] = $rows[0];
+$error = null;
+$today = date('Y-m-d', $now);
+$rewardDay = adv_reward_day($now);
+function adventure_route_from_daily($daily) {
+    $ids = array(intval($daily['problem1']), intval($daily['problem2']), intval($daily['problem3']));
+    $problems = array();
+    foreach ($ids as $id) {
+        $row = editorial_query('SELECT problem_id id,title,source,accepted,submit FROM problem WHERE problem_id=?', array($id))->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new RuntimeException('算法远征持久化记录中的题目不存在。');
+        }
+        $problems[] = $row;
+    }
+    return array('day' => $daily['route_date'], 'problems' => $problems, 'start' => strtotime($daily['start_time']), 'mode' => $daily['mode'], 'node' => $daily['node'], 'cursor' => intval($daily['cursor_id']));
+}
+function adventure_daily_route($user, $day) {
+    $row = editorial_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', array($user, $day))->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+if ($user) {
+    try {
+        $daily = adventure_daily_route($user, $today);
+        if ($daily) {
+            $state['route'] = adventure_route_from_daily($daily);
+            $_SESSION[$stateKey] = $state;
+        } else {
+            $legacy = isset($state['route']) ? $state['route'] : null;
+            $legacyIsToday = $legacy && isset($legacy['start'], $legacy['cursor'], $legacy['node'], $legacy['mode'], $legacy['problems']) && count($legacy['problems']) === 3 && date('Y-m-d', intval($legacy['start'])) === $today;
+            if ($legacyIsToday) {
+                try {
+                    editorial_query('INSERT INTO adventure_route_daily (user_id,route_date,node,mode,problem1,problem2,problem3,start_time,cursor_id) VALUES (?,?,?,?,?,?,?,?,?)',array($user, $today, $legacy['node'], $legacy['mode'], intval($legacy['problems'][0]['id']), intval($legacy['problems'][1]['id']), intval($legacy['problems'][2]['id']), date('Y-m-d H:i:s', intval($legacy['start'])), intval($legacy['cursor'])));
+                } catch (PDOException $e) {
+                    if (intval($e->errorInfo[1] ?? 0) !== 1062) {
+                        throw $e;
+                    }
+                }
+                $daily = adventure_daily_route($user, $today);
+                if (!$daily) {
+                    throw new RuntimeException('算法远征路线保存失败，请刷新后重试。');
+                }
+                $state['route'] = adventure_route_from_daily($daily);
+                $_SESSION[$stateKey] = $state;
+            } else {
+                unset($state['route']);
+                $_SESSION[$stateKey] = $state;
             }
         }
-        if (count($problems) === 3) {
-            $state['route'] = array('problems'=>$problems, 'start'=>strtotime($daily[0]['start_time']), 'mode'=>$daily[0]['mode'], 'node'=>$daily[0]['node'], 'cursor'=>intval($daily[0]['cursor_id']), 'reward_id'=>intval($daily[0]['reward_id']), 'rewarded'=>intval($daily[0]['rewarded']));
-            $_SESSION[$stateKey]=$state;
-        }
+    } catch (Throwable $e) {
+        $error = '算法远征持久化不可用，请稍后重试。';
+        error_log('Adventure route persistence failed: '.$e->getMessage());
     }
 }
-$error = null;
 $public = array();
 foreach (adv_public_problems() as $p) $public[intval($p['id'])] = $p;
 $results = in_array($tab, array('enemy','route','campus','memoir'), true) ? adv_results($user) : array();
@@ -62,19 +95,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'route' && $tab === 'route') {
             $slug = isset($_POST['node']) && is_string($_POST['node']) ? $_POST['node'] : '';
             $mode = isset($_POST['mode']) && $_POST['mode'] === 'review' ? 'review' : 'challenge';
-            $route = adv_route($graph, $public, $results, $slug, $mode);
-            if (count($route) < 3) $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
-            else {
-                $daily = pdo_query('SELECT * FROM adventure_route_daily WHERE user_id=? AND route_date=? LIMIT 1', $user, date('Y-m-d', $now));
-                if ($daily) {
-                    $state['route'] = array('problems'=>$route, 'start'=>strtotime($daily[0]['start_time']), 'mode'=>$daily[0]['mode'], 'node'=>$daily[0]['node'], 'cursor'=>intval($daily[0]['cursor_id']), 'reward_id'=>intval($daily[0]['reward_id']), 'rewarded'=>intval($daily[0]['rewarded']));
-                } else {
-                    $cursor = pdo_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', $user);
-                    $cursorId = intval($cursor[0][0]);
-                    $rewardId = random_int(1, PHP_INT_MAX);
-                    pdo_query('INSERT INTO adventure_route_daily(user_id, route_date, node, mode, problem1, problem2, problem3, start_time, cursor_id, reward_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', $user, date('Y-m-d', $now), $slug, $mode, intval($route[0]['id']), intval($route[1]['id']), intval($route[2]['id']), date('Y-m-d H:i:s', $now), $cursorId, $rewardId);
-                    $state['route'] = array('problems'=>$route, 'start'=>$now, 'mode'=>$mode, 'node'=>$slug, 'cursor'=>$cursorId, 'reward_id'=>$rewardId, 'rewarded'=>0);
+            try {
+                $daily = adventure_daily_route($user, $today);
+                if (!$daily) {
+                    $newRoute = adv_route($graph, $public, $results, $slug, $mode);
+                    if (count($newRoute) < 3) {
+                        $error = '这个知识点暂时凑不齐三道可练习题，请换一个知识点或选择巩固模式。';
+                    } else {
+                        $cursorStmt = editorial_query('SELECT COALESCE(MAX(solution_id),0) FROM solution WHERE user_id=?', array($user));
+                        $cursorId = intval($cursorStmt->fetchColumn());
+                        try {
+                            editorial_query('INSERT INTO adventure_route_daily (user_id,route_date,node,mode,problem1,problem2,problem3,start_time,cursor_id) VALUES (?,?,?,?,?,?,?,?,?)', array($user, $today, $slug, $mode, intval($newRoute[0]['id']), intval($newRoute[1]['id']), intval($newRoute[2]['id']), date('Y-m-d H:i:s', $now), $cursorId));
+                        } catch (PDOException $e) {
+                            if (intval($e->errorInfo[1] ?? 0) !== 1062) {
+                                throw $e;
+                            }
+                        }
+                        $daily = adventure_daily_route($user, $today);
+                        if (!$daily) {
+                            throw new RuntimeException('算法远征路线创建失败。');
+                        }
+                    }
                 }
+                if (!$error && $daily) {
+                    $state['route'] = adventure_route_from_daily($daily);
+                }
+            } catch (Throwable $e) {
+                $error = '算法远征路线保存失败，请刷新页面后重试。';
+                error_log('Adventure route save failed: '.$e->getMessage());
             }
         } elseif ($action === 'shadow' && $tab === 'shadow') {
             $cid = isset($_POST['contest']) && is_scalar($_POST['contest']) ? intval($_POST['contest']) : 0;
@@ -124,36 +172,32 @@ $routeInvalid = false;
 $routeComplete = false;
 $rewardDay = adv_reward_day($now);
 $rewardPaid = false;
+$rewardClaimed = false;
 $rewardError = null;
-$routeRewarded = false;
 if ($tab === 'route' && $route) {
     foreach ($route['problems'] as $p) {
         if (!isset($public[$p['id']])) {
             $routeInvalid = true;
+            break;
         }
     }
-    if (!$routeInvalid) {
-        $rows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)',$user,$route['cursor'],date('Y-m-d H:i:s',$route['start']));
-        $routeDone = array_map('intval', array_column($rows, 'problem_id'));
-        $routeIds = array_map(function ($p) {return intval($p['id']);}, $route['problems']);
-        $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
-        // Coins are earned by the current day's own accepted solutions. The
-        // stored route only supplies the three problems and the start cursor;
-        // neither old progress nor a session flag may pay or block twice.
-        $rewardRows = pdo_query('SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND (contest_id IS NULL OR contest_id=0)AND problem_id IN ('.implode(',', $routeIds).')', $user, $route['cursor'], date('Y-m-d H:i:s',$route['start']));
-        $rewardQualified = $rewardRows !== false && count(array_diff($routeIds, array_map('intval', array_column($rewardRows,'problem_id')))) === 0;
-        if ($routeComplete && $rewardQualified && isset($route['reward_id']) && empty($route['rewarded'])) {
-            try {
-                $routeRewarded = editorial_adventure_reward($user, intval($route['reward_id']), 10);
-                if ($routeRewarded) {
-                    $state['route']['rewarded'] = true;
-                    $_SESSION[$stateKey] = $state;
-                }
-            } catch (Throwable $e) {
-                $rewardError = $e->getMessage();
-                error_log('Adventure reward failed: '.$e->getMessage());
+    try {
+        $rewardClaimed = (bool) editorial_query("SELECT 1 FROM coin_ledger WHERE user_id=? AND kind='adventure_reward' AND reference_id=? LIMIT 1", array($user, $rewardDay['reference']))->fetchColumn();
+        if (!$routeInvalid) {
+            $routeIds = array_map(function ($p) { return intval($p['id']);}, $route['problems']);
+            $placeholders = implode(',', array_fill(0, count($routeIds), '?'));
+            $args = array_merge(array($user, intval($route['cursor']), date('Y-m-d H:i:s', intval($route['start'])), $rewardDay['start'], $rewardDay['end']), $routeIds);
+            $rows = editorial_query("SELECT DISTINCT problem_id FROM solution WHERE user_id=? AND result=4 AND solution_id>? AND in_date>=? AND in_date>=? AND in_date<? AND (contest_id IS NULL OR contest_id=0) AND problem_id IN ($placeholders)", $args)->fetchAll(PDO::FETCH_ASSOC);
+            $routeDone = array_map('intval', array_column($rows, 'problem_id'));
+            $routeComplete = count(array_diff($routeIds, $routeDone)) === 0;
+            if ($routeComplete && !$rewardClaimed) {
+                $rewardPaid = editorial_adventure_reward($user, $rewardDay['reference'], 10);
+                $rewardClaimed = (bool) editorial_query("SELECT 1 FROM coin_ledger WHERE user_id=? AND kind='adventure_reward' AND reference_id=? LIMIT 1", array($user, $rewardDay['reference']))->fetchColumn();
             }
         }
+    } catch (Throwable $e) {
+        $rewardError = $e->getMessage();
+        error_log('Adventure reward failed: '.$e->getMessage());
     }
 }
 $shadow = null;
