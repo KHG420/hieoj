@@ -366,8 +366,8 @@ try {
     list($count, $sum) = rw_adventure($u4b);
     rw_check($count === 1 && $sum === 10 && editorial_balance($u4b) === 16, 'Concurrent independent sessions pay ten coins once');
 
-    // AC3: the reward belongs to the server calendar day, so yesterday's route
-    // keeps its visual progress but must be finished again today.
+    // AC3: yesterday's session must not become today's persisted route.
+    // A fresh daily route must be generated before today's qualifying ACs.
     $u5 = rw_user('f'); $users[] = $u5;
     $routeStart = strtotime($day.' -1 day 23:00:00');
     $preFixSession = rw_route_state(array_slice($pids,0,3), $routeStart, 0, 'challenge', $node['slug']);
@@ -382,11 +382,31 @@ try {
     $page = rw_http('/adventure.php?tab=route', $s5);
     list($count, $sum, $reference) = rw_adventure($u5);
     rw_check($count === 1 && $sum === 10 && $reference === $yesterdayRef, 'Yesterday accepted stops cannot claim today');
-    rw_check(str_contains($page,'远征完成'), 'Old route progress is still displayed');
-    foreach (array_slice($pids,0,3) as $pid) rw_ac($u5, $pid);
+    rw_check(!str_contains($page,'远征完成') && adv_route_button($page) === '开启三题远征', 'Yesterday route is not displayed as today route');
+    rw_check(empty(rw_state($s5, $u5)['route']), 'Expired session route is cleared');
+    rw_check((int)rw_value('SELECT COUNT(*) FROM adventure_route_daily WHERE user_id=? AND route_date=?', array($u5,$day)) === 0, 'Yesterday route is not promoted to today');
+    rw_http('/adventure.php?tab=route', $s5, array('action'=>'route','node'=>$node['slug'],'mode'=>'review','postkey'=>$key), 303);
+    rw_http('/adventure.php?tab=route', $s5);
+    $freshRoute = rw_state($s5, $u5)['route'];
+    rw_check($freshRoute['day'] === $day && count($freshRoute['problems']) === 3, 'A fresh route is persisted for today');
+    list($count, $sum) = rw_adventure($u5);
+    rw_check($count === 1 && $sum === 10, 'Yesterday ACs do not complete the fresh route');
+    foreach ($freshRoute['problems'] as $problem) rw_ac($u5, $problem['id']);
     rw_http('/adventure.php?tab=route', $s5);
     list($count, $sum, $reference) = rw_adventure($u5);
     rw_check($count === 2 && $sum === 20 && $reference === $today['reference'], 'Stale session reward flag cannot deny today three fresh ACs');
+    rw_http('/adventure.php?tab=route', $s5);
+    list($count, $sum) = rw_adventure($u5);
+    rw_check($count === 2 && $sum === 20, 'Refreshing pays today only once and preserves yesterday reward');
+    // Restored problem rows lack node_name; even an empty graph must label all stops.
+    $activeNodes = editorial_query('SELECT id FROM knowledge_node WHERE status=1')->fetchAll(PDO::FETCH_COLUMN);
+    try {
+        editorial_query('UPDATE knowledge_node SET status=0 WHERE status=1');
+        $page = rw_http('/adventure.php?tab=route', $s5);
+        rw_check(substr_count($page, '>关联知识点</span>') === 3, 'An empty graph gives each persisted stop a fallback label');
+    } finally {
+        foreach ($activeNodes as $id) editorial_query('UPDATE knowledge_node SET status=1 WHERE id=?', array($id));
+    }
     // Midnight edges: [00:00:00, next 00:00:00) on the server clock.
     $u6 = rw_user('g'); $users[] = $u6;
     $s6 = rw_session($u6, rw_route_state(array_slice($pids,3,3), strtotime($todayStart), 0, 'challenge', $node['slug']));

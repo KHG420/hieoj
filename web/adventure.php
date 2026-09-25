@@ -50,7 +50,7 @@ function adventure_build_node_map($nodes) {
 // prerequisites, so each one gets the node that owns it rather than one shared
 // label. A restored stop keeps a generic label when no node owns it any more.
 function adventure_tag_route($route, $nodes) {
-    if (!$route || !$nodes) return $route;
+    if (!$route) return $route;
     $map = adventure_build_node_map($nodes);
     foreach ($route['problems'] as &$problem) {
         $problem['node_name'] = isset($map[$problem['id']]) ? $map[$problem['id']] : '关联知识点';
