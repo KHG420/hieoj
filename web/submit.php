@@ -307,6 +307,8 @@ if (isset($cid))
     $statusURI.="&cid=$cid";
 
 if(!$test_run){
+    // A one-use hint for this submission, never for an older accepted solution.
+    if (!empty($insert_id)) $_SESSION[$OJ_NAME.'_editorial_prompt_'.$user_id] = array('sid' => intval($insert_id), 'created' => time());
     header ("Location: $statusURI");
 }else{
     if(isset($_GET['ajax'])){

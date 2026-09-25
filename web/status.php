@@ -5,8 +5,14 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 ////////////////////////////Common head
 $cache_time=2;
 $OJ_CACHE_SHARE=false;
-require_once('./include/cache_start.php');
 require_once('./include/db_info.inc.php');
+$editorial_prompt_key = $OJ_NAME.'_editorial_prompt_'.($_SESSION[$OJ_NAME.'_user_id'] ?? '');
+$editorial_prompt = $_SESSION[$editorial_prompt_key] ?? null;
+unset($_SESSION[$editorial_prompt_key]);
+$editorial_prompt_sid = is_array($editorial_prompt) && time() - intval($editorial_prompt['created'] ?? 0) < 300
+    ? intval($editorial_prompt['sid'] ?? 0) : 0;
+// This one-use response must neither read nor populate the status page cache.
+if (!$editorial_prompt_sid) require_once('./include/cache_start.php');
 require_once('./include/memcache.php');
 require_once('./include/setlang.php');
 $view_title= "$MSG_STATUS";
@@ -222,12 +228,12 @@ if ($user_id !== ""){
 
 if($result) $rows_cnt=count($result);
 else $rows_cnt=0;
-// Only offer editorial writing for the viewer's public practice submissions.
+// Only the just-submitted solution may trigger the editorial invitation.
 $view_editorial_prompts = array();
-if ($__oj_logged_in && !isset($OJ_ON_SITE_CONTEST_ID) && $OJ_TEMPLATE === 'syzoj') {
+if ($editorial_prompt_sid && $__oj_logged_in && !isset($OJ_ON_SITE_CONTEST_ID) && $OJ_TEMPLATE === 'syzoj') {
     $editorial_candidates = array();
     foreach ($result ?: array() as $submission) {
-        if ($submission['user_id'] === $__oj_self && intval($submission['contest_id']) === 0 && intval($submission['result']) <= 4) {
+        if (intval($submission['solution_id']) === $editorial_prompt_sid && $submission['user_id'] === $__oj_self && intval($submission['contest_id']) === 0 && intval($submission['result']) <= 4) {
             $editorial_candidates[intval($submission['solution_id'])] = intval($submission['problem_id']);
         }
     }

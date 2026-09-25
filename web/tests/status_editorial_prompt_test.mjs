@@ -40,8 +40,16 @@ for (const result of [0,6,11]) {
 p = page([[20,4],[19,0]], {});
 p.respond(19,4);
 assert.equal(p.elements['editorial-reward-prompt'].hidden,true);
-p = page([[22,4],[20,4]], {20:1000,22:1001});
+// Historical AC must not produce a success notice for a pending/failed submission.
+p = page([[22,0],[20,4]], {22:1000});
+assert.equal(p.elements['editorial-reward-prompt'].hidden,true);
+p.respond(22,6);
+assert.equal(p.elements['editorial-reward-prompt'].hidden,true);
+p = page([[22,0],[20,4]], {22:1000});
+p.respond(22,4);
+assert.equal(p.elements['editorial-reward-problem'].textContent,'P1000');
+p = page([[22,4],[20,4]], {22:1001});
 assert.equal(p.elements['editorial-reward-problem'].textContent,'P1001');
-p.context.show_editorial_prompt(20);
-assert.equal(p.elements['editorial-reward-problem'].textContent,'P1001');
-console.log('PASS: initial AC, polled AC, no duplicate prompt, WA/CE, ineligible submissions, latest AC link');
+p = page([[22,4],[20,4]], {});
+assert.equal(p.elements['editorial-reward-prompt'].hidden,true);
+console.log('PASS: current submission only, historical AC ignored, pending/WA/CE, fast AC, polled AC, duplicate callbacks');
