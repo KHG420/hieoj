@@ -2,6 +2,18 @@
 var i = 0;
 var interval = 800;
 
+var editorial_prompt_solution = 0;
+function show_editorial_prompt(solution_id) {
+    var problems = typeof editorial_prompt_problems === 'object' ? editorial_prompt_problems : {};
+    var problem = problems[solution_id];
+    var prompt = document.getElementById('editorial-reward-prompt');
+    if (!problem || !prompt || Number(solution_id) <= editorial_prompt_solution) return;
+    document.getElementById('editorial-reward-problem').textContent = 'P' + problem;
+    document.getElementById('editorial-reward-link').href = 'solutions.php?problem_id=' + problem + '&write=1';
+    prompt.hidden = false;
+    editorial_prompt_solution = Number(solution_id);
+}
+
 function auto_refresh() {
 	interval = 800;
 	var tb = window.document.getElementById('result-tab');
@@ -13,6 +25,7 @@ function auto_refresh() {
 		if (result == null) continue;
 		rows[i].cells[5].className = "td_result";
 		var sid = rows[i].cells[0].innerHTML;
+        if (Number(result) === 4) show_editorial_prompt(sid);
 		if (result<4) {
 			window.setTimeout("fresh_result("+sid+")",interval);
 		}
@@ -63,6 +76,7 @@ function fresh_result(solution_id) {
 			else {
 				switch (ra[0]) {
 					case 4:
+                        show_editorial_prompt(solution_id);
 						row.cells[5].innerHTML = "<a href=reinfo.php?sid="+solution_id+" class='"+judge_color[ra[0]]+"'>"+judge_result[ra[0]]+"</a>";
 						break;
 					case 5:

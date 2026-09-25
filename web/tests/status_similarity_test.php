@@ -160,7 +160,7 @@ try {
     ss_check(strpos($status_src, "reinfo.php?sid=") !== false, 'RE path intact');
     ss_check(strpos($status_src, "span class='hidden'") !== false && strpos($status_src, "result='") !== false, 'result marker span intact');
     ss_check(strpos($status_src, 'http_judge_form') !== false, 'HTTP judge form marker intact');
-    ss_check(strpos($tpl_src, 'auto_refresh.js?v=1.0') !== false, 'auto refresh script tag intact');
+    ss_check(strpos($tpl_src, 'auto_refresh.js?v=1.1') !== false, 'auto refresh script tag intact');
     ss_check(strpos($js_src, 'span[class=original]') !== false && strpos($js_src, 'status-ajax.php?q=user_id') !== false, 'auto refresh hover metadata consumer intact');
 
     // AC1: scoped, muted, unboxed CSS with readable contrast.

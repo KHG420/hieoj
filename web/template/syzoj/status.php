@@ -7,6 +7,11 @@
         // $("#main_container").removeClass("container");
     </script>
     <div class="padding">
+        <div id="editorial-reward-prompt" class="ui positive message" role="status" hidden>
+            <div class="header">恭喜通过 <span id="editorial-reward-problem"></span>！</div>
+            <p>分享你的解题思路，编写题解并审核通过后，可获得 <strong>10 枚金币</strong>。</p>
+            <a id="editorial-reward-link" class="ui small primary button">去写题解</a>
+        </div>
 
         <!-- <form action="" class="ui mini form" method="get" role="form" id="form"> -->
         <form id=simform class="ui mini form" action="status.php" method="get">
@@ -86,6 +91,7 @@
         <div class="oj-empty" style="text-align:center;color:#8a93a6;padding:24px 0;">暂无提交记录</div>
         <?php } ?>
         <style>
+            #editorial-reward-prompt[hidden] { display: none; }
             /* Muted, unboxed similarity line for similar submissions (syzoj status only). */
             #result-tab .oj-status-similarity {
                 display: block;
@@ -191,6 +197,7 @@
         </div>
 
         <script>
+            var editorial_prompt_problems = <?php echo json_encode((object)$view_editorial_prompts); ?>;
             var i = 0;
             var judge_result = [<?php
                 foreach ($judge_result as $result) {
@@ -204,6 +211,6 @@
                 } ?>
                 ''];
         </script>
-        <script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=1.0" ></script>
+        <script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=1.1" ></script>
 
 <?php include("template/$OJ_TEMPLATE/footer.php");

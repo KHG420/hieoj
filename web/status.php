@@ -222,6 +222,27 @@ if ($user_id !== ""){
 
 if($result) $rows_cnt=count($result);
 else $rows_cnt=0;
+// Only offer editorial writing for the viewer's public practice submissions.
+$view_editorial_prompts = array();
+if ($__oj_logged_in && !isset($OJ_ON_SITE_CONTEST_ID) && $OJ_TEMPLATE === 'syzoj') {
+    $editorial_candidates = array();
+    foreach ($result ?: array() as $submission) {
+        if ($submission['user_id'] === $__oj_self && intval($submission['contest_id']) === 0 && intval($submission['result']) <= 4) {
+            $editorial_candidates[intval($submission['solution_id'])] = intval($submission['problem_id']);
+        }
+    }
+    if ($editorial_candidates) {
+        require_once './include/editorial.inc.php';
+        if (editorial_ready()) {
+            $problem_ids = implode(',', array_unique(array_values($editorial_candidates)));
+            $public_rows = pdo_query('SELECT p.problem_id FROM problem p WHERE p.problem_id IN ('.$problem_ids.') AND '.editorial_public_sql());
+            $public_ids = array_column($public_rows, 'problem_id');
+            foreach ($editorial_candidates as $sid => $pid) {
+                if (in_array($pid, $public_ids)) $view_editorial_prompts[$sid] = $pid;
+            }
+        }
+    }
+}
 // 性能优化：预取本页涉及的比赛结束时间，避免每行一次 is_running() 查询
 $contest_times=array();
 $now_ts=time();
