@@ -46,8 +46,10 @@ CREATE TABLE IF NOT EXISTS `knowledge_node_tag_alias` (
   CONSTRAINT `fk_knowledge_node_tag_alias_node` FOREIGN KEY (`node_id`) REFERENCES `knowledge_node` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-SET @knowledge_graph_seed_required := (SELECT COUNT(*) = 0 FROM `knowledge_node`);
-SET @knowledge_graph_coverage_v2_required := NOT EXISTS (SELECT 1 FROM `knowledge_node` WHERE `slug`='number-theory');
+-- Every statement below is idempotent (CREATE ... IF NOT EXISTS / INSERT IGNORE and
+-- keyed comparisons), so the file is applied unconditionally instead of being
+-- guarded by session flags: `source` runs each statement in its own context, and
+-- a flag set earlier in the file would make later inserts silently do nothing.
 START TRANSACTION;
 
 INSERT IGNORE INTO `knowledge_node` (`slug`,`name`,`domain`,`description`,`sort_order`) VALUES
@@ -169,7 +171,7 @@ FROM (
 ) e
 JOIN `knowledge_node` s ON s.slug=e.s
 JOIN `knowledge_node` t ON t.slug=e.t
-WHERE @knowledge_graph_seed_required = 1;
+;
 
 INSERT IGNORE INTO `knowledge_edge` (`source_node_id`,`target_node_id`,`relation`)
 SELECT s.id,t.id,e.relation
@@ -203,79 +205,79 @@ FROM (
 ) e
 JOIN `knowledge_node` s ON s.slug=e.s
 JOIN `knowledge_node` t ON t.slug=e.t
-WHERE @knowledge_graph_coverage_v2_required = 1;
+;
 
 INSERT IGNORE INTO `knowledge_node_category` (`node_id`,`category_id`)
 SELECT n.id,c.id
 FROM `knowledge_node` n
 JOIN `category` c ON
-  (n.slug='input-output' AND c.`content-1`='C语言' AND c.`content-2`='输入输出') OR
-  (n.slug='sequence' AND c.`content-1`='C语言' AND c.`content-2`='顺序结构') OR
-  (n.slug='selection' AND c.`content-1`='C语言' AND c.`content-2`='选择结构') OR
-  (n.slug='loops' AND c.`content-1`='C语言' AND c.`content-2`='循环结构') OR
-  (n.slug='functions' AND c.`content-1`='C语言' AND c.`content-2`='函数') OR
-  (n.slug='recursion' AND c.`content-1`='C语言' AND c.`content-2`='递归') OR
-  (n.slug='arrays' AND c.`content-1`='C语言' AND c.`content-2`='数组') OR
-  (n.slug='pointers' AND c.`content-1`='C语言' AND c.`content-2`='指针') OR
-  (n.slug='structures' AND c.`content-1`='C语言' AND c.`content-2`='结构体') OR
-  (n.slug='macros' AND c.`content-1`='C语言' AND c.`content-2`='宏') OR
-  (n.slug='simulation' AND c.`content-1`='算法设计' AND c.`content-2`='模拟') OR
-  (n.slug='enumeration' AND c.`content-1`='ACM' AND c.`content-2`='枚举') OR
-  (n.slug='sorting' AND c.`content-1`='算法设计' AND c.`content-2`='排序算法') OR
-  (n.slug='binary-search' AND c.`content-1`='数据结构' AND c.`content-2`='查找与排序') OR
-  (n.slug='prefix-sum' AND c.`content-1`='ACM' AND c.`content-2`='前缀和') OR
-  (n.slug='difference' AND c.`content-1`='ACM' AND c.`content-2`='差分') OR
-  (n.slug='two-pointers' AND c.`content-1`='算法设计' AND c.`content-2`='双指针') OR
-  (n.slug='greedy' AND c.`content-1`='算法设计' AND c.`content-2`='贪心') OR
-  (n.slug='divide-conquer' AND c.`content-1`='算法设计' AND c.`content-2`='递归分治') OR
-  (n.slug='stl' AND c.`content-1`='算法设计' AND c.`content-2`='STL') OR
-  (n.slug='linear-list' AND c.`content-1`='数据结构' AND c.`content-2`='线性表') OR
-  (n.slug='linked-list' AND c.`content-1`='数据结构' AND c.`content-2`='链表') OR
-  (n.slug='stack' AND c.`content-1`='数据结构' AND c.`content-2`='栈') OR
-  (n.slug='queue' AND c.`content-1`='数据结构' AND c.`content-2`='队列') OR
-  (n.slug='strings' AND c.`content-1`='数据结构' AND c.`content-2`='串') OR
-  (n.slug='hash-table' AND c.`content-1`='数据结构' AND c.`content-2`='哈希表') OR
-  (n.slug='heap' AND c.`content-1`='数据结构' AND c.`content-2`='二叉堆') OR
-  (n.slug='tree' AND c.`content-1`='数据结构' AND c.`content-2`='树') OR
-  (n.slug='graph' AND c.`content-1`='数据结构' AND c.`content-2`='图') OR
-  (n.slug='union-find' AND c.`content-1`='ACM' AND c.`content-2`='并查集') OR
-  (n.slug='monotonic-queue' AND c.`content-1`='ACM' AND c.`content-2`='单调队列') OR
-  (n.slug='search' AND c.`content-1`='算法设计' AND c.`content-2`='搜索') OR
-  (n.slug='backtracking' AND c.`content-1`='算法设计' AND c.`content-2`='回溯法') OR
-  (n.slug='dynamic-programming' AND c.`content-1`='算法设计' AND c.`content-2`='动态规划') OR
-  (n.slug='state-compression' AND c.`content-1`='ACM' AND c.`content-2`='状态压缩DP') OR
-  (n.slug='math' AND c.`content-1`='ACM' AND c.`content-2`='数学') OR
-  (n.slug='fast-power' AND c.`content-1`='ACM' AND c.`content-2`='快速幂') OR
-  (n.slug='big-integer' AND c.`content-1`='ACM' AND c.`content-2`='大数运算') OR
-  (n.slug='computational-geometry' AND c.`content-1`='ACM' AND c.`content-2`='计算几何') OR
-  (n.slug='string-matching' AND c.`content-1`='算法设计' AND c.`content-2`='字符串匹配') OR
-  (n.slug='ac-automaton' AND c.`content-1`='ACM' AND c.`content-2`='AC自动机') OR
-  (n.slug='discretization' AND c.`content-1`='ACM' AND c.`content-2`='离散化') OR
-  (n.slug='interval-merge' AND c.`content-1`='ACM' AND c.`content-2`='区间合并') OR
-  (n.slug='advanced-data-structures' AND c.`content-1`='ACM' AND c.`content-2`='高级数据结构') OR
-  (n.slug='kd-tree' AND c.`content-1`='ACM' AND c.`content-2`='KD-Tree')
-WHERE @knowledge_graph_seed_required = 1;
+  (n.slug='input-output' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe8be93e585a5e8be93e587ba) OR
+  (n.slug='sequence' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe9a1bae5ba8fe7bb93e69e84) OR
+  (n.slug='selection' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe98089e68ba9e7bb93e69e84) OR
+  (n.slug='loops' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe5beaae78eafe7bb93e69e84) OR
+  (n.slug='functions' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe587bde695b0) OR
+  (n.slug='recursion' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe98092e5bd92) OR
+  (n.slug='arrays' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe695b0e7bb84) OR
+  (n.slug='pointers' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe68c87e99288) OR
+  (n.slug='structures' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe7bb93e69e84e4bd93) OR
+  (n.slug='macros' AND c.`content-1`=_utf8mb4 0x43e8afade8a880 AND c.`content-2`=_utf8mb4 0xe5ae8f) OR
+  (n.slug='simulation' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe6a8a1e68b9f) OR
+  (n.slug='enumeration' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe69e9ae4b8be) OR
+  (n.slug='sorting' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe68e92e5ba8fe7ae97e6b395) OR
+  (n.slug='binary-search' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe69fa5e689bee4b88ee68e92e5ba8f) OR
+  (n.slug='prefix-sum' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe5898de7bc80e5928c) OR
+  (n.slug='difference' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe5b7aee58886) OR
+  (n.slug='two-pointers' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe58f8ce68c87e99288) OR
+  (n.slug='greedy' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe8b4aae5bf83) OR
+  (n.slug='divide-conquer' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe98092e5bd92e58886e6b2bb) OR
+  (n.slug='stl' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0x53544c) OR
+  (n.slug='linear-list' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe7babfe680a7e8a1a8) OR
+  (n.slug='linked-list' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe993bee8a1a8) OR
+  (n.slug='stack' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe6a088) OR
+  (n.slug='queue' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe9989fe58897) OR
+  (n.slug='strings' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe4b8b2) OR
+  (n.slug='hash-table' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe59388e5b88ce8a1a8) OR
+  (n.slug='heap' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe4ba8ce58f89e5a086) OR
+  (n.slug='tree' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe6a091) OR
+  (n.slug='graph' AND c.`content-1`=_utf8mb4 0xe695b0e68daee7bb93e69e84 AND c.`content-2`=_utf8mb4 0xe59bbe) OR
+  (n.slug='union-find' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe5b9b6e69fa5e99b86) OR
+  (n.slug='monotonic-queue' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe58d95e8b083e9989fe58897) OR
+  (n.slug='search' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe6909ce7b4a2) OR
+  (n.slug='backtracking' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe59b9ee6baafe6b395) OR
+  (n.slug='dynamic-programming' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe58aa8e68081e8a784e58892) OR
+  (n.slug='state-compression' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe78ab6e68081e58e8be7bca94450) OR
+  (n.slug='math' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe695b0e5ada6) OR
+  (n.slug='fast-power' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe5bfabe9809fe5b982) OR
+  (n.slug='big-integer' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe5a4a7e695b0e8bf90e7ae97) OR
+  (n.slug='computational-geometry' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe8aea1e7ae97e587a0e4bd95) OR
+  (n.slug='string-matching' AND c.`content-1`=_utf8mb4 0xe7ae97e6b395e8aebee8aea1 AND c.`content-2`=_utf8mb4 0xe5ad97e7aca6e4b8b2e58cb9e9858d) OR
+  (n.slug='ac-automaton' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0x4143e887aae58aa8e69cba) OR
+  (n.slug='discretization' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe7a6bbe695a3e58c96) OR
+  (n.slug='interval-merge' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe58cbae997b4e59088e5b9b6) OR
+  (n.slug='advanced-data-structures' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0xe9ab98e7baa7e695b0e68daee7bb93e69e84) OR
+  (n.slug='kd-tree' AND c.`content-1`=_utf8mb4 0x41434d AND c.`content-2`=_utf8mb4 0x4b442d54726565)
+;
 
 INSERT IGNORE INTO `knowledge_node_category` (`node_id`,`category_id`)
 SELECT n.id,c.id
 FROM (
-  SELECT 'data-structure-basics' slug,'数据结构' p,'' s UNION ALL
-  SELECT 'binary-search','算法设计','查找排序' UNION ALL
-  SELECT 'sorting','算法设计','查找排序' UNION ALL
-  SELECT 'bit-operations','ACM','二进制' UNION ALL
-  SELECT 'algorithmic-thinking','ACM','思维' UNION ALL
-  SELECT 'algorithmic-thinking','AcWing','基础算法' UNION ALL
-  SELECT 'data-structure-basics','AcWing','数据结构' UNION ALL
-  SELECT 'math','AcWing','数学' UNION ALL
-  SELECT 'algorithmic-thinking','CodeForces','思维题' UNION ALL
-  SELECT 'algorithmic-thinking','ACM实验室训练集','基本算法' UNION ALL
-  SELECT 'data-structure-basics','ACM实验室训练集','基本数据结构' UNION ALL
-  SELECT 'math','ACM实验室训练集','数学知识' UNION ALL
-  SELECT 'search','ACM实验室训练集','搜索'
+  SELECT 'data-structure-basics' slug,_utf8mb4 0xe695b0e68daee7bb93e69e84 p,'' s UNION ALL
+  SELECT 'binary-search',_utf8mb4 0xe7ae97e6b395e8aebee8aea1,_utf8mb4 0xe69fa5e689bee68e92e5ba8f UNION ALL
+  SELECT 'sorting',_utf8mb4 0xe7ae97e6b395e8aebee8aea1,_utf8mb4 0xe69fa5e689bee68e92e5ba8f UNION ALL
+  SELECT 'bit-operations',_utf8mb4 0x41434d,_utf8mb4 0xe4ba8ce8bf9be588b6 UNION ALL
+  SELECT 'algorithmic-thinking',_utf8mb4 0x41434d,_utf8mb4 0xe6809de7bbb4 UNION ALL
+  SELECT 'algorithmic-thinking',_utf8mb4 0x416357696e67,_utf8mb4 0xe59fbae7a180e7ae97e6b395 UNION ALL
+  SELECT 'data-structure-basics',_utf8mb4 0x416357696e67,_utf8mb4 0xe695b0e68daee7bb93e69e84 UNION ALL
+  SELECT 'math',_utf8mb4 0x416357696e67,_utf8mb4 0xe695b0e5ada6 UNION ALL
+  SELECT 'algorithmic-thinking',_utf8mb4 0x436f6465466f72636573,_utf8mb4 0xe6809de7bbb4e9a298 UNION ALL
+  SELECT 'algorithmic-thinking',_utf8mb4 0x41434de5ae9ee9aa8ce5aea4e8aeade7bb83e99b86,_utf8mb4 0xe59fbae69cace7ae97e6b395 UNION ALL
+  SELECT 'data-structure-basics',_utf8mb4 0x41434de5ae9ee9aa8ce5aea4e8aeade7bb83e99b86,_utf8mb4 0xe59fbae69cace695b0e68daee7bb93e69e84 UNION ALL
+  SELECT 'math',_utf8mb4 0x41434de5ae9ee9aa8ce5aea4e8aeade7bb83e99b86,_utf8mb4 0xe695b0e5ada6e79fa5e8af86 UNION ALL
+  SELECT 'search',_utf8mb4 0x41434de5ae9ee9aa8ce5aea4e8aeade7bb83e99b86,_utf8mb4 0xe6909ce7b4a2
 ) x
 JOIN `knowledge_node` n ON n.slug=x.slug
 JOIN `category` c ON TRIM(c.`content-1`)=x.p AND TRIM(BOTH CHAR(9) FROM TRIM(c.`content-2`))=x.s AND c.status=0
-WHERE @knowledge_graph_coverage_v2_required = 1;
+;
 
 INSERT IGNORE INTO `knowledge_node_tag_alias` (`node_id`,`tag_text`)
 SELECT n.id,a.tag_text
@@ -358,6 +360,6 @@ FROM (
   SELECT 'difference','差分数组'
 ) a
 JOIN `knowledge_node` n ON n.slug=a.slug
-WHERE @knowledge_graph_coverage_v2_required = 1;
+;
 
 COMMIT;

@@ -38,6 +38,81 @@ docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)
 `duplicate_day_rewards` 是同一天被旧会话随机奖励 ID 重复发放冒险金币的用户。
 发现结果后先备份并人工确认补偿方式，不要直接删改账本行。`ALTER TABLE` 期间会短暂锁写，建议在低峰执行。
 
+## 现有卷升级：算法远征每日路线（adventure_route_daily）
+
+`adventure_route_daily` 只由**全新空数据卷**在初始化时自动建表。
+**所有已有部署都必须执行本节迁移，包括当前 main 上还没有这张表的实例**：
+重建镜像或重启容器不会在已有数据卷上重新执行初始化 SQL，缺表时新版无法创建路线。
+发布顺序固定为：**备份 → 执行本节迁移 → 检查表与唯一键 → 发布 Web**，
+不要按“旧表是否已经存在”决定是否执行（下面的 SQL 会同时处理缺表与旧表两种情况）。
+
+新版路线表只保存当天三道题的路线信息（`node`、`mode`、`problem1..3`、`start_time`、`cursor_id`），
+不再保存奖励状态；每日金币奖励由 `coin_ledger` 的 `adventure_reward` 账本记录负责判定。
+
+下面的迁移是幂等的，可安全重复执行：
+
+- 数据卷里没有 `adventure_route_daily`：按当前结构建表。
+- 有旧版 `adventure_route_daily`（含 `reward_id` / `rewarded`）：建表语句不改动它，随后删掉这两个旧列。
+- 已经迁移过：建表与删列都不产生任何改动。
+
+Linux / Bash：
+
+```bash
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol' <<'SQL'
+-- 1) 表不存在则按当前结构创建；表已存在时不改动。
+CREATE TABLE IF NOT EXISTS adventure_route_daily (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,
+    route_date DATE NOT NULL,
+    node VARCHAR(100) NOT NULL,
+    mode VARCHAR(20) NOT NULL DEFAULT 'challenge',
+    problem1 INT NOT NULL,
+    problem2 INT NOT NULL,
+    problem3 INT NOT NULL,
+    start_time DATETIME NOT NULL,
+    cursor_id BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_day(user_id, route_date)
+);
+
+-- 2) 旧列存在才删；不存在则跳过，保证可重复执行。
+SET @sql = (
+  SELECT IF(COUNT(*) > 0,
+    'ALTER TABLE adventure_route_daily DROP COLUMN reward_id',
+    'DO 0')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'adventure_route_daily'
+    AND COLUMN_NAME = 'reward_id'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @sql = (
+  SELECT IF(COUNT(*) > 0,
+    'ALTER TABLE adventure_route_daily DROP COLUMN rewarded',
+    'DO 0')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'adventure_route_daily'
+    AND COLUMN_NAME = 'rewarded'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SQL
+```
+执行后核对表结构，确认唯一键存在且旧列已移除：
+
+```bash
+docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)" mariadb -uroot jol -e "SHOW CREATE TABLE adventure_route_daily\G"'
+```
+预期应包含 `UNIQUE KEY uk_user_day (user_id, route_date)`、`node`、`mode`、`cursor_id` 列，
+且不再出现 `reward_id`、`rewarded`。缺表或结构不符时不要继续发布 Web，先排查迁移输出。
+
+提示：`DROP COLUMN reward_id, rewarded` 会丢弃旧表里的奖励标记（只有旧版表才有这两列，缺表的实例不受影响）。新版本的领奖判定完全以 `coin_ledger` 的 `adventure_reward` 记录为准，因此迁移前建议先只读核对一次，确认账本已覆盖旧表里的已领奖状态，避免个别用户当天重复领奖：
+
+```sql
+SELECT user_id, reference_id FROM coin_ledger WHERE kind='adventure_reward';
+```
+
 ## 备份范围
 
 在旧生产服务器执行只读备份，并将备份复制到另一台机器，核对 SHA-256。
