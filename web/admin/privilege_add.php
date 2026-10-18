@@ -90,7 +90,7 @@ if(isset($_POST['do'])){
                                     <select name="rightstr" class="form-control" autocomplete="off">
                                         <?php
                                         $rightarray=array("administrator","problem_editor","source_browser","contest_creator","http_judge","password_setter","printer","balloon" );
-                                        while(list($key, $val)=each($rightarray)) {
+                                        foreach ($rightarray as $val) {
                                             if (isset($rightstr) && ($rightstr == $val)) {
                                                 echo '<option value="'.$val.'" selected>'.$val.'</option>';
                                             } else {
