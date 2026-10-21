@@ -307,6 +307,14 @@ docker compose logs --tail=100 web
 
 拉取前工作区应干净；有未提交内容或分支分叉时先调查，不能用强制重置覆盖。备份可能短暂锁表，应安排合适窗口。Web 重建可能造成短暂不可用，此方案不承诺零停机。
 
+PHP 安全基线：Web 镜像使用 Ubuntu 22.04 官方安全仓库的 PHP 8.1 回补包，
+`php8.1-cli/common/fpm/opcache` 必须至少为 `8.1.2-1ubuntu2.28`，构建时会检查。
+[USN-8948-1](https://ubuntu.com/security/notices/USN-8948-1) 确认该版本修复
+CVE-2026-109618 和 CVE-2026-109619；发行版已回补补丁，不能只根据 `PHP 8.1.2` 判断是否修复。
+`session.upload_progress.enabled=0` 在 FPM 启动配置中关闭未使用的上传进度功能，但不能替代安全更新。
+更新必须重新构建镜像并替换 Web 容器，使全部 FPM 工作进程加载新版本；仅修改应用代码或重启旧镜像不能升级 PHP。
+验收时检查 `docker compose exec -T web dpkg-query -W php8.1-cli php8.1-fpm`，并完成正常登录、上传及提交验收。
+
 若涉及 judge、数据库镜像或全栈配置，需要另行安排对应服务更新；判题更新先处理在途任务，涉及迁移时按模块文档安排停写。通用全栈更新命令为 `docker compose up -d --build --wait`，不应对仅 Web 修改无必要地重建全部服务。
 
 常用只读检查：

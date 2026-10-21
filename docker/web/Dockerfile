@@ -4,12 +4,19 @@ ENV DEBIAN_FRONTEND=noninteractive TZ=Asia/Shanghai
 RUN --mount=type=cache,id=hnieoj-jammy-apt-${TARGETARCH},target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=hnieoj-jammy-lists-${TARGETARCH},target=/var/lib/apt/lists,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
- && sed -i 's|//archive.ubuntu.com|//mirrors.ustc.edu.cn|g; s|//security.ubuntu.com|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list \
+ && sed -i 's|//archive.ubuntu.com|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list \
  && apt-get -o Acquire::Retries=5 update && apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
       nginx \
       php8.1-fpm php8.1-cli php8.1-mysql php8.1-gd php8.1-zip php8.1-mbstring \
       php8.1-xml php8.1-yaml php8.1-curl php8.1-apcu php8.1-memcached php8.1-sqlite3 \
-      ca-certificates tzdata curl procps
+      ca-certificates tzdata curl procps \
+ # USN-8948-1: Ubuntu backports CVE-2026-109618 / CVE-2026-109619 to PHP 8.1.
+ # Keep the official security archive and refuse builds with an unpatched runtime.
+ && for package in php8.1-cli php8.1-common php8.1-fpm php8.1-opcache; do \
+      installed="$(dpkg-query -W -f='${Version}' "$package")"; \
+      dpkg --compare-versions "$installed" ge 8.1.2-1ubuntu2.28 \
+        || { echo "Unpatched PHP package: $package $installed" >&2; exit 1; }; \
+    done
 RUN rm -f /etc/nginx/sites-enabled/default \
  && mkdir -p /run/php /tmp/hustoj_page_cache \
  && chown -R www-data:www-data /tmp/hustoj_page_cache /run/php
