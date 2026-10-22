@@ -82,7 +82,13 @@ try {
             $aid = max(0, intval(hunt_text($_GET,'attempt')));
             $rows = $aid ? hunt_query('SELECT * FROM hunt_attempt WHERE id=? AND challenge_id=? AND user_id=?', $aid, $id, $user) :
                 hunt_query('SELECT * FROM hunt_attempt WHERE challenge_id=? AND user_id=? ORDER BY id DESC LIMIT 1', $id, $user);
-            if ($rows) { $attempt = $rows[0]; $outcome = hunt_attempt_result($attempt); }
+            if ($rows) {
+                $attempt = $rows[0]; $outcome = hunt_attempt_result($attempt);
+                if (!$admin && !isset($_SESSION[$OJ_NAME.'_source_browser'])) {
+                    foreach ($outcome[1] as &$job) unset($job['output']);
+                    unset($job);
+                }
+            }
             elseif ($aid) { http_response_code(404); $error = '挑战记录不存在或不属于当前账号。'; }
         }
     } elseif (!$editing && !$error) {

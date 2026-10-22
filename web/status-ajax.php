@@ -30,8 +30,13 @@ $result = pdo_query($sql,$solution_id);
 
 if (count($result)>0) {
 	$row = $result[0];
-	// 安全修复：tr=1 仅在查看自己的提交（或 source_browser）时返回编译/运行信息
-	if (isset($_GET['tr']) && $my_user!==null && ($is_src || $row['user_id']==$my_user)) {
+	// Students may read their own compiler diagnostics, never raw runtime output.
+	if (isset($_GET['tr'])) {
+		if ($my_user === null || (!$is_src && !$is_admin && ($row['user_id'] !== $my_user || intval($row['result']) !== 11))) {
+			header('Cache-Control: private, no-store');
+			http_response_code(403);
+			exit('运行详情已关闭。');
+		}
 		$res = $row['result'];
 
 		if ($res==11) {
@@ -42,7 +47,7 @@ if (count($result)>0) {
 		}
 
 		$result = pdo_query($sql,$solution_id);
-		$row = $result[0];
+		$row = $result[0] ?? null;
 
 		if ($row) {
 			echo htmlentities(str_replace("
@@ -72,6 +77,13 @@ if (count($result)>0) {
 			}
 
 			if (isset($_GET['t']) && "json"==$_GET['t']) {
+				if (!$is_admin) {
+					// PDO::FETCH_BOTH also exposes each column under its numeric key.
+					$columns = array_values(array_filter(array_keys($row), 'is_string'));
+					$judger_column = array_search('judger', $columns, true);
+					if ($judger_column !== false) $row[$judger_column] = 'none';
+					$row['judger'] = 'none';
+				}
 				echo json_encode($row);
 			}
 			else {

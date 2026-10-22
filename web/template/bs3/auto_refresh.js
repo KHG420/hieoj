@@ -57,7 +57,7 @@ function fresh_result(solution_id){
 				switch(ra[0]){
 				 case "6":
 				 case "10":
-					row.cells[3].innerHTML="<a href='reinfo.php?sid="+solution_id+"' class='"+judge_color[ra[0]]+"'>"+judge_result[ra[0]]+"</a>";
+					row.cells[3].innerHTML= (window.oj_can_view_runtime === true) ? "<a href='reinfo.php?sid="+solution_id+"' class='"+judge_color[ra[0]]+"'>"+judge_result[ra[0]]+"</a>" : "<span class='"+judge_color[ra[0]]+"'>"+judge_result[ra[0]]+"</span>";
 					break;
 				 case "11":
 					row.cells[3].innerHTML="<a href='ceinfo.php?sid="+solution_id+"' class='"+judge_color[ra[0]]+"'>"+judge_result[ra[0]]+"</a>";

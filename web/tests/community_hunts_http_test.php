@@ -87,6 +87,10 @@ try {
     ht_job_results($a);
     ht_check(hunt_attempt_result($a)[0][0]==='hit','Different output hits');
     ht_check(str_contains(ht_request($path,null,'reader'),'命中！'),'Hit HTTP rendered');
+    ht_job_results($a,13,13,13,"VALID\n","PRIVATE_REFERENCE_OUTPUT\n","PRIVATE_BUGGY_OUTPUT\n");
+    $body=ht_request($path,null,'reader');
+    ht_check(str_contains($body,'命中！') && !str_contains($body,'PRIVATE_REFERENCE_OUTPUT') && !str_contains($body,'PRIVATE_BUGGY_OUTPUT'),'Hunt verdict remains while program output is absent from the response');
+    ht_check(!str_contains($body,'参考程序输出') && !str_contains($body,'错误程序输出'),'Student has no runtime output section');
     foreach (array(
         array(13,13,13,'VALID','1  2',"1\n2\n",'miss'),
         array(13,13,13,'VALID','','','miss'),

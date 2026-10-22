@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../template/syzoj/auto_refresh.js', import.meta.url), 'utf8');
-function page(results, eligible) {
+function page(results, eligible, canViewRuntime = false) {
   const elements = {
     'editorial-reward-prompt': {hidden: true},
     'editorial-reward-problem': {}, 'editorial-reward-link': {}
@@ -11,7 +11,7 @@ function page(results, eligible) {
   elements['result-tab'] = {rows};
   const requests = [];
   function XMLHttpRequest() { requests.push(this); this.open = () => {}; this.send = () => {}; }
-  const context = {document: {getElementById: id => elements[id]}, editorial_prompt_problems: eligible,
+  const context = {document: {getElementById: id => elements[id]}, editorial_prompt_problems: eligible, oj_can_view_runtime: canViewRuntime,
     judge_color: [], judge_result: [], XMLHttpRequest, setTimeout() {},
     $: value => ({find() { return {attr() {return value.result;}}; }, append() {}, mouseover() {}, hide() {}})};
   context.window = context;
@@ -52,4 +52,15 @@ p = page([[22,4],[20,4]], {22:1001});
 assert.equal(p.elements['editorial-reward-problem'].textContent,'P1001');
 p = page([[22,4],[20,4]], {});
 assert.equal(p.elements['editorial-reward-prompt'].hidden,true);
-console.log('PASS: current submission only, historical AC ignored, pending/WA/CE, fast AC, polled AC, duplicate callbacks');
+for (const result of [4,5,6,7,8,9,10]) {
+ p = page([[30,0]], {});
+ p.respond(30,result);
+ assert.doesNotMatch(p.elements['result-tab'].rows[1].cells[5].innerHTML, /reinfo\.php/);
+ p = page([[30,0]], {}, true);
+ p.respond(30,result);
+ assert.match(p.elements['result-tab'].rows[1].cells[5].innerHTML, /reinfo\.php/);
+}
+p = page([[30,0]], {});
+p.respond(30,11);
+assert.match(p.elements['result-tab'].rows[1].cells[5].innerHTML, /ceinfo\.php/);
+console.log('PASS: current submission hints, student runtime links hidden, privileged runtime links and compiler links preserved');

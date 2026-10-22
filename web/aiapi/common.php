@@ -207,6 +207,11 @@ text
        }
 }
 if( basename($http_referer)=="reinfo.php" ||  basename($http_referer)=="ceinfo.php"){
+        if ($http_referer === 'reinfo.php' && !isset($_SESSION[$OJ_NAME.'_source_browser']) && !isset($_SESSION[$OJ_NAME.'_administrator'])) {
+            http_response_code(403);
+            header('Cache-Control: private, no-store');
+            exit('运行详情已关闭。');
+        }
        	if( basename($http_referer)=="reinfo.php"){
 		$table="runtimeinfo";
 	}else if( basename($http_referer)=="ceinfo.php"){
@@ -221,9 +226,13 @@ if( basename($http_referer)=="reinfo.php" ||  basename($http_referer)=="ceinfo.p
 	$prompt_sys="你是一个编程高手，能帮我用简单清晰的中文，解释我看不懂的报错信息。如果对比中用户的输出为空，可能是没有考虑到多组输入的情况，应该使用循环处理。$code_suggestion 请尽量言简意赅，节省token消耗。";
 	 
 	$sid=intval($_GET['sid']);
-	$solution=pdo_query("select user_id,problem_id from solution where solution_id=?",$sid)[0];
+	$solution=pdo_query("select user_id,problem_id,result from solution where solution_id=?",$sid)[0];
 	$user_id=$solution[0];
 	$problem_id=$solution[1];
+	if (intval($solution['result']) !== 11 && !(isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator']))) {
+		http_response_code(403);
+		exit('运行详情已关闭。');
+	}
 
 	if(!(isset($_SESSION[$OJ_NAME."_source_browser"])|| $user_id==$_SESSION[$OJ_NAME."_user_id"] )){
 		echo "非法参数";
@@ -249,7 +258,8 @@ if( basename($http_referer)=="reinfo.php" ||  basename($http_referer)=="ceinfo.p
 	}
 	$sql="select answer from solution_ai_answer where solution_id=? ";
 	$answer=pdo_query($sql,$sid);
-	if(!empty($answer)){
+	// Old cached answers may contain runtime data from before a rejudge.
+	if(!empty($answer) && (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator']))){
 		echo htmlentities($answer[0][0]);
 		echo "<!-- cached answer -->";
 		exit();

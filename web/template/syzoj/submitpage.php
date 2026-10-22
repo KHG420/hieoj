@@ -210,8 +210,10 @@ function fresh_result(solution_id)
 		if(ra[0]==11)
 		
 		tb.innerHTML="<"+tag+" href='ceinfo.php?sid="+solution_id+"' class='badge badge-info' target=_blank>"+judge_result[ra[0]]+"</"+tag+">";
-		else
+		else if (<?php echo (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator'])) ? 'true' : 'false'; ?> && Number(ra[0]) >= 4)
 		tb.innerHTML="<"+tag+" href='reinfo.php?sid="+solution_id+"' class='badge badge-info' target=_blank>"+judge_result[ra[0]]+"</"+tag+">";
+		else
+		tb.innerHTML="<span class='badge badge-info'>"+judge_result[ra[0]]+"</span>";
 	}
 	if(ra[0]<4)tb.innerHTML+=loader;
 	tb.innerHTML+="Memory:"+ra[1]+"kb&nbsp;&nbsp;";
@@ -219,7 +221,8 @@ function fresh_result(solution_id)
 	if(ra[0]<4)
 	window.setTimeout("fresh_result("+solution_id+")",2000);
 	else{
-		window.setTimeout("print_result("+solution_id+")",2000);
+		if (Number(ra[0]) === 11 || <?php echo (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator'])) ? 'true' : 'false'; ?>)
+			window.setTimeout("print_result("+solution_id+")",2000);
 		count=1;
 	}
 	}

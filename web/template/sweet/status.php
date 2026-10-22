@@ -164,7 +164,8 @@ echo "[<a href='status.php?".$str2."&top=".$bottom."&prevtop=$top'>Next Page</a>
     <!-- Placed at the end of the document so the pages load faster -->
     <?php include("template/$OJ_TEMPLATE/js.php");?>	    
 	<script>var i=0;
-		var judge_result=[<?php
+		var oj_can_view_runtime = <?php echo (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator'])) ? 'true' : 'false'; ?>;
+        var judge_result=[<?php
 		foreach($judge_result as $result){
 		echo "'$result',";
 		}
@@ -176,7 +177,7 @@ echo "[<a href='status.php?".$str2."&top=".$bottom."&prevtop=$top'>Next Page</a>
 		 }
 		?>''];
 	</script>
-	<script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=0.34" ></script>
+	<script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=20261022" ></script>
 
   </body>
 </html>

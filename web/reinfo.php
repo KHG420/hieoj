@@ -1,8 +1,14 @@
 <?php
 $cache_time=60;
 	$OJ_CACHE_SHARE=false;
-	require_once('./include/cache_start.php');
     require_once('./include/db_info.inc.php');
+    header('Cache-Control: private, no-store');
+    if (!(isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator']))) {
+        http_response_code(403);
+        exit('运行详情已关闭。');
+    }
+    // Authorize before reading any previously cached runtime details.
+	require_once('./include/cache_start.php');
 	require_once('./include/setlang.php');
 	$view_title= "Welcome To Online Judge";
 	
@@ -36,7 +42,7 @@ if(empty($result)){
 $row=$result[0];
 $isRE=$row['result']==10;
 if ($row && $row['user_id']==$_SESSION[$OJ_NAME.'_'.'user_id']) $ok=true;
-if (isset($_SESSION[$OJ_NAME.'_'.'source_browser'])) $ok=true;
+if (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator'])) $ok=true;
 $view_reinfo="";
 if ($ok==true){
 	if(isset($OJ_MAIL)&&$OJ_MAIL&&$row['user_id']!=$_SESSION[$OJ_NAME.'_'.'user_id'])
@@ -45,7 +51,7 @@ if ($ok==true){
 	$sql="SELECT `error` FROM `runtimeinfo` WHERE `solution_id`=?";
 	$result=pdo_query($sql,$id);
 	 $row=$result[0];
-	if($row&&($OJ_SHOW_DIFF||isset($_SESSION[$OJ_NAME.'_'.'source_browser'])||$isRE)&&($OJ_TEST_RUN||is_valid($row['error'])||isset($_SESSION[$OJ_NAME.'_'.'source_browser']))){	
+	if($row){
 		$view_reinfo= htmlentities(str_replace("\n\r","\n",$row['error']),ENT_QUOTES,"UTF-8");
 	}else{
 		

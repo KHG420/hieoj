@@ -260,6 +260,8 @@ docker compose exec -T -u www-data web php /home/judge/src/web/tests/adventure_h
 
 更多共同挑战、迁移和浏览器专项测试见 `web/tests/`、`docker/tests/` 及模块文档，部分脚本需要特定数据或原生判题环境，先阅读脚本开头要求。
 
+提交运行详情仅向管理员和 `source_browser` 授权查看者开放。普通用户保留判题状态、耗时、内存和自己的编译错误提示，不能读取测试输入、标准答案、程序输出或运行调试信息；详情页、`status-ajax.php?tr=1` 和 AI 解释入口均在服务器端限制。反例猎人继续返回命中判定和自己的输入，不向普通用户返回参考程序或错误程序输出。相关 HTTP 回归：`php web/tests/submission_output_http_test.php --fixtures`，脚本只创建随机临时数据并在结束时清理。
+
 ### 历史数据只读回归
 
 ```bash
