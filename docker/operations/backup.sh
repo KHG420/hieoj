@@ -21,5 +21,6 @@ docker compose exec -T db tar -czf - -C /run oj-secrets > "$backup_dir/credentia
 docker compose exec -T web tar -czf - -C /var/lib oj-nginx > "$backup_dir/nginx-state.tar.gz"
 printf '%s\n' "$backup_commit" > "$backup_dir/commit"
 sha256sum "$backup_dir"/*.gz > "$backup_dir/SHA256SUMS"
+# Cleanup is allowed only after the latest backup passes checksum and gzip checks.
+python3 docker/operations/prune_backups.py --apply
 echo "Backup complete: $backup_dir"
-# No automatic deletion or upload to an unverified third-party host.
