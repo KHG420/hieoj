@@ -57,6 +57,16 @@ function editorial_reference($problem) {
         ORDER BY s.solution_id ASC LIMIT 1",array($problem))->fetch(PDO::FETCH_ASSOC);
 }
 
+function editorial_effective_length($content, $format) {
+    $text = $content;
+    if ($format === 'markdown') {
+        $text = preg_replace('/```.*?```/s', ' ', $text);
+        $text = preg_replace('/`[^`\n]*`/u', ' ', $text);
+    }
+    preg_match_all('/[\x{4e00}-\x{9fff}]/u', $text, $m);
+    return count($m[0]);
+}
+
 function editorial_submit($user, $problem, $title, $content, $format = 'plain') {
     if (!in_array($format, array('plain','markdown'), true)) throw new DomainException('不支持的题解格式。');
     $title = trim($title); $content = trim($content);
@@ -65,6 +75,10 @@ function editorial_submit($user, $problem, $title, $content, $format = 'plain') 
     }
     if ($title === '' || mb_strlen($title,'UTF-8') > 120 || $content === '' || mb_strlen($content,'UTF-8') > 50000) {
         throw new DomainException('请填写 1–120 字标题和 1–50000 字正文。');
+    }
+        $effective = editorial_effective_length($content, $format);
+    if ($effective < 50) {
+        throw new DomainException('请把思路写出来再提交：去掉代码之后正文只有 '.$effective.' 汉字，至少 50 个汉字。可以点编辑器里的「插入题解模板」按结构填写。');
     }
     editorial_query('INSERT INTO problem_editorial(problem_id,user_id,title,content,content_format) VALUES(?,?,?,?,?)', array($problem,$user,$title,$content,$format));
     return editorial_db()->lastInsertId();
