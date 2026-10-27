@@ -59,11 +59,15 @@ function editorial_reference($problem) {
 
 function editorial_submit($user, $problem, $title, $content, $format = 'plain') {
     if (!in_array($format, array('plain','markdown'), true)) throw new DomainException('不支持的题解格式。');
-    $title = trim($title); $content = trim($content);
+    $title = trim($title);
+    // Keep the body verbatim: a leading indented Markdown code block, and plain
+    // text whose indentation belongs to the answer, must survive review and
+    // reading. Only line endings are normalised; blank bodies are still rejected.
+    $content = str_replace(array("\r\n", "\r"), "\n", $content);
     if (!$user || !editorial_problem($problem) || !editorial_passed($user,$problem)) {
         throw new DomainException('通过这道公开题目后，才能提交题解。');
     }
-    if ($title === '' || mb_strlen($title,'UTF-8') > 120 || $content === '' || mb_strlen($content,'UTF-8') > 50000) {
+    if ($title === '' || mb_strlen($title,'UTF-8') > 120 || trim($content) === '' || mb_strlen($content,'UTF-8') > 50000) {
         throw new DomainException('请填写 1–120 字标题和 1–50000 字正文。');
     }
     editorial_query('INSERT INTO problem_editorial(problem_id,user_id,title,content,content_format) VALUES(?,?,?,?,?)', array($problem,$user,$title,$content,$format));

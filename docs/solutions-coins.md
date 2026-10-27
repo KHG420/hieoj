@@ -69,7 +69,7 @@ WHERE trigger_schema=DATABASE() AND trigger_name LIKE 'coin_solution_accepted_%'
 docker compose exec -T --user www-data web php /home/judge/src/web/tests/editorial_test.php --fixtures
 ```
 
-该测试涵盖实际 MariaDB 判题奖励、历史标记、重复与并发 AC、投稿资格、匿名访问、CSRF、审核与驳回、按题目付费、通过后免费阅读、未来题解自动包含、同题多篇并发解锁、不同题目竞争余额、事务失败回滚、正文防泄露、HTML 转义、可见性、金币对账及列表分页。
+该测试涵盖实际 MariaDB 判题奖励、历史标记、重复与并发 AC、投稿资格、匿名访问、CSRF、审核与驳回、按题目付费、通过后免费阅读、未来题解自动包含、同题多篇并发解锁、不同题目竞争余额、事务失败回滚、正文缩进保留、正文防泄露、HTML 转义、可见性、金币对账及列表分页。
 
 迁移测试单独创建临时数据库，验证历史 AC 排除、未来 AC 奖励、幂等复跑与重判防重；只在隔离数据库容器中执行：
 
@@ -81,7 +81,7 @@ docker compose exec -T db sh /tmp/editorial-migration.sh
 ## Markdown 编写体验（2026-09-14）
 
 - 标题、加粗、列表、链接、代码语言、代码块、公式及主动插入的题解模板；桌面对照预览，手机默认单栏编辑，可切换预览与专注模式。
-- 正文格式 `content_format` 为 `plain` 或 `markdown`。旧记录和省略格式的旧调用默认 `plain`；新编写表单显式提交 `markdown`。预览和授权后的正式阅读共用渲染器。
+- 正文格式 `content_format` 为 `plain` 或 `markdown`。旧记录和省略格式的旧调用默认 `plain`；新编写表单显式提交 `markdown`。预览和授权后的正式阅读共用渲染器。正文按原样保存，首行缩进、代码缩进和行尾空白都不会被裁剪，只把 CRLF 统一为 LF；以缩进代码块开头的 Markdown 因此在审核和阅读时仍是代码块。
 - Markdown 复用站内 Marked、KaTeX 0.12.0 和 Ace。作者 HTML 转义，渲染结果按允许的元素与属性过滤，链接仅允许 HTTP(S)/mailto；公式禁用 trust；代码通过文本节点高亮。图片显示为链接，不自动请求外部图片。访问控制仍由服务端完成，未授权响应没有正文。
 - 本机草稿按站点、账号、题目区分，保存在浏览器 localStorage，不跨设备同步。输入后自动保存，提供恢复、保存状态和下载。多个标签页发生冲突时暂停覆盖，由作者选择。存储失败时提示下载，离开时提醒。提交失败保留正文，成功后只清理与该篇内容相符的草稿。
 - 无 JavaScript 时仍可提交原始正文；Markdown 文章保留安全的源文本作为降级展示。

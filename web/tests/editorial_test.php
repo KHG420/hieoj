@@ -218,6 +218,20 @@ try {
     ed_check(str_contains($mdBody,'data-content-format="markdown"') && str_contains($mdBody,editorial_escape($md)) && !str_contains($mdBody,'<script>bad()'),'Body safely escaped before client rendering');
     ed_check(str_contains($mdBody,'data-submitted-draft='),'Successful submit signals matching draft cleanup');
     ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId,0),'data-submitted-draft='),'Draft cleanup signal consumed once');
+    // Leading indentation belongs to the body: an indented Markdown code block or
+    // plain text typed with a leading indent must reach the reviewer unchanged.
+    $indented="    int main() {\n        return 0;\n    }";
+    ed_http($writePath,0,array('action'=>'submit','title'=>'缩进保留','content'=>$indented,'content_format'=>'markdown','postkey'=>$key),303);
+    $indentedId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedId))===$indented,'Leading indentation survives submission');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId,0),editorial_escape($indented)),'Author view keeps the indented body');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId.'&tab=review',3),editorial_escape($indented)),'Reviewer view keeps the indented body');
+    $indentedPlain="  纯文本首行缩进\n    第二行更深";
+    ed_http($writePath,0,array('action'=>'submit','title'=>'纯文本缩进','content'=>$indentedPlain,'content_format'=>'plain','postkey'=>$key),303);
+    $indentedPlainId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedPlainId))===$indentedPlain,'Plain body keeps its leading indentation');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedPlainId.'&tab=review',3),editorial_escape($indentedPlain)),'Reviewer sees plain indentation');
+    ed_http($writePath,0,array('action'=>'submit','title'=>'空白正文','content'=>"   \n\t  ",'content_format'=>'markdown','postkey'=>$key),400);
     $legacy=ed_http('/solutions.php?id='.$id,0);
     ed_check(str_contains($legacy,'data-content-format="plain"') && !str_contains($legacy,'editorial-markdown.js'),'Legacy article not reinterpreted');
     ed_http('/solutions.php?id='.$mdId,1,null,404);
