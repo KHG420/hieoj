@@ -20,7 +20,8 @@
 - `solutions.php?problem_id=1000&write=1`：通过本题后使用的独立编写页。
 - `solutions.php?tab=mine`：自己的题解及审核状态。
 - `solutions.php?id=1`：题解正文或按题目解锁入口，标题与返回链接始终指向该题解所属题目。
-- `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏提供入口。
+- `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏、右上角个人菜单和管理员自己的“我的主页”均提供入口。
+- 有待审核题解时，管理员个人菜单和两个“审核题解”入口显示红点；全部通过或驳回后，刷新或切换页面即清除题解红点。审核入口始终保留。管理员整页 HTML 不使用页面缓存，以免沿用旧提醒；普通用户的页面缓存保持原规则。个人菜单还沿用注册、资料修改等原有待办提醒，因此题解审核清空后，其他待办仍可能使个人菜单保留红点。
 - `coins.php`：金币榜单。
 - `coins.php?tab=history`：自己的余额和金币流水。
 
@@ -62,6 +63,14 @@ WHERE trigger_schema=DATABASE() AND trigger_name LIKE 'coin_solution_accepted_%'
 缺少表或触发器时，新页面提示模块暂未开放，不自动修改运行中的数据库。
 
 ## 验证
+
+题解审核导航可用现有 PHP CLI（需 PDO SQLite）执行，不连接业务数据库、不创建真实投稿：
+
+```sh
+php web/tests/editorial_navigation_test.php
+```
+
+该测试覆盖两个快捷入口、待审数量从 2 到 1 再到 0 时的红点、角色与主页归属限制、管理员缓存刷新、普通用户缓存保留，以及未安装题解表时的导航降级。
 
 仅在本地隔离测试环境执行；HTTP 测试创建随机用户、题目、投稿及会话，结束后清理这些数据。
 

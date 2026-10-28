@@ -20,6 +20,26 @@ if($OJ_ONLINE){
     require_once($path_fix.'include/online.php');
     $on = new online();
 }
+$oj_admin_pending = 0;
+$oj_editorial_pending = 0;
+if (isset($_SESSION[$OJ_NAME.'_user_id'], $_SESSION[$OJ_NAME.'_administrator'])) {
+    require_once __DIR__.'/../../include/cache_layer.php';
+    $oj_admin_pending = cache_get('admin_badge_'.$OJ_NAME);
+    if ($oj_admin_pending === false) {
+        $oj_changes = pdo_query('SELECT COUNT(id) AS num FROM `modify` WHERE status=0');
+        $oj_registrations = pdo_query('SELECT COUNT(*) AS num FROM users WHERE register_num=0');
+        $oj_admin_pending = (int)($oj_changes[0]['num'] ?? 0) + (int)($oj_registrations[0]['num'] ?? 0);
+        cache_set('admin_badge_'.$OJ_NAME, $oj_admin_pending, 10);
+    }
+    // Read pending reviews on each administrator page, including after a review.
+    // A deployment without the optional editorial tables must still render its navigation.
+    try {
+        $oj_pending_rows = pdo_query("SELECT COUNT(*) AS num FROM problem_editorial WHERE status='pending'");
+        $oj_editorial_pending = (int)($oj_pending_rows[0]['num'] ?? 0);
+    } catch (PDOException $e) {
+        $oj_editorial_pending = 0;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -79,14 +99,18 @@ if ($OJ_WHITE_BLACK) { ?>
             <?php if(isset($_SESSION[$OJ_NAME.'_'.'user_id'])) { ?>
                 <!--                <a href="--><?php //echo $path_fix?><!--userinfo.php?user=--><?php //echo $_SESSION[$OJ_NAME.'_'.'user_id']?><!--"-->
                 <!--                    style="color: inherit; ">-->
-                <div class="ui simple dropdown item oj-account-menu" tabindex="0" aria-label="个人菜单" aria-haspopup="true">
+                <div class="ui simple dropdown item oj-account-menu" tabindex="0" aria-label="个人菜单<?php if ($oj_editorial_pending > 0) echo '，有'.$oj_editorial_pending.'篇题解待审核'; elseif ($oj_admin_pending > 0) echo '，有待处理事项'; ?>" aria-haspopup="true">
                     <?php echo $_SESSION[$OJ_NAME.'_'.'user_id']; ?>
+                    <?php if ($oj_admin_pending > 0 || $oj_editorial_pending > 0) { ?><span class="ui red empty circular label oj-account-attention" aria-hidden="true"></span><?php } ?>
                     <i class="dropdown icon"></i>
                     <div class="menu">
                         <a class="item" href="<?php echo $path_fix?>userinfo.php?user=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="user icon"></i>我的主页</a>
                         <a class="item" href="<?php echo $path_fix?>status.php?user_id=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="file icon"></i>我的提交</a>
+                        <?php if (isset($_SESSION[$OJ_NAME.'_administrator'])) { ?>
+                        <a class="item oj-editorial-review-link" href="<?php echo $path_fix?>solutions.php?tab=review" aria-label="审核题解<?php if ($oj_editorial_pending > 0) echo '，'.$oj_editorial_pending.'篇待审核'; ?>" title="<?php echo $oj_editorial_pending; ?> 篇待审核题解"><i class="check icon" aria-hidden="true"></i>审核题解<?php if ($oj_editorial_pending > 0) { ?> <span class="ui red empty circular label oj-editorial-dot" aria-hidden="true"></span><?php } ?></a>
+                        <?php } ?>
                         <a class="item" href="<?php echo $path_fix?>solutions.php?tab=mine"><i class="book icon"></i>我的题解</a>
                         <a class="item" href="<?php echo $path_fix?>lab.php?tab=mine"><i class="university icon"></i>我的申请与反馈</a>
                         <a class="item" href="<?php echo $path_fix?>coins.php?tab=history"><i class="trophy icon"></i>我的金币</a>
@@ -101,22 +125,10 @@ if ($OJ_WHITE_BLACK) { ?>
                         <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])||isset($_SESSION[$OJ_NAME.'_'.'contest_creator'])||isset($_SESSION[$OJ_NAME.'_'.'problem_editor'])){ ?>
                             <a class="item" href="admin/" style="position:relative;"><i class="settings icon"></i><?php echo $MSG_ADMIN;?>
                                 <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
-                                    // 性能优化：徽标计数缓存 10 秒，避免管理员每页 2 次 COUNT
-                                    require_once(dirname(__FILE__)."/../../include/cache_layer.php");
-                                    $num = cache_get("admin_badge_".$OJ_NAME);
-                                    if($num===false){
-                                        $sql = "SELECT COUNT(id) as num FROM `modify` WHERE `status`=0";
-                                        $num_result = pdo_query($sql);
-                                        $num = $num_result[0]['num'];
-                                        $sql = "SELECT COUNT(*) as num FROM `users` WHERE `register_num`=0";
-                                        $num_result = pdo_query($sql);
-                                        $num += $num_result[0]['num'];
-                                        cache_set("admin_badge_".$OJ_NAME, $num, 10);
-                                    }
-                                    if ($num > 0) {
+                                    if ($oj_admin_pending > 0) {
                                         echo "<div style='background-color: red; color: white; position:absolute; top:0px; right:15px; border-radius: 50px; width: 15px;height: 15px;'>"
                                             ."<div style='text-align: center; line-height: 15px;'>"
-                                            .$num
+                                            .$oj_admin_pending
                                             ."</div>"
                                             ."</div>";
                                     }
@@ -144,15 +156,6 @@ if ($OJ_WHITE_BLACK) { ?>
                     <?php } ?>
                 </div>
             <?php } ?>
-            <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
-                if ($num > 0) {
-                    echo "<div style='background-color: red; color: white; position:absolute; top:1px; right:15px; border-radius: 50px; width: 20px;height: 20px;'>"
-                        ."<div style='text-align: center; line-height: 20px;'>"
-                        .$num
-                        ."</div>"
-                        ."</div>";
-                }
-            } ?>
         </div>
     </div>
 </div>
