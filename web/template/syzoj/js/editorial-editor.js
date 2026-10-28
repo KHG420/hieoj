@@ -1,11 +1,16 @@
 (function () {
     'use strict';
+    // The server stores the body verbatim and only normalises line endings, so the
+    // draft must be compared the same way: CRLF/CR become LF and no trim() is
+    // applied to the body. Titles still follow the server's trim() rule.
+    var normalizeBody = function (text) { return String(text).replace(/\r\n?/g, '\n'); };
     // Clear only the draft whose contents match this successfully submitted article.
     document.querySelectorAll('[data-submitted-draft]').forEach(function (body) {
         try {
             var key = body.dataset.submittedDraft, draft = JSON.parse(localStorage.getItem(key));
-            var source = body.editorialSource === undefined ? body.textContent : body.editorialSource;
-            if (draft && draft.title.trim() === body.dataset.submittedTitle && draft.content.trim() === source && draft.format === body.dataset.contentFormat) localStorage.removeItem(key);
+            var source = normalizeBody(body.editorialSource === undefined ? body.textContent : body.editorialSource);
+            var draftBody = draft && typeof draft.content === 'string' ? normalizeBody(draft.content) : null;
+            if (draft && typeof draft.title === 'string' && draft.title.trim() === body.dataset.submittedTitle && draftBody === source && draft.format === body.dataset.contentFormat) localStorage.removeItem(key);
         } catch (e) { /* Submission succeeded even if browser storage is unavailable. */ }
     });
     var form = document.getElementById('editorial-form');
