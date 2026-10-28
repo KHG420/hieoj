@@ -24,7 +24,7 @@ $snapshots=$argv[1] ?? null; $db=null;
 try {
     foreach (array('include','template/syzoj','template/sta_sty','sessions','tmp') as $path) mkdir($root.'/'.$path,0700,true);
     foreach (array('include/cache_start.php','include/cache_end.php','include/cache_layer.php','include/pdo.php',
-        'include/set_post_key.php','template/syzoj/header.php','template/syzoj/css.php','template/sta_sty/userinfo.php') as $path) copy($repo.'/web/'.$path,$root.'/'.$path);
+        'include/set_post_key.php','include/navigation.inc.php','template/syzoj/header.php','template/syzoj/css.php','template/sta_sty/userinfo.php') as $path) copy($repo.'/web/'.$path,$root.'/'.$path);
     file_put_contents($root.'/template/syzoj/footer.php','</div></div></body></html>');
     file_put_contents($root.'/render.php', <<<'PHP'
 <?php

@@ -7,7 +7,7 @@ $initial=session_id(); session_write_close(); if($initial) @unlink(ini_get('sess
 $uid='acprompt'.bin2hex(random_bytes(4)); $other=$uid.'x';$pids=[];$sids=[];$sessions=[];$cid=null;
 function verify($ok,$message){if(!$ok)throw new RuntimeException($message);}
 function getpage($sid,$path='status.php', $post=null){
- usleep(200000);$c=curl_init('http://127.0.0.1/'.$path);curl_setopt_array($c,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>20,CURLOPT_COOKIE=>'PHPSESSID='.$sid]);if ($post!==null) curl_setopt_array($c,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($post)]);$s=curl_exec($c);$code=curl_getinfo($c,CURLINFO_HTTP_CODE);curl_close($c);verify($code===($post===null?200:302),'HTTP '.$code);verify(!preg_match('/Fatal error|Warning:|Uncaught /',$s),'PHP error');return $s;
+ usleep(200000);$c=curl_init('http://127.0.0.1/'.$path);curl_setopt_array($c,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>20,CURLOPT_COOKIE=>'PHPSESSID='.$sid]);if ($post!==null) curl_setopt_array($c,[CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query($post)]);$s=curl_exec($c);$code=curl_getinfo($c,CURLINFO_HTTP_CODE);$GLOBALS['lastRedirect']=curl_getinfo($c,CURLINFO_REDIRECT_URL);curl_close($c);verify($code===($post===null?200:302),'HTTP '.$code);verify(!preg_match('/Fatal error|Warning:|Uncaught /',$s),'PHP error');return $s;
 }
 try{
  foreach([$uid,$other] as $u) editorial_query("INSERT INTO users(user_id,nick,defunct,register_num) VALUES(?,?,'N',1)",[$u,'测试用户']);
@@ -31,12 +31,24 @@ try{
  // Submit through the real handler. No judge runs in this disposable stack.
  editorial_query('UPDATE solution SET in_date=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE user_id=?',[$uid]);
  editorial_query('UPDATE problem SET spj=0 WHERE problem_id=?',[$pids[0]]);
- getpage($sessions[0],'submit.php',['id'=>$pids[0],'language'=>0,'source'=>'int main(){return 0;}']);
+ $problemPage=getpage($sessions[0],'problem.php?id='.$pids[0].'&from_adventure=route');
+ verify(str_contains($problemPage,'返回今日冒险 · 算法远征') && str_contains($problemPage,'submitpage.php?id='.$pids[0].'&amp;from_adventure=route'),'Adventure problem preserves its return and submit path');
+ $submitPage=getpage($sessions[0],'submitpage.php?id='.$pids[0].'&from_adventure=route');
+ verify(str_contains($submitPage,'name="from_adventure" value="route"'),'Submit form carries the selected Adventure tab');
+ foreach(['from_adventure[]=route','from_adventure=https%3A%2F%2Fexample.com'] as $bad){
+     verify(!str_contains(getpage($sessions[0],'problem.php?id='.$pids[0].'&'.$bad),'aria-label="返回冒险"'),'Invalid return destinations are ignored');
+ }
+ getpage($sessions[0],'submit.php',['from_adventure'=>'route','id'=>$pids[0],'language'=>0,'source'=>'int main(){return 0;}']);
+ verify(str_contains($GLOBALS['lastRedirect'],'&from_adventure=route'),'Real submit redirects back with Adventure context');
  $submitted=(int)editorial_query('SELECT MAX(solution_id) FROM solution WHERE user_id=?',[$uid])->fetchColumn();
  verify(!in_array($submitted,$sids,true),'A new solution was created');$sids[]=$submitted;
  session_id($sessions[0]);session_start();$saved=$_SESSION[$hintKey]??null;session_write_close();
  verify(($saved['sid']??0)===$submitted,'Real submit records exactly its new solution ID');
  verify($mapOf(getpage($sessions[0],'status.php?user_id='.rawurlencode($uid)))===[$submitted=>$pids[0]], 'Submit redirect watches the new attempt, not earlier AC of the same problem');
+ $returnStatus=getpage($sessions[0],'status.php?user_id='.rawurlencode($uid).'&from_adventure=route');
+ verify(str_contains($returnStatus,'返回今日冒险 · 算法远征') && str_contains($returnStatus,'var editorial_prompt_return = "&from_adventure=route";'),'Status keeps the Adventure return and editorial-writing context');
+ $rankPage=getpage($sessions[0],'ranklist.php?from_problem='.$pids[0].'&from_adventure=route');
+ verify(str_contains($rankPage,'aria-label="排名导航"') && str_contains($rankPage,'coins.php?tab=history&amp;from_problem='.$pids[0].'&amp;from_adventure=route'),'Ranking retains source context across modules');
  verify($mapOf(getpage($sessions[1]))===[], 'Anonymous map empty');
  echo "PASS: real submit, same-problem historical AC, pending, failure, fast AC, one-use/cache, expiry and access boundaries\n";
 }finally{

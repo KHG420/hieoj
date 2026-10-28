@@ -22,8 +22,10 @@
 - `solutions.php?id=1`：题解正文或按题目解锁入口，标题与返回链接始终指向该题解所属题目。
 - `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏、右上角个人菜单和管理员自己的“我的主页”均提供入口。
 - 有待审核题解时，管理员个人菜单和两个“审核题解”入口显示红点；全部通过或驳回后，刷新或切换页面即清除题解红点。审核入口始终保留。管理员整页 HTML 不使用页面缓存，以免沿用旧提醒；普通用户的页面缓存保持原规则。个人菜单还沿用注册、资料修改等原有待办提醒，因此题解审核清空后，其他待办仍可能使个人菜单保留红点。
+- 金币统一归入顶部「排名」：内部固定展示「刷题排名 / 金币榜单 / 我的金币」，切换金币榜单与明细时仍保留题目及冒险来源。
 - `coins.php`：金币榜单。
 - `coins.php?tab=history`：自己的余额和金币流水。
+- 从「我的题解」或审核队列进入详情后，可返回原列表页码；审核后也返回原队列页码。题目相关返回链接与模块内标签分开呈现。
 
 ## 数据与并发
 
@@ -120,3 +122,13 @@ docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)
 - 洛谷题解规范：https://help.luogu.com.cn/rules/academic/solution-standard
 - GitHub 代码排版：https://docs.github.com/zh/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks
 - StackEdit：https://stackedit.io/app
+
+## 模块职责
+
+- `web/include/editorial.inc.php` 负责投稿资格、题解可见性、审核与解锁事务。
+- `web/include/coins.inc.php` 负责余额、扣费和奖励流水；金币可用性只检查金币表与触发器，不因可选题解表缺失而关闭。
+- `web/include/transactional_db.inc.php` 在现有 PDO 连接上执行抛异常的查询。题解审核及解锁仍由外层事务统一提交，金币助手不提前提交事务；流水失败时余额与题解状态一并回滚。
+- `web/include/practice.inc.php` 集中公开题边界；题解和冒险应用相同规则。
+- `web/template/syzoj/ranking-nav.php` 为刷题排名、金币榜单和金币明细提供同一组导航。
+
+原有 `editorial_db`、`editorial_query`、`editorial_balance`、`editorial_adventure_reward` 调用仍可用，内部委托给对应模块。本次没有修改数据库结构、奖励金额、唯一约束或判题触发器。

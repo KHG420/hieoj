@@ -7,6 +7,16 @@ require_once('./include/setlang.php');
 require_once('./include/memcache.php');
 require_once('./include/academic_directory.php');
 $view_title= $MSG_RANKLIST;
+require_once './include/navigation.inc.php';
+$navProblemId = 0;
+$returnProblemId = isset($_GET['from_problem']) && is_scalar($_GET['from_problem']) ? max(0, intval($_GET['from_problem'])) : 0;
+if ($returnProblemId && !isset($OJ_ON_SITE_CONTEST_ID)) {
+    require_once './include/practice.inc.php';
+    try { if (practice_problem($returnProblemId)) $navProblemId = $returnProblemId; }
+    catch (Throwable $e) { error_log('Ranking navigation failed: '.$e->getMessage()); }
+}
+$navQuery = ($navProblemId ? '&amp;from_problem='.$navProblemId : '').oj_adventure_query(oj_adventure_origin($_GET));
+
 
 $rankRange = ($_GET['range'] ?? '') === 'all' ? 'all' : 'year';
 $rankSince = date('Y-m-d', strtotime('-1 year'));

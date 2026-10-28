@@ -37,7 +37,7 @@ function adv_feedback_text($body) {
 // text: the note explaining the feature contains the same status words.
 function adv_shadow_status($body) {
     $status = array();
-    if (preg_match_all('/problem\.php\?id=(\d+)"[^>]*>.*?<span>([^<]*)</su', $body, $m, PREG_SET_ORDER)) {
+    if (preg_match_all('/problem\.php\?id=(\d+)(?:&amp;from_adventure=[a-z]+)?"[^>]*>.*?<span>([^<]*)</su', $body, $m, PREG_SET_ORDER)) {
         foreach ($m as $item) $status[intval($item[1])] = trim($item[2]);
     }
     return $status;
@@ -173,7 +173,7 @@ try {
     request_adv('/adventure.php?tab=route',array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key),true,303);
     $body=request_adv('/adventure.php?tab=route');
     check_adv(str_contains($body,'value="'.adv_escape($node['slug']).'" selected'),'Route destination retained');
-    preg_match_all('/href="problem.php\?id=(\d+)" target="_blank"/',$body,$matches);
+    preg_match_all('/href="problem.php\?id=(\d+)&amp;from_adventure=route"/',$body,$matches);
     check_adv(count($matches[1])===3,'Three route stops');
     foreach ($matches[1] as $pid) adv_fixture_result(intval($pid),4,date('Y-m-d H:i:s'));
     check_adv(str_contains(request_adv('/adventure.php?tab=route'),'远征完成'),'Route completion from real records');
@@ -214,7 +214,7 @@ try {
     request_adv('/adventure.php?tab=route',array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key),true,303,$fixSession);
     $body = request_adv('/adventure.php?tab=route',null,true,200,$fixSession);
     check_adv(adv_feedback_text($body) === '' && adv_route_button($body) === '查看今日路线','The rebuilt route is usable again');
-    preg_match_all('/href="problem.php\?id=(\d+)" target="_blank"/',$body,$rebuilt);
+    preg_match_all('/href="problem.php\?id=(\d+)&amp;from_adventure=route"/',$body,$rebuilt);
     $newIds = array_map('intval',$rebuilt[1]);
     check_adv(count($newIds)===3,'A rebuilt route offers three stops');
     check_adv(!in_array($oldIds[0],$newIds,true),'The unpublic stop is replaced');
@@ -244,7 +244,7 @@ try {
     request_adv('/adventure.php?tab=route',array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key),true,303,$goneSession);
     $body = request_adv('/adventure.php?tab=route',null,true,200,$goneSession);
     check_adv(adv_feedback_text($body) === '' && !str_contains($body,'已不可用'),'The rebuilt route has no unavailable stop left');
-    preg_match_all('/href="problem.php\?id=(\d+)" target="_blank"/',$body,$reset);
+    preg_match_all('/href="problem.php\?id=(\d+)&amp;from_adventure=route"/',$body,$reset);
     check_adv(count($reset[1])===3 && !in_array($goneIds[0],array_map('intval',$reset[1]),true),'The deleted stop is replaced');
     // A broken route refresh must not block another tab from saving its state.
     $badUser = adv_fixture_user();

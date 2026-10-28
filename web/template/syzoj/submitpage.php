@@ -64,6 +64,7 @@ textarea#source { padding: 12px; font-family: Consolas, Monaco, "Courier New", m
         <form id="frmSolution" action="submit.php" method="post" onsubmit='do_submit()'>
           <?php require_once('./include/set_post_key.php');?>
           <?php if (isset($id)){?>
+            <input type="hidden" name="from_adventure" value="<?php echo $ojAdventureOrigin; ?>">
             <input id="problem_id" type="hidden" value="<?php echo $id?>" name="id">
           <?php }else{ ?>
             <input id="cid" type="hidden" value="<?php echo $cid?>" name="cid">
@@ -139,7 +140,7 @@ textarea#source { padding: 12px; font-family: Consolas, Monaco, "Courier New", m
     <div class="oj-sub-side">
       <div class="oj-card">
         <div class="oj-sub-side-title">题目信息</div>
-        <div class="oj-info-row"><span class="l">题号</span><span class="v"><a href="<?php if(isset($id)) echo "problem.php?id=$id"; else echo "problem.php?cid=$cid&pid=$pid"; ?>"><?php if(isset($id)) echo $id; else echo chr($pid+ord('A')); ?></a></span></div>
+        <div class="oj-info-row"><span class="l">题号</span><span class="v"><a href="<?php if(isset($id)) echo "problem.php?id=$id".$ojAdventureQuery; else echo "problem.php?cid=$cid&pid=$pid"; ?>"><?php if(isset($id)) echo $id; else echo chr($pid+ord('A')); ?></a></span></div>
         <div class="oj-info-row"><span class="l">标题</span><span class="v"><?php echo isset($view_pmeta['title'])?htmlentities($view_pmeta['title'],ENT_QUOTES,"UTF-8"):""; ?></span></div>
         <div class="oj-info-row"><span class="l">上传者</span><span class="v"><span id="creator"></span></span></div>
         <div class="oj-info-row"><span class="l">时间限制</span><span class="v"><?php echo isset($view_pmeta['time_limit'])?$view_pmeta['time_limit']:0; ?> S</span></div>
@@ -150,7 +151,7 @@ textarea#source { padding: 12px; font-family: Consolas, Monaco, "Courier New", m
         <?php } ?>
 
         <div class="oj-sub-btns">
-          <a class="oj-btn oj-btn-ghost" href="<?php if(isset($id)) echo "problem.php?id=$id"; else echo "problem.php?cid=$cid&pid=$pid"; ?>">返回题目</a>
+          <a class="oj-btn oj-btn-ghost" href="<?php if(isset($id)) echo "problem.php?id=$id".$ojAdventureQuery; else echo "problem.php?cid=$cid&pid=$pid"; ?>">返回题目</a>
           <button id="Submit" type="button" class="oj-btn oj-btn-primary" onclick="$('#frmSolution').submit();">提交代码</button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source = fs.readFileSync(new URL('../template/syzoj/auto_refresh.js', import.meta.url), 'utf8');
-function page(results, eligible, canViewRuntime = false) {
+function page(results, eligible, canViewRuntime = false, adventureReturn = '') {
   const elements = {
     'editorial-reward-prompt': {hidden: true},
     'editorial-reward-problem': {}, 'editorial-reward-link': {}
@@ -11,7 +11,7 @@ function page(results, eligible, canViewRuntime = false) {
   elements['result-tab'] = {rows};
   const requests = [];
   function XMLHttpRequest() { requests.push(this); this.open = () => {}; this.send = () => {}; }
-  const context = {document: {getElementById: id => elements[id]}, editorial_prompt_problems: eligible, oj_can_view_runtime: canViewRuntime,
+  const context = {document: {getElementById: id => elements[id]}, editorial_prompt_problems: eligible, editorial_prompt_return: adventureReturn, oj_can_view_runtime: canViewRuntime,
     judge_color: [], judge_result: [], XMLHttpRequest, setTimeout() {},
     $: value => ({find() { return {attr() {return value.result;}}; }, append() {}, mouseover() {}, hide() {}})};
   context.window = context;
@@ -64,3 +64,6 @@ p = page([[30,0]], {});
 p.respond(30,11);
 assert.match(p.elements['result-tab'].rows[1].cells[5].innerHTML, /ceinfo\.php/);
 console.log('PASS: current submission hints, student runtime links hidden, privileged runtime links and compiler links preserved');
+
+p = page([[20,4]], {20:1000}, false, '&from_adventure=route');
+assert.equal(p.elements['editorial-reward-link'].href, 'solutions.php?problem_id=1000&write=1&from_adventure=route');

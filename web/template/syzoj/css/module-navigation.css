@@ -1,0 +1,46 @@
+.oj-module-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--oj-border, #dce3ec);
+}
+.oj-module-tabs a {
+  padding: 12px 16px;
+  color: #526177;
+  border-bottom: 3px solid transparent;
+  text-underline-offset: 4px;
+}
+.oj-module-tabs a[aria-current] {
+  color: #245dd8;
+  border-bottom-color: #245dd8;
+  font-weight: 700;
+}
+.oj-module-tabs a:hover { color: #1d4db8; text-decoration: underline; }
+.oj-module-tabs a:focus-visible,
+.oj-task-context a:focus-visible,
+.oj-module-rules summary:focus-visible {
+  outline: 3px solid #245dd8;
+  outline-offset: 3px;
+}
+.oj-task-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0 0 24px;
+  color: #526177;
+}
+.oj-task-context a { color: #245dd8; text-underline-offset: 4px; }
+.oj-module-rules { margin: 20px 0; color: #526177; max-width: 75ch; }
+.oj-module-rules summary { cursor: pointer; width: fit-content; color: #245dd8; padding: 8px 0; }
+.oj-module-rules p, .oj-module-rules li { line-height: 1.8; }
+.oj-coin-balance { margin: 0; white-space: nowrap; color: #526177; }
+.oj-coin-balance strong { color: #25344a; font-variant-numeric: tabular-nums; font-size: 24px; margin: 0 6px; }
+.oj-page-coins .ed-heading h2 { margin: 0 0 10px; font-size: 24px; }
+.oj-page-ranklist .oj-rk { padding-top: 0; }
+
+.oj-route-settings { margin-bottom: 24px; }
+.oj-route-settings > summary { cursor: pointer; color: #245dd8; padding: 8px 0; width: fit-content; }
+.oj-route-settings > summary:focus-visible { outline: 3px solid #245dd8; outline-offset: 3px; }
+.oj-route-settings[open] > summary { margin-bottom: 16px; }

@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__.'/../../include/navigation.inc.php';
+$ojAdventureOrigin = isset($_GET['cid']) || isset($OJ_ON_SITE_CONTEST_ID) ? '' : oj_adventure_origin($_GET);
+$ojAdventureQuery = oj_adventure_query($ojAdventureOrigin);
 $show_title = isset($show_title) ? $show_title : ''; // 若未传递，默认空字符串
 $url=basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 if ($url === '') $url = 'index.php';
@@ -51,6 +54,7 @@ if (isset($_SESSION[$OJ_NAME.'_user_id'], $_SESSION[$OJ_NAME.'_administrator']))
     <meta name="viewport" content="<?php echo (in_array($url, array('index.php', 'loginpage.php', 'registerpage.php', 'lostpassword.php', 'lostpassword2.php', 'modifypage.php'), true) || !empty($OJ_ADVENTURE_VIEWPORT) || !empty($OJ_EDITORIAL_VIEWPORT)) ? 'width=device-width, initial-scale=1' : 'width=1200'; ?>">
     <title><?php echo $show_title ?></title>
     <?php include("template/$OJ_TEMPLATE/css.php");?>
+    <link rel="stylesheet" href="<?php echo $path_fix; ?>template/syzoj/css/module-navigation.css?v=20261028.2">
     <script src="<?php echo $OJ_CDN_URL?>/include/jquery-latest.js"></script>
 </head>
 <?php
@@ -73,7 +77,7 @@ if ($OJ_WHITE_BLACK) { ?>
         <a class="header item" href="index.php" style="padding: 0 0.82vw 0 0.82vw;"><span
                     style="font-family: 'Exo 2'; font-size: 1.5em; font-weight: 600;"><?php echo $OJ_NAME?></span></a>
         <a class="item <?php if ($url=="index.php"||$url=="index1.php") echo "active";?>" href="index.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="home icon"></i> <?php echo $MSG_HOME?></a>
-        <a class="item <?php if ($url=="problemset.php") echo "active";?>"
+        <a class="item <?php if (in_array($url, array("problemset.php","problem.php","submitpage.php","solutions.php"), true)) echo "active";?>"
 	   href="<?php echo $path_fix?>problemset.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="list icon"></i><?php echo $MSG_PROBLEMS?> </a>
 	<a class="item <?php if ($url=="category.php") echo "active";?>"
            href="<?php echo $path_fix?>category.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="globe icon"></i><?php echo $MSG_SOURCE?></a>
@@ -81,8 +85,9 @@ if ($OJ_WHITE_BLACK) { ?>
                     class="calendar icon"></i> <?php echo $MSG_CONTEST?></a>
         <a class="item <?php if ($url=="status.php") echo "active";?>" href="<?php echo $path_fix?>status.php"  style="padding: 0 0.82vw 0 0.82vw;"><i
                     class="tasks icon"></i><?php echo $MSG_STATUS?></a>
-        <a class="item <?php if ($url=="ranklist.php") echo "active";?>"
+        <a class="item <?php if (in_array($url, array("ranklist.php", "coins.php"), true)) echo "active";?>"
            href="<?php echo $path_fix?>ranklist.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="signal icon"></i> <?php echo $MSG_RANKLIST?></a>
+        <a class="item <?php if (in_array($url, array('adventure.php','hunt.php'), true)) echo 'active'; ?>" href="<?php echo $path_fix; ?>adventure.php"<?php if (in_array($url, array('adventure.php','hunt.php'), true)) echo ' aria-current="page"'; ?> style="padding: 0 0.82vw;"><i class="compass icon" aria-hidden="true"></i>今日冒险</a>
 	<a class="item <?php if ($url=="knowledge_graph.php") echo "active";?>"
 	   href="<?php echo $path_fix?>knowledge_graph.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="share alternate icon"></i><?php echo "知识地图"?> </a>
 
@@ -113,9 +118,6 @@ if ($OJ_WHITE_BLACK) { ?>
                         <?php } ?>
                         <a class="item" href="<?php echo $path_fix?>solutions.php?tab=mine"><i class="book icon"></i>我的题解</a>
                         <a class="item" href="<?php echo $path_fix?>lab.php?tab=mine"><i class="university icon"></i>我的申请与反馈</a>
-                        <a class="item" href="<?php echo $path_fix?>coins.php?tab=history"><i class="trophy icon"></i>我的金币</a>
-                        <a class="item" href="<?php echo $path_fix?>adventure.php"><i class="compass icon"></i>今日冒险</a>
-                        <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="history icon"></i>解题回忆录</a>
                         <a class="item" href="<?php echo $path_fix?>modifypage.php"><i
                                     class="edit icon"></i><?php echo $MSG_REG_INFO;?></a>
                         <?php if ($OJ_SaaS_ENABLE){ ?>
@@ -165,11 +167,15 @@ if ($OJ_WHITE_BLACK) { ?>
     <a class="oj-back-link" id="back_to_contest" href="<?php echo $path_fix; ?>contest.php?cid=<?php echo intval($_GET['cid']); ?>"><i class="arrow left icon" aria-hidden="true"></i>返回竞赛题目列表</a>
 <?php } ?>
 <?php
-$desktop_titles = array('index.php'=>'主页', 'problemset.php'=>'题库', 'status.php'=>'提交状态', 'ranklist.php'=>'排名', 'contest.php'=>'竞赛与作业');
+$desktop_titles = array('index.php'=>'主页', 'problemset.php'=>'题库', 'status.php'=>'提交状态', 'ranklist.php'=>'排名', 'coins.php'=>'排名', 'contest.php'=>'竞赛与作业');
 if (isset($desktop_titles[$url]) && !isset($_GET['cid'])) {
     echo '<div class="oj-page-heading"><h1>'.$desktop_titles[$url].'</h1>';
-    if ($url === 'ranklist.php') echo '<div class="oj-page-actions"><a class="ui basic button" href="coins.php">金币榜单</a></div>';
     if ($url === 'index.php') echo '<div class="oj-page-actions"><a class="ui primary button" href="problemset.php">开始练习</a><a class="ui basic button" href="knowledge_graph.php">探索知识地图</a></div>';
     echo '</div>';
 }
 ?>
+<?php if ($ojAdventureOrigin && in_array($url, array('problem.php','submitpage.php','status.php','coins.php','ranklist.php'), true)) { ?>
+<nav class="oj-task-context" aria-label="返回冒险"><a href="<?php echo $path_fix; ?>adventure.php?tab=<?php echo $ojAdventureOrigin; ?>"><i class="arrow left icon" aria-hidden="true"></i>返回今日冒险 · <?php echo oj_adventure_tabs()[$ojAdventureOrigin]; ?></a></nav>
+<?php } ?>
+<?php if ($url === 'ranklist.php' && !empty($navProblemId)) { ?><nav class="oj-task-context" aria-label="返回题目与题解"><a href="problem.php?id=<?php echo $navProblemId.$ojAdventureQuery; ?>">返回题目 P<?php echo $navProblemId; ?></a><a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>">本题题解</a></nav><?php } ?>
+<?php if (in_array($url, array('ranklist.php','coins.php'), true)) require __DIR__.'/ranking-nav.php'; ?>
