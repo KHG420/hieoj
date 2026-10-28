@@ -243,17 +243,29 @@ try {
     // plain text typed with a leading indent must reach the reviewer unchanged.
     // Each fixture also carries an explanation so it stays valid once the
     // submission threshold rejects code-only posts.
-    $indented="    int main() {\n        return 0;\n    }\n\n这段代码演示标准输出与返回值处理，时间复杂度 O(1)，空间复杂度 O(1)，并说明缩进代码块应原样到达审核页。";
+    $indentExplanation='解题时先明确输入与输出的含义，再根据数据范围选择合适的算法。对于这个示例，程序从主函数开始执行，按照题目要求完成计算并返回正常退出状态。分析正确性时，需要说明每一步操作保持了什么条件，以及结束时为什么能够得到目标结果。实现过程中还要检查最小输入、最大输入和特殊边界，避免遗漏空数据或重复数据。最后分别统计执行次数与额外存储量，给出时间复杂度和空间复杂度，并用具体样例逐步核对运行过程。';
+    $indented="    int main() {\n        return 0;\n    }\n\n".$indentExplanation."\n";
     ed_http($writePath,0,array('action'=>'submit','title'=>'缩进保留','content'=>$indented,'content_format'=>'markdown','postkey'=>$key),303);
     $indentedId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
     ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedId))===$indented,'Leading indentation survives submission');
     ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId,0),editorial_escape($indented)),'Author view keeps the indented body');
     ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId.'&tab=review',3),editorial_escape($indented)),'Reviewer view keeps the indented body');
-    $indentedPlain="  纯文本首行缩进\n    第二行更深\n\n这段纯文本用缩进描述解题步骤，并补充足够长的文字解释，确保在投稿门槛校验下仍能提交并保留行首缩进。";
+    $indentedPlain="  纯文本首行缩进\n    第二行更深\n\n".$indentExplanation."\n";
     ed_http($writePath,0,array('action'=>'submit','title'=>'纯文本缩进','content'=>$indentedPlain,'content_format'=>'plain','postkey'=>$key),303);
     $indentedPlainId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
     ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedPlainId))===$indentedPlain,'Plain body keeps its leading indentation');
     ed_check(str_contains(ed_http('/solutions.php?id='.$indentedPlainId.'&tab=review',3),editorial_escape($indentedPlain)),'Reviewer sees plain indentation');
+    $mixedEndings="\t第一行\r\n    第二行\r\n\r".$indentExplanation."\r\n";
+    $normalizedEndings=str_replace(array("\r\n","\r"),"\n",$mixedEndings);
+    ed_http($writePath,0,array('action'=>'submit','title'=>'换行归一化','content'=>$mixedEndings,'content_format'=>'plain','postkey'=>$key),303);
+    $lineEndingId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($lineEndingId))===$normalizedEndings,'CRLF and CR normalize without trimming tabs, spaces or the final newline');
+    ed_ac($b,$pids[1]);
+    foreach(array($indentedId=>$indented,$indentedPlainId=>$indentedPlain) as $indentId=>$indentBody) {
+        ed_http('/solutions.php?id='.$indentId.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
+        ed_http('/solutions.php?id='.$indentId,1,array('action'=>'unlock','postkey'=>$key),303);
+        ed_check(str_contains(ed_http('/solutions.php?id='.$indentId,1),editorial_escape($indentBody)),'Approved article preserves indentation for a passed reader');
+    }
     ed_http($writePath,0,array('action'=>'submit','title'=>'空白正文','content'=>"   \n\t  ",'content_format'=>'markdown','postkey'=>$key),400);
     $legacy=ed_http('/solutions.php?id='.$id,0);
     ed_check(str_contains($legacy,'data-content-format="plain"') && !str_contains($legacy,'editorial-markdown.js'),'Legacy article not reinterpreted');
