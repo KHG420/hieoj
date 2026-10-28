@@ -22,6 +22,11 @@ $key = bin2hex(random_bytes(16));
 function ed_check($ok,$message) { global $checks; if (!$ok) throw new RuntimeException($message); $checks++; }
 function ed_value($sql,$args=array()) { return editorial_query($sql,$args)->fetchColumn(); }
 function ed_ac($user,$pid,$result=4) { editorial_query('INSERT INTO solution(user_id,problem_id,result,in_date) VALUES(?,?,?,NOW())',array($user,$pid,$result)); return (int)editorial_db()->lastInsertId(); }
+function ed_prose($marker = '') {
+    $unit = '关键观察是这个做法成立的原因，下面按步骤说明算法流程，并给出时间复杂度与空间复杂度的分析，方便读者独立完成本题。';
+    $n = editorial_effective_length($unit, 'markdown');
+    return $marker.str_repeat($unit, (int)ceil(editorial_min_prose() / max($n, 1)));
+}
 function ed_http($path,$who=null,$post=null,$expected=200,$location=null) {
     global $sessions;
     usleep(160000); // Stay below the local nginx dynamic-request limit.
@@ -88,7 +93,7 @@ try {
     ed_http('/solutions.php?tab=review',0,null,403);
     ed_http('/coins.php?tab=history',null,null,401);
     ed_http('/solutions.php?problem_id='.$pids[0],0,array('action'=>'submit','postkey'=>$key,'title'=>'','content'=>'思路'),400);
-    $body='SECRET_BODY_'.$prefix."\n<script>alert('xss')</script>\nint main() { return 0; }";
+    $body='SECRET_BODY_'.$prefix."\n<script>alert('xss')</script>\nint main() { return 0; }".ed_prose();
     ed_http('/solutions.php?problem_id='.$pids[0],0,array('action'=>'submit','postkey'=>$key,'title'=>'前缀和 <script>','content'=>$body),303);
     $id=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
     ed_check(str_contains(ed_http('/solutions.php?id='.$id,0),'SECRET_BODY_'.$prefix),'Author reads own pending article free');
@@ -121,12 +126,12 @@ try {
     ed_http('/solutions.php?id='.$id,0,array('action'=>'unlock','postkey'=>$key),303);
     ed_http('/solutions.php?id='.$id,3,array('action'=>'unlock','postkey'=>$key),303);
     ed_check(editorial_balance($a)===14 && editorial_balance($admin)===0,'Author and administrator pay nothing');
-    $id2=editorial_submit($a,$pids[0],'另一种思路','独立题解');
+    $id2=editorial_submit($a,$pids[0],'另一种思路',ed_prose('独立题解'));
     ed_parallel(array(array('review',$admin,$id2),array('review',$admin,$id2)));
     ed_check(editorial_balance($a)===24,'Concurrent approval grants one reward');
     ed_http('/solutions.php?id='.$id2,1,array('action'=>'unlock','postkey'=>$key),303);
     ed_check(str_contains(ed_http('/solutions.php?id='.$id2,1),'独立题解') && editorial_balance($b)===1,'One problem purchase includes later approved articles');
-    $reject=editorial_submit($a,$pids[0],'需要修改的思路','待改进');
+    $reject=editorial_submit($a,$pids[0],'需要修改的思路',ed_prose('待改进'));
     ed_http('/solutions.php?id='.$reject.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'rejected'),400);
     ed_http('/solutions.php?id='.$reject.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'rejected','note'=>'请补充复杂度分析'),303);
     ed_check(editorial_balance($a)===24 && str_contains(ed_http('/solutions.php?id='.$reject,0),'请补充复杂度分析'),'Rejection is explained and unrewarded');
@@ -136,7 +141,7 @@ try {
     ed_check(editorial_balance($e)===1 && (int)ed_value('SELECT COUNT(*) FROM problem_unlock WHERE user_id=?',array($e))===1,'Simultaneous different articles of one problem cost five total');
     // Two different problems competing for one wallet cannot overdraw it.
     ed_ac($c,$pids[3]); ed_ac($c,$pids[4]);
-    $different=editorial_submit($a,$pids[1],'另一道题的题解','不同题目正文');
+    $different=editorial_submit($a,$pids[1],'另一道题的题解',ed_prose('不同题目正文'));
     $_SESSION[$OJ_NAME.'_administrator']=true; editorial_review($admin,$different,'approved','');
     $scoped=ed_http('/solutions.php?problem_id='.$pids[0]);
     ed_check(str_contains($scoped,'href="solutions.php?id='.$id.'"') && !str_contains($scoped,'href="solutions.php?id='.$different.'"'),'A problem list excludes other problems');
@@ -155,7 +160,7 @@ try {
     $codes=ed_parallel(array(array('unlock',$c,$id),array('unlock',$c,$different)));
     ed_check(count(array_filter($codes,fn($v)=>$v===0))===1 && editorial_balance($c)===1,'Concurrent different purchases cannot overdraw wallet');
     // Force a ledger uniqueness failure, proving the entire money operation rolls back.
-    $rollback=editorial_submit($a,$pids[0],'事务验证','事务正文');
+    $rollback=editorial_submit($a,$pids[0],'事务验证',ed_prose('事务正文'));
     editorial_query("INSERT INTO coin_ledger(user_id,kind,reference_id,amount) VALUES(?,'editorial_reward',?,10)",array($a,$rollback));
     $_SESSION[$OJ_NAME.'_administrator']=true;
     try { editorial_review($admin,$rollback,'approved',''); ed_check(false,'Expected approval failure'); } catch (PDOException $e) {}
@@ -163,7 +168,7 @@ try {
     editorial_query("DELETE FROM coin_ledger WHERE user_id=? AND kind='editorial_reward' AND reference_id=?",array($a,$rollback));
     editorial_review($admin,$rollback,'approved','');
     // Use another author's article so the purchaser is not exempt.
-    $other=editorial_submit($b,$pids[3],'读者的题解','另一位作者'); editorial_review($admin,$other,'approved','');
+    $other=editorial_submit($b,$pids[3],'读者的题解',ed_prose('另一位作者')); editorial_review($admin,$other,'approved','');
     editorial_query("INSERT INTO coin_ledger(user_id,kind,reference_id,amount) VALUES(?,'problem_unlock',?,-5)",array($a,$pids[3]));
     $before=editorial_balance($a);
     try { editorial_unlock($a,$other,false); ed_check(false,'Expected debit failure'); } catch (PDOException $e) {}
@@ -197,7 +202,7 @@ try {
     ed_check(isset($rankBody[1]) && strpos($rankBody[1],$a)<strpos($rankBody[1],$b),'Ranking orders current balances');
     foreach($users as $uid) ed_check(editorial_balance($uid)===(int)ed_value('SELECT COALESCE(SUM(amount),0) FROM coin_ledger WHERE user_id=?',array($uid)),'Wallet reconciles with ledger');
     // Pagination and text escaping use real records, without querying bodies for lists.
-    for($i=0;$i<21;$i++) editorial_submit($a,$pids[1],'分页题解 '.$i,'分页正文');
+    for($i=0;$i<21;$i++) editorial_submit($a,$pids[1],'分页题解 '.$i,ed_prose('分页正文'));
     ed_check(str_contains(ed_http('/solutions.php?tab=mine',0),'下一页'),'Editorial pagination available');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine&page=2',0),'上一页'),'Second page works');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine'.$nav,0),'page=2&amp;from_problem='.$pids[0]),'Pagination retains source without filtering the global list');
@@ -206,7 +211,7 @@ try {
     $compose=ed_http($writePath,0);
     ed_check(str_contains($compose,'id="editorial-form"') && str_contains($compose,'name="content_format" value="markdown"'),'Dedicated Markdown composer');
     ed_check(!str_contains(ed_http($writePath,1),'id="editorial-form"'),'Only accepted users can open the composer');
-    $md="## 思路\n\n**前缀和** \$O(n)\$\n\n```cpp\nint main() { return 0; }\n```\n<script>bad()</script>";
+    $md="## 思路\n\n**前缀和** \$O(n)\$。".ed_prose()."\n\n```cpp\nint main() { return 0; }\n```\n<script>bad()</script>";
     $invalid=ed_http($writePath,0,array('action'=>'submit','title'=>'保留的标题','content'=>$md,'content_format'=>'markdown','postkey'=>'expired'),403);
     ed_check(str_contains($invalid,'保留的标题') && str_contains($invalid,editorial_escape($md)),'CSRF failure retains title and body');
     ed_http($writePath,0,array('action'=>'submit','title'=>'格式验证','content'=>$md,'content_format'=>'html','postkey'=>$key),400);
@@ -225,6 +230,22 @@ try {
     ed_http('/solutions.php?id='.$mdId.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
     ed_check(editorial_balance($a)===$rewardBefore+10,'Markdown approval earns the same ten coins');
     ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId),editorial_escape($md)),'Markdown never leaks through anonymous paywall');
+    // The prose threshold counts only the explanation outside code, and never code comments.
+    $unit='关键观察是这个做法成立的原因，下面按步骤说明算法流程，并给出时间复杂度与空间复杂度的分析，方便读者独立完成本题。';
+    $prose=str_repeat($unit,(int)ceil(editorial_min_prose()/editorial_effective_length($unit,'markdown')));
+    ed_check(editorial_effective_length($prose,'markdown')>=editorial_min_prose(),'Generated prose meets the threshold');
+    ed_check(editorial_effective_length("```cpp\n// ".str_repeat('注',200)."\n```",'markdown')===0,'Backtick fence comments are not prose');
+    ed_check(editorial_effective_length("~~~cpp\n// ".str_repeat('注',200)."\n~~~",'markdown')===0,'Tilde fence comments are not prose');
+    ed_check(editorial_effective_length("简述\n\n    ".str_repeat('注',200),'markdown')===2,'Indented code block is not prose');
+    ed_check(editorial_effective_length('`'.str_repeat('码',200).'`','markdown')===0,'Inline code is not prose');
+    ed_check(editorial_effective_length($prose."\n\n```cpp\nint main(){return 0;}\n```",'markdown')===editorial_effective_length($prose,'markdown'),'Code does not change the prose count');
+    $thresholdPath='/solutions.php?problem_id='.$pids[1].'&write=1';
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'纯反引号代码','content'=>"```cpp\n// ".str_repeat('注',200)."\n```",'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'纯波浪线代码','content'=>"~~~cpp\n// ".str_repeat('注',200)."\n~~~",'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'纯缩进代码','content'=>"简述\n\n    ".str_repeat('注',200),'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'纯行内代码','content'=>'`'.str_repeat('码',200).'`','content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'差一个字','content'=>str_repeat('解',editorial_min_prose()-1),'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'刚好达标','content'=>str_repeat('解',editorial_min_prose()),'content_format'=>'markdown'),303);
     // References are live AC code, with the same problem-level access and payment.
     editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'备用题解'));
     $refPid=(int)editorial_db()->lastInsertId(); $pids[]=$refPid;
@@ -248,12 +269,12 @@ try {
     ed_check((int)editorial_reference($refPid)['solution_id']===$later,'Rejudged non-AC code is no longer selected');
     editorial_query('UPDATE solution SET result=4 WHERE solution_id=?',array($refSid));
     $refHtml=ed_http($refPath,0);
-    ed_check(str_contains($refHtml,'无人提交题解') && str_contains($refHtml,'<code>'.editorial_escape($refCode).'</code>'),'Passed reader sees the exact escaped reference code');
+    ed_check(str_contains($refHtml,'没有思路讲解') && str_contains($refHtml,'<code>'.editorial_escape($refCode).'</code>'),'Passed reader sees the exact escaped reference code');
     ed_check(!str_contains($refHtml,'LATER_REFERENCE_') && !str_contains($refHtml,"<script>alert('reference')"),'Only one reference, with no executable HTML');
     ed_check(!str_contains(ed_http($refPath),'REFERENCE_'.$prefix),'Anonymous reference body is withheld');
     ed_check(!str_contains(ed_http($refPath,2),'REFERENCE_'.$prefix),'Unpaid reference body is withheld');
     ed_check(str_contains(ed_http($refPath,3),editorial_escape($refCode)),'Administrator reads reference free');
-    ed_check(!str_contains(ed_http($refPath.'&page=2',0),'无人提交题解'),'Reference is not duplicated on later pages');
+    ed_check(!str_contains(ed_http($refPath.'&page=2',0),'没有思路讲解'),'Reference is not duplicated on later pages');
     ed_check(str_contains(ed_http($refPath.'&write=1',0),'id="editorial-form"'),'Reference does not replace the composer');
     ed_http($refPath,2,array('action'=>'unlock','postkey'=>'invalid'),403);
     ed_http($refPath,null,array('action'=>'unlock','postkey'=>$key),401);
@@ -282,15 +303,15 @@ try {
         ed_http($refPath,2,null,404);
         editorial_query('DELETE FROM contest_problem WHERE contest_id=?',array($cid));
     }
-    $pendingRef=editorial_submit($a,$refPid,'正式题解测试','APPROVED_REFERENCE_REPLACEMENT_'.$prefix);
+    $pendingRef=editorial_submit($a,$refPid,'正式题解测试',ed_prose('APPROVED_REFERENCE_REPLACEMENT_'.$prefix));
     ed_check(str_contains(ed_http($refPath,0),editorial_escape($refCode)),'Pending editorial keeps the reference');
     editorial_review($admin,$pendingRef,'rejected','请修改');
     ed_check(str_contains(ed_http($refPath,0),editorial_escape($refCode)),'Rejected editorial keeps the reference');
-    $approvedRef=editorial_submit($a,$refPid,'正式题解测试','APPROVED_REFERENCE_REPLACEMENT_'.$prefix);
+    $approvedRef=editorial_submit($a,$refPid,'正式题解测试',ed_prose('APPROVED_REFERENCE_REPLACEMENT_'.$prefix));
     $authorBalance=editorial_balance($a);
     editorial_review($admin,$approvedRef,'approved','');
     $replaced=ed_http($refPath,2);
-    ed_check(!editorial_reference($refPid) && !str_contains($replaced,'无人提交题解') && !str_contains($replaced,editorial_escape($refCode)) && str_contains($replaced,'href="solutions.php?id='.$approvedRef.'"'),'Approval replaces the reference with the real editorial');
+    ed_check(!editorial_reference($refPid) && !str_contains($replaced,'没有思路讲解') && !str_contains($replaced,editorial_escape($refCode)) && str_contains($replaced,'href="solutions.php?id='.$approvedRef.'"'),'Approval replaces the reference with the real editorial');
     ed_check(str_contains(ed_http('/solutions.php?id='.$approvedRef,2),'APPROVED_REFERENCE_REPLACEMENT_'.$prefix) && editorial_balance($c)===$refBalance-5,'Reference purchase also unlocks the later approved editorial');
     ed_check(editorial_balance($a)===$authorBalance+10 && (int)ed_value('SELECT COUNT(*) FROM problem_editorial WHERE problem_id=?',array($refPid))===2,'Only actual posts exist and only approval rewards the author');
     ed_http($refPath,2,array('action'=>'unlock','postkey'=>$key),400);
