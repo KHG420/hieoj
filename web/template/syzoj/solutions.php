@@ -17,7 +17,7 @@
   <?php if($ready && $article){ ?>
     <article class="ed-panel">
       <h2 class="ed-article-title"><?php echo editorial_escape($article['title']); ?></h2>
-      <?php if($reference){ ?><div class="ed-notice"><p>这道题还没有人写题解，下面是系统自动抓取的一份 AC 代码，<strong>没有思路讲解</strong>，只能看写法。</p><?php if($passed){ ?><a class="ui primary button" href="solutions.php?problem_id=<?php echo intval($problemId); ?>&amp;write=1">我来写一篇图文题解</a><?php } ?><p class="ed-meta">写清思路并通过审核，可获得 10 金币。</p></div>
+      <?php if($reference){ ?><div class="ed-notice"><p>这道题还没有人写题解，下面是系统自动抓取的一份 AC 代码，<strong>没有思路讲解</strong>，只能看写法。</p><?php if($passed){ ?><a class="ui primary button" href="solutions.php?problem_id=<?php echo intval($problemId); ?>&amp;write=1">我来写一篇图文题解</a><?php } ?><p class="ed-meta">写题解请说明关键思路及为什么可行、算法步骤、时间与空间复杂度；代码之外的解释至少 <?php echo editorial_min_prose(); ?> 个汉字。审核通过后获得 10 金币。</p></div>
       <?php } else { ?><p class="ed-meta">作者 <?php echo editorial_escape($article['user_id']); ?> · <?php echo editorial_escape($article['created_at']); ?> · <?php echo $statusNames[$article['status']]; ?></p><?php } ?>
       <?php if($canRead){ ?>
         <?php if($reference){ ?><div class="ed-markdown"><pre class="ed-code-shell"><code><?php echo editorial_escape($article['content']); ?></code></pre></div>
