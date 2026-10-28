@@ -4,6 +4,8 @@
 `docker/conf/php/www.conf`。注册、找回密码、修改邮箱共用明文 GET 端点
 `/sendemail.php`；成功响应串保持既有约定「验证码已发送至您的邮箱，请查收。」。
 
+SYZOJ 登录页的 `lostpassword.php` / `lostpassword2.php` 两步找回流程也复用该 SES 发送代码，不再使用遗留 SMTP 示例账号。先核对学号与注册邮箱，再发送 16 位随机重置密钥；供应商确认接收后才保存待重置状态。密钥 3 分钟内有效，成功修改密码后即失效。两步均验证表单凭证，图形验证码仅在 `OJ_VCODE` 开启时校验。注册与其他直接访问 `/sendemail.php` 的用途仍保持原有 6 位验证码约定。
+
 ## 配置来源
 
 - 凭据只保存在服务器 Compose 项目目录下的 `.env`，**严禁提交到 Git**。需要两个键：
@@ -76,6 +78,8 @@ docker run --rm --network none -v "$PWD:/workspace:ro" --entrypoint php \
 测试在 `php -n` 子进程中直接执行真实 `web/sendemail.php`，以 userland stub 替换 curl
 边界并记录缓存读写，校验成功 / 缺凭据 / 供应商拒绝 / HTTP 错误 / 空响应 / 畸形响应 /
 缺 MessageId / 网络失败的 session 与冷却行为。
+
+找回密码回归运行 `php docker/tests/password-reset.php`（同样在 Ubuntu Web 镜像内）。该测试先运行上述邮件回归，再使用真实控制器、模板、文件会话、SQLite、现有密码哈希和 SQL 辅助函数，覆盖图形验证码开关、发信失败、确认重置、登录密码校验、密钥过期/重放及数据库写入失败；邮件供应商边界仍为无网络替身，不发送真实邮件。测试临时文件和数据库在结束时清理。
 
 ## 常见日志
 

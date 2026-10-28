@@ -4,12 +4,16 @@
 @session_start();
 require_once("./include/cache_layer.php");
 require_once("./include/my_func.inc.php");
+$send_email_ok = false;
 
 // 安全修复：邮箱格式校验 + 反滥用限流（同一客户端 IP + 同一收件邮箱 3 分钟 1 封）
-$email = isset($_GET['email']) ? trim($_GET['email']) : '';
+// lostpassword.php includes this endpoint after checking the account/email pair.
+// These variables are internal PHP state, never read from GET or POST.
+$password_reset_delivery = isset($password_reset_email, $password_reset_code);
+$email = $password_reset_delivery ? $password_reset_email : (isset($_GET['email']) ? trim($_GET['email']) : '');
 if(!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email)>100){
     echo "邮箱格式不正确。";
-    exit(0);
+    return;
 }
 $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
 $normalized_email = strtolower($email);
@@ -21,7 +25,7 @@ $secretKey = getenv('TENCENTCLOUD_SECRET_KEY');
 if ($secretId === false || $secretId === '' || $secretKey === false || $secretKey === '') {
     error_log('Tencent Cloud SES credentials are not configured.');
     echo "邮件服务暂时不可用，请稍后再试。";
-    exit(0);
+    return;
 }
 
 // 同一收件邮箱仍持有有效验证码时复用等待提示；换成其它邮箱（例如纠正拼写）时放行，
@@ -31,18 +35,18 @@ if (isset($_SESSION['code'], $_SESSION['time'], $_SESSION['email'])
     && strtolower(trim((string)$_SESSION['email'])) === $normalized_email) {
     $tt = $_SESSION['time'] - time();
     echo "验证码仍在有效期内，请等待 {$tt} 秒后再试。";
-    exit(0);
+    return;
 }
 
 // 反滥用限流：同一客户端 IP + 同一收件邮箱 3 分钟内只允许成功发送一次。
 // 仅在腾讯云确认接收后写入，失败既不占用额度也不产生冷却。
 if(cache_get($rate_key)!==false){
     echo "发送过于频繁，请 3 分钟后再试。";
-    exit(0);
+    return;
 }
 
 // 生成6位验证码（加密安全随机数）
-$code = str_pad((string)random_int(0, 999999), 6, "0", STR_PAD_LEFT);
+$code = $password_reset_delivery ? $password_reset_code : str_pad((string)random_int(0, 999999), 6, "0", STR_PAD_LEFT);
 
 $service = "ses";
 $host = "ses.tencentcloudapi.com";
@@ -56,7 +60,7 @@ $algorithm = "TC3-HMAC-SHA256";
 $payload = [
     'FromEmailAddress' => 'HNIEOJ <info@mail.hnieacm.com>',
     'Destination' => [$email],
-    'Subject' => '【验证码】HnieOJ算法设计在线评测系统注册验证码',
+    'Subject' => $password_reset_delivery ? '【密码重置】HnieOJ算法设计在线评测系统重置密钥' : '【验证码】HnieOJ算法设计在线评测系统注册验证码',
     'Template' => [
         'TemplateID' => 30733,
         'TemplateData' => json_encode(["code" => $code]) // 单次 JSON 编码
@@ -107,7 +111,7 @@ $ch = curl_init();
 if ($ch === false) {
     error_log('sendemail: SES transport failure code=curl_init_failed');
     echo "验证码发送失败，请稍后再试。";
-    exit(0);
+    return;
 }
 
 // 有界调用：15 秒超时 + TLS 校验（生产环境保持验证）
@@ -131,7 +135,6 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 // 只记录脱敏后的失败码 / 请求 ID：不输出凭据、签名、原始响应或供应商错误详情。
-$send_email_ok = false;
 if ($errorNo) {
     error_log('sendemail: SES transport failure code=' . (int)$errorNo);
 } else {
@@ -165,7 +168,7 @@ if ($errorNo) {
 if (!$send_email_ok) {
     // 失败关闭：不写入验证码、不延长有效期、不占用限流额度。
     echo "验证码发送失败，请稍后再试。";
-    exit(0);
+    return;
 }
 
 // 仅在腾讯云确认接收后写入验证码与限流额度（保持既有 session 键约定）。
