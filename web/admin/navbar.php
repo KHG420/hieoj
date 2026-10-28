@@ -78,6 +78,9 @@
                                 <a class='nav-link bg-primary' href="user_list.php" title="对注册用户停用、启用帐号" id="a4"><b>用户列表</b></a>
                             </li>
                             <li class="nav-item">
+                                <a class='nav-link bg-primary' href="user_info_edit.php" title="修改姓名、学院、班级、邮箱，查看金币余额" id="a33"><b>修改用户信息</b></a>
+                            </li>
+                            <li class="nav-item">
                                 <a class='nav-link bg-primary' href="academic_directory.php" title="临时登录教务采集学院班级目录并预览确认" id="a32"><b>同步学院班级</b></a>
                             </li>
                             <li class="nav-item">
