@@ -69,5 +69,5 @@
 <script defer src="ace/ace.js"></script>
 <script defer src="template/syzoj/js/editorial-markdown.js?v=1"></script>
 <?php } ?>
-<?php if($showComposer || $submitted){ ?><script defer src="template/syzoj/js/editorial-editor.js?v=2"></script><?php } ?>
+<?php if($showComposer || $submitted){ ?><script defer src="template/syzoj/js/editorial-editor.js?v=3"></script><?php } ?>
 <?php include("template/$OJ_TEMPLATE/footer.php"); ?>
