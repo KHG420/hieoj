@@ -24,9 +24,29 @@
         } catch (e) { return null; }
     }
     function same(d) { return d && d.title === title.value && d.content === content.value; }
+        // Mirrors editorial_effective_length(): only prose outside code counts.
+    function proseLength(text) {
+        if (format !== 'markdown') return (text.match(/[\u4e00-\u9fff]/g) || []).length;
+        var kept = [], fenceChar = '', fenceLen = 0, inFence = false;
+        text.split(/\r\n|\r|\n/).forEach(function (line) {
+            var trimmed = line.replace(/^[ \t]+/, '');
+            if (inFence) { if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}\\s*$').test(trimmed)) inFence = false; return; }
+            var fence = trimmed.match(/^(`{3,}|~{3,})/);
+            if (fence) { inFence = true; fenceChar = fence[1].charAt(0); fenceLen = fence[1].length; return; }
+            if (line.length && /^(?: {4,}|\t)/.test(line)) return;
+            kept.push(line.replace(/`[^`\n]*`/g, ' '));
+        });
+        var prose = kept.join('\n').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+        return (prose.match(/[\u4e00-\u9fff]/g) || []).length;
+    }
     function counts() {
         document.getElementById('title-count').textContent = Array.from(title.value).length + ' / 120 字';
         document.getElementById('content-count').textContent = Array.from(content.value).length.toLocaleString() + ' / 50,000 字';
+        var hint = document.getElementById('prose-count');
+        if (hint) {
+            var min = Number(hint.dataset.min || 0), n = proseLength(content.value);
+            hint.textContent = '代码之外的解释 ' + n + ' / ' + min + ' 个汉字' + (n >= min ? '' : '（还需补写）');
+        }
     }
     function render() {
         if (!content.value.trim()) { preview.textContent = '从一个关键思路开始。这里会展示读者看到的效果。'; return; }

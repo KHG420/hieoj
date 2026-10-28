@@ -57,6 +57,41 @@ function editorial_reference($problem) {
         ORDER BY s.solution_id ASC LIMIT 1",array($problem))->fetch(PDO::FETCH_ASSOC);
 }
 
+// Remove everything a reader skips: fenced blocks (backticks or tildes), indented
+// blocks, inline code, HTML comments and <code>/<pre>. Only prose is an explanation.
+function editorial_strip_code($text) {
+    $kept = array();
+    $inFence = false; $fenceChar = ''; $fenceLen = 0;
+    foreach (preg_split('/\R/u', (string)$text) as $line) {
+        $trimmed = ltrim($line, " \t");
+        if ($inFence) {
+            if (preg_match('/^'.$fenceChar.'{'.$fenceLen.',}\s*$/u', $trimmed)) $inFence = false;
+            continue;
+        }
+        if (preg_match('/^(`{3,}|~{3,})/u', $trimmed, $m)) {
+            $inFence = true; $fenceChar = $m[1][0]; $fenceLen = strlen($m[1]);
+            continue;
+        }
+        if ($trimmed !== '' && preg_match('/^(?: {4,}|\t)/u', $line)) continue;
+        $kept[] = preg_replace('/`[^`\n]*`/u', ' ', $line);
+    }
+    return implode("\n", $kept);
+}
+
+// One source of truth for validation, error text, editor hints and tests.
+function editorial_min_prose() { return 120; }
+
+function editorial_effective_length($content, $format) {
+    $text = (string)$content;
+    if ($format === 'markdown') {
+        $text = editorial_strip_code($text);
+        $text = preg_replace('/<!--.*?-->/s', ' ', $text);
+        $text = preg_replace('/<(code|pre)\b[^>]*>.*?<\/\1>/is', ' ', $text);
+    }
+    preg_match_all('/[\x{4e00}-\x{9fff}]/u', $text, $m);
+    return count($m[0]);
+}
+
 function editorial_submit($user, $problem, $title, $content, $format = 'plain') {
     if (!in_array($format, array('plain','markdown'), true)) throw new DomainException('不支持的题解格式。');
     $title = trim($title); $content = trim($content);
@@ -66,6 +101,11 @@ function editorial_submit($user, $problem, $title, $content, $format = 'plain') 
     if ($title === '' || mb_strlen($title,'UTF-8') > 120 || $content === '' || mb_strlen($content,'UTF-8') > 50000) {
         throw new DomainException('请填写 1–120 字标题和 1–50000 字正文。');
     }
+    $effective = editorial_effective_length($content, $format);
+    if ($effective < editorial_min_prose()) {
+        throw new DomainException('请把思路写出来再提交：代码之外的解释只有 '.$effective.' 个汉字，至少 '.editorial_min_prose().' 个。请说明关键思路及为什么可行、算法步骤、时间与空间复杂度，可以点编辑器里的「插入题解模板」按结构填写。');
+    }
+
     editorial_query('INSERT INTO problem_editorial(problem_id,user_id,title,content,content_format) VALUES(?,?,?,?,?)', array($problem,$user,$title,$content,$format));
     return editorial_db()->lastInsertId();
 }

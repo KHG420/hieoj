@@ -23,8 +23,8 @@
       <div class="ed-editor-input"><textarea id="editorial-content" name="content" rows="18" maxlength="50000" aria-describedby="content-help content-count" required spellcheck="false" placeholder="先解释关键思路，再展开算法步骤、复杂度和代码。也可以使用上方的题解模板。" ><?php echo editorial_escape($contentInput); ?></textarea></div>
       <section class="ed-editor-preview" aria-label="题解阅读效果" hidden><div class="ed-preview-label">阅读效果</div><div id="editorial-preview" class="ed-markdown"></div></section>
     </div>
-    <div class="ed-editor-meta"><span id="content-count">最多 50000 字</span><button type="button" id="download-draft" hidden>下载草稿</button></div>
-    <details class="ed-writing-help"><summary>写作帮助与快捷键</summary><p>建议写清解题思路、算法步骤、时间与空间复杂度，并附上可读的代码。标题用 <code>##</code>，加粗用 <code>**文字**</code>，代码放在三反引号之间。行内公式用 <code>$O(n)$</code>，独立公式用 <code>$$…$$</code>。图片语法显示为链接，不自动加载外部图片。</p><p>Ctrl / ⌘ + B 加粗；Ctrl / ⌘ + S 保存本机草稿。下载草稿可另存一份；清理浏览器数据会移除本机草稿。</p></details>
+    <div class="ed-editor-meta"><span id="content-count">最多 50000 字</span><span id="prose-count" class="ed-meta" data-min="<?php echo editorial_min_prose(); ?>">代码之外的解释至少 <?php echo editorial_min_prose(); ?> 个汉字</span><button type="button" id="download-draft" hidden>下载草稿</button></div>
+    <details class="ed-writing-help"><summary>写作帮助与快捷键</summary><p>请写清关键思路及为什么可行、算法步骤、时间与空间复杂度；代码之外的解释至少 <?php echo editorial_min_prose(); ?> 个汉字，代码块、缩进代码和行内代码不计入。标题用 <code>##</code>，加粗用 <code>**文字**</code>，代码放在三反引号之间。行内公式用 <code>$O(n)$</code>，独立公式用 <code>$$…$$</code>。图片语法显示为链接，不自动加载外部图片。</p><p>Ctrl / ⌘ + B 加粗；Ctrl / ⌘ + S 保存本机草稿。下载草稿可另存一份；清理浏览器数据会移除本机草稿。</p></details>
     <div class="ed-submit-row"><div><strong>准备好后再提交审核</strong><p class="ed-meta">审核通过后公开，并获得 10 金币。保存草稿不会提交审核。</p></div><button class="ui primary button" type="submit" <?php if(!$passed) echo 'disabled'; ?>>提交审核</button></div>
     <?php if(!$user){ ?><p><a href="loginpage.php">重新登录</a>后再提交，正文已保留，可先下载草稿。</p><?php } ?>
   </form>
