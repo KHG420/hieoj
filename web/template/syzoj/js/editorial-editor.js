@@ -27,16 +27,23 @@
         // Mirrors editorial_effective_length(): only prose outside code counts.
     function proseLength(text) {
         if (format !== 'markdown') return (text.match(/[\u4e00-\u9fff]/g) || []).length;
-        var kept = [], fenceChar = '', fenceLen = 0, inFence = false;
+        var kept = [], fenceChar = '', fenceLen = 0, inFence = false, prevBlank = true;
         text.split(/\r\n|\r|\n/).forEach(function (line) {
-            var trimmed = line.replace(/^[ \t]+/, '');
-            if (inFence) { if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}\\s*$').test(trimmed)) inFence = false; return; }
-            var fence = trimmed.match(/^(`{3,}|~{3,})/);
+            var d = line;
+            while (/^\s*>/.test(d)) d = d.replace(/^\s*>\s?/, '');
+            if (/^\s*(?:[-*+]|\d+\.)\s+/.test(d)) d = d.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '');
+            var dt = d.replace(/^[ \t]+/, '');
+            if (inFence) { if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}\\s*$').test(dt)) inFence = false; return; }
+            var fence = dt.match(/^(`{3,}|~{3,})/);
             if (fence) { inFence = true; fenceChar = fence[1].charAt(0); fenceLen = fence[1].length; return; }
-            if (line.length && /^(?: {4,}|\t)/.test(line)) return;
-            kept.push(line.replace(/`[^`\n]*`/g, ' '));
+            var trimmed = line.replace(/^[ \t]+/, '');
+            if (trimmed === '') { prevBlank = true; return; }
+            if (/^(?: {4,}|\t)/.test(d) && prevBlank) { prevBlank = false; return; }
+            kept.push(line);
+            prevBlank = false;
         });
-        var prose = kept.join('\n').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+        var prose = kept.join('\n').replace(/`[^`]*`/g, ' ')
+            .replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
         return (prose.match(/[\u4e00-\u9fff]/g) || []).length;
     }
     function counts() {
