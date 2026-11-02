@@ -29,9 +29,65 @@
         } catch (e) { return null; }
     }
     function same(d) { return d && d.title === title.value && d.content === content.value; }
+    // Mirrors editorial_effective_length(): only prose outside code counts.
+    function proseLength(text) {
+        if (format !== 'markdown') return (text.match(/[\u4e00-\u9fff]/g) || []).length;
+        var kept = [], fenceChar = '', fenceLen = 0, inFence = false, prevBlank = true, inIndented = false;
+        var prefix = /[ \t]*(?:>[ \t]?|(?:[-*+]|\d+[.)])[ \t]+)/y;
+        text.split(/\r\n|\r|\n/).forEach(function (line) {
+            var offset = 0, match;
+            prefix.lastIndex = 0;
+            while ((match = prefix.exec(line))) offset = prefix.lastIndex;
+            var d = line.slice(offset);
+            var dt = d.replace(/^[ \t]+/, '');
+            if (inFence) {
+                if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}[ \\t]*$').test(dt)) {
+                    inFence = false; prevBlank = true; kept.push('');
+                }
+                return;
+            }
+            var fence = dt.match(/^(`{3,}|~{3,})/);
+            if (fence) { inFence = true; fenceChar = fence[1].charAt(0); fenceLen = fence[1].length; inIndented = false; kept.push(''); return; }
+            if (dt === '') { prevBlank = true; kept.push(''); return; }
+            if (/^(?: {4,}|\t)/.test(d) && (prevBlank || inIndented)) { inIndented = true; prevBlank = false; return; }
+            inIndented = false;
+            kept.push(line);
+            prevBlank = false;
+        });
+        var prose = kept.join('\n').split(/\n[ \t]*\n/).map(function (body) {
+            var runs = Array.from(body.matchAll(/`+/g)), next = [], shortNext = [], last = Object.create(null);
+            for (var i = runs.length - 1; i >= 0; i--) {
+                var length = runs[i][0].length;
+                next[i] = last[length] === undefined ? -1 : last[length];
+                shortNext[i] = last[length-1] === undefined ? -1 : last[length-1];
+                last[length] = i;
+            }
+            var parts = [], cursor = 0;
+            for (var n = 0; n < runs.length; n++) {
+                var start = runs[n].index, slashes = 0;
+                for (var j = start - 1; j >= 0 && body[j] === '\\'; j--) slashes++;
+                var escaped = slashes % 2, size = runs[n][0].length - escaped;
+                var close = escaped ? shortNext[n] : next[n];
+                if (!size || close < 0) continue;
+                start += escaped;
+                parts.push(body.slice(cursor, start), ' ');
+                cursor = runs[close].index + runs[close][0].length;
+                n = close;
+            }
+            parts.push(body.slice(cursor));
+            return parts.join('');
+        }).join('\n\n')
+            .replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+        return (prose.match(/[\u4e00-\u9fff]/g) || []).length;
+    }
     function counts() {
         document.getElementById('title-count').textContent = Array.from(title.value).length + ' / 120 字';
         document.getElementById('content-count').textContent = Array.from(content.value).length.toLocaleString() + ' / 50,000 字';
+        var hint = document.getElementById('prose-count');
+        if (hint) {
+            var min = Number(hint.dataset.min || 0), n = proseLength(content.value);
+            hint.textContent = '代码之外的解释 ' + n + ' / ' + min + ' 个汉字' + (n >= min ? '' : '（还需补写）');
+        }
     }
     function render() {
         if (!content.value.trim()) { preview.textContent = '从一个关键思路开始。这里会展示读者看到的效果。'; return; }
