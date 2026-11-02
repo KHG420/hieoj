@@ -246,6 +246,16 @@ try {
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'纯行内代码','content'=>'`'.str_repeat('码',200).'`','content_format'=>'markdown'),400);
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'差一个字','content'=>str_repeat('解',editorial_min_prose()-1),'content_format'=>'markdown'),400);
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'刚好达标','content'=>str_repeat('解',editorial_min_prose()),'content_format'=>'markdown'),303);
+    // Containers and cross-line inline code must not let pure-code posts through.
+    ed_check(editorial_effective_length("> ~~~cpp\n> // ".str_repeat('注',200)."\n> ~~~",'markdown')===0,'Block quote code block is not prose');
+    ed_check(editorial_effective_length("- ~~~cpp\n  // ".str_repeat('注',200)."\n  ~~~",'markdown')===0,'List code block is not prose');
+    ed_check(editorial_effective_length('`'.str_repeat('注',200)."\n".str_repeat('注',200).'`','markdown')===0,'Cross-line inline code is not prose');
+    ed_check(editorial_effective_length("> ".str_repeat('解',editorial_min_prose()),'markdown')===editorial_min_prose(),'Block quote prose still counts');
+    ed_check(editorial_effective_length("说明\n    ".str_repeat('解',editorial_min_prose()),'markdown')===editorial_min_prose()+2,'Paragraph lazy continuation counts as prose');
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'引用内代码','content'=>"> ~~~cpp\n> // ".str_repeat('注',200)."\n> ~~~",'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'列表内代码','content'=>"- ~~~cpp\n  // ".str_repeat('注',200)."\n  ~~~",'content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'跨行行内代码','content'=>'`'.str_repeat('注',200)."\n".str_repeat('注',200).'`','content_format'=>'markdown'),400);
+    ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'段落续行达标','content'=>"说明\n    ".str_repeat('解',editorial_min_prose()),'content_format'=>'markdown'),303);
     // References are live AC code, with the same problem-level access and payment.
     editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'备用题解'));
     $refPid=(int)editorial_db()->lastInsertId(); $pids[]=$refPid;
