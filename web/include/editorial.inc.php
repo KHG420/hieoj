@@ -57,25 +57,40 @@ function editorial_reference($problem) {
         ORDER BY s.solution_id ASC LIMIT 1",array($problem))->fetch(PDO::FETCH_ASSOC);
 }
 
-// Remove everything a reader skips: fenced blocks (backticks or tildes), indented
-// blocks, inline code, HTML comments and <code>/<pre>. Only prose is an explanation.
+// Remove everything a reader skips: fenced blocks (backticks or tildes) even when
+// nested inside block quotes or list items, genuine indented code blocks (but NOT a
+// paragraph's lazy continuation), inline code that may span lines, HTML comments
+// and <code>/<pre>. Only prose is an explanation. Mirrors the JS proseLength().
 function editorial_strip_code($text) {
     $kept = array();
-    $inFence = false; $fenceChar = ''; $fenceLen = 0;
+    $inFence = false; $fenceChar = ''; $fenceLen = 0; $prevBlank = true;
     foreach (preg_split('/\R/u', (string)$text) as $line) {
-        $trimmed = ltrim($line, " \t");
+        // Drop the container prefixes a renderer consumes before classifying the
+        // line: stacked block quotes and one list-item marker (with its indent).
+        $d = $line;
+        while (preg_match('/^\s*>/u', $d)) $d = preg_replace('/^\s*>\s?/u', '', $d);
+        if (preg_match('/^\s*(?:[-*+]|\d+\.)\s+/u', $d)) $d = preg_replace('/^\s*(?:[-*+]|\d+\.)\s+/u', '', $d);
+        $dt = ltrim($d, " \t");
         if ($inFence) {
-            if (preg_match('/^'.$fenceChar.'{'.$fenceLen.',}\s*$/u', $trimmed)) $inFence = false;
+            if (preg_match('/^'.$fenceChar.'{'.$fenceLen.',}\s*$/u', $dt)) $inFence = false;
             continue;
         }
-        if (preg_match('/^(`{3,}|~{3,})/u', $trimmed, $m)) {
+        if (preg_match('/^(`{3,}|~{3,})/u', $dt, $m)) {
             $inFence = true; $fenceChar = $m[1][0]; $fenceLen = strlen($m[1]);
             continue;
         }
-        if ($trimmed !== '' && preg_match('/^(?: {4,}|\t)/u', $line)) continue;
-        $kept[] = preg_replace('/`[^`\n]*`/u', ' ', $line);
+        $trimmed = ltrim($line, " \t");
+        if ($trimmed === '') { $prevBlank = true; continue; }
+        // A genuine indented code block must follow a blank line. An indented line
+        // right after non-blank text is a paragraph's lazy continuation and is prose.
+        if (preg_match('/^(?: {4,}|\t)/u', $d) && $prevBlank) { $prevBlank = false; continue; }
+        $kept[] = $line;
+        $prevBlank = false;
     }
-    return implode("\n", $kept);
+    $body = implode("\n", $kept);
+    // Inline code may span lines; strip it from the whole kept body, not per line.
+    $body = preg_replace('/`[^`]*`/u', ' ', $body);
+    return $body;
 }
 
 // One source of truth for validation, error text, editor hints and tests.
