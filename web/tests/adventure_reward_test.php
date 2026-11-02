@@ -202,7 +202,7 @@ try {
     rw_check(str_contains($routePage,'10 金币') && str_contains($routePage,'每天最多奖励一次'), 'Route page explains the daily rule');
     rw_http('/adventure.php?tab=route', $s1, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $routePage = rw_http('/adventure.php?tab=route', $s1);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $routePage, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $routePage, $matches);
     rw_check(count($matches[1]) === 3, 'Route offers three stops');
     $routeIds = array_map('intval', $matches[1]);
     $stored = rw_state($s1, $u1);
@@ -240,7 +240,7 @@ try {
     $s2a = rw_session($u2); $s2b = rw_session($u2);
     rw_http('/adventure.php?tab=route', $s2a, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $page = rw_http('/adventure.php?tab=route', $s2a);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     $firstRoute = array_map('intval', $matches[1]);
     foreach ($firstRoute as $pid) rw_ac($u2, $pid);
     rw_http('/adventure.php?tab=route', $s2a);
@@ -249,7 +249,7 @@ try {
     $firstRow = editorial_query('SELECT problem1,problem2,problem3,start_time FROM adventure_route_daily WHERE user_id=? AND route_date=?', array($u2,$day))->fetch(PDO::FETCH_ASSOC);
     rw_http('/adventure.php?tab=route', $s2b, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $page = rw_http('/adventure.php?tab=route', $s2b);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     rw_check(array_map('intval', $matches[1]) === $firstRoute, 'A second session gets the same fixed daily route back');
     $secondRow = editorial_query('SELECT problem1,problem2,problem3,start_time FROM adventure_route_daily WHERE user_id=? AND route_date=?', array($u2,$day))->fetch(PDO::FETCH_ASSOC);
     rw_check($firstRow === $secondRow, 'Re-posting a usable route keeps its problems and start time');
@@ -265,7 +265,7 @@ try {
     rw_check(str_contains($page,'已不再公开') && str_contains($page,'重新生成今日路线'), 'A broken route offers the explicit rebuild');
     rw_http('/adventure.php?tab=route', $s15, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $page = rw_http('/adventure.php?tab=route', $s15);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     $repairedIds = array_map('intval', $matches[1]);
     rw_check(count($repairedIds) === 3, 'The rebuilt route offers three stops');
     rw_check(!in_array($hiddenPid,$repairedIds,true), 'The unpublic stop is replaced by a usable one');
@@ -291,7 +291,7 @@ try {
     rw_http('/adventure.php?tab=route', $s16);
     rw_http('/adventure.php?tab=route', $s16, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $page = rw_http('/adventure.php?tab=route', $s16);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     foreach (array_map('intval', $matches[1]) as $pid) rw_ac($u16, $pid);
     rw_http('/adventure.php?tab=route', $s16);
     list($count, $sum) = rw_adventure($u16);
@@ -333,7 +333,7 @@ try {
     rw_check(str_contains(adv_feedback_text($page),'已不存在') && adv_route_button($page) === '重新生成今日路线', 'A deleted stop offers the rebuild');
     rw_http('/adventure.php?tab=route', $s18, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key), 303);
     $page = rw_http('/adventure.php?tab=route', $s18);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     $replacedIds = array_map('intval', $matches[1]);
     rw_check(count($replacedIds) === 3 && !in_array($missingPid,$replacedIds,true), 'The deleted stop is replaced with real problems');
     rw_check(adv_feedback_text($page) === '' && adv_route_button($page) === '查看今日路线', 'The rebuilt route no longer reports a missing stop');
@@ -464,7 +464,7 @@ try {
     rw_http('/adventure.php?tab=route', $s12, array('action'=>'route','node'=>$node['slug'],'mode'=>'challenge','postkey'=>$key,
         'reward_id'=>'999999999','reference_id'=>'19990101','day'=>'1999-01-01'), 303);
     $page = rw_http('/adventure.php?tab=route', $s12);
-    preg_match_all('/href="problem\.php\?id=(\d+)" target="_blank"/', $page, $matches);
+    preg_match_all('/href="problem\.php\?id=(\d+)&amp;from_adventure=route"/', $page, $matches);
     foreach (array_map('intval', $matches[1]) as $pid) rw_ac($u12, $pid);
     rw_http('/adventure.php?tab=route', $s12);
     list($count, $sum, $reference) = rw_adventure($u12);

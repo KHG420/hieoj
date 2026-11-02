@@ -1,11 +1,16 @@
 (function () {
     'use strict';
+    // The server stores the body verbatim and only normalises line endings, so the
+    // draft must be compared the same way: CRLF/CR become LF and no trim() is
+    // applied to the body. Titles still follow the server's trim() rule.
+    var normalizeBody = function (text) { return String(text).replace(/\r\n?/g, '\n'); };
     // Clear only the draft whose contents match this successfully submitted article.
     document.querySelectorAll('[data-submitted-draft]').forEach(function (body) {
         try {
             var key = body.dataset.submittedDraft, draft = JSON.parse(localStorage.getItem(key));
-            var source = body.editorialSource === undefined ? body.textContent : body.editorialSource;
-            if (draft && draft.title.trim() === body.dataset.submittedTitle && draft.content.trim() === source && draft.format === body.dataset.contentFormat) localStorage.removeItem(key);
+            var source = normalizeBody(body.editorialSource === undefined ? body.textContent : body.editorialSource);
+            var draftBody = draft && typeof draft.content === 'string' ? normalizeBody(draft.content) : null;
+            if (draft && typeof draft.title === 'string' && draft.title.trim() === body.dataset.submittedTitle && draftBody === source && draft.format === body.dataset.contentFormat) localStorage.removeItem(key);
         } catch (e) { /* Submission succeeded even if browser storage is unavailable. */ }
     });
     var form = document.getElementById('editorial-form');
@@ -24,25 +29,54 @@
         } catch (e) { return null; }
     }
     function same(d) { return d && d.title === title.value && d.content === content.value; }
-        // Mirrors editorial_effective_length(): only prose outside code counts.
+    // Mirrors editorial_effective_length(): only prose outside code counts.
     function proseLength(text) {
         if (format !== 'markdown') return (text.match(/[\u4e00-\u9fff]/g) || []).length;
-        var kept = [], fenceChar = '', fenceLen = 0, inFence = false, prevBlank = true;
+        var kept = [], fenceChar = '', fenceLen = 0, inFence = false, prevBlank = true, inIndented = false;
+        var prefix = /[ \t]*(?:>[ \t]?|(?:[-*+]|\d+[.)])[ \t]+)/y;
         text.split(/\r\n|\r|\n/).forEach(function (line) {
-            var d = line;
-            while (/^\s*>/.test(d)) d = d.replace(/^\s*>\s?/, '');
-            if (/^\s*(?:[-*+]|\d+\.)\s+/.test(d)) d = d.replace(/^\s*(?:[-*+]|\d+\.)\s+/, '');
+            var offset = 0, match;
+            prefix.lastIndex = 0;
+            while ((match = prefix.exec(line))) offset = prefix.lastIndex;
+            var d = line.slice(offset);
             var dt = d.replace(/^[ \t]+/, '');
-            if (inFence) { if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}\\s*$').test(dt)) inFence = false; return; }
+            if (inFence) {
+                if (new RegExp('^' + fenceChar + '{' + fenceLen + ',}[ \\t]*$').test(dt)) {
+                    inFence = false; prevBlank = true; kept.push('');
+                }
+                return;
+            }
             var fence = dt.match(/^(`{3,}|~{3,})/);
-            if (fence) { inFence = true; fenceChar = fence[1].charAt(0); fenceLen = fence[1].length; return; }
-            var trimmed = line.replace(/^[ \t]+/, '');
-            if (trimmed === '') { prevBlank = true; return; }
-            if (/^(?: {4,}|\t)/.test(d) && prevBlank) { prevBlank = false; return; }
+            if (fence) { inFence = true; fenceChar = fence[1].charAt(0); fenceLen = fence[1].length; inIndented = false; kept.push(''); return; }
+            if (dt === '') { prevBlank = true; kept.push(''); return; }
+            if (/^(?: {4,}|\t)/.test(d) && (prevBlank || inIndented)) { inIndented = true; prevBlank = false; return; }
+            inIndented = false;
             kept.push(line);
             prevBlank = false;
         });
-        var prose = kept.join('\n').replace(/`[^`]*`/g, ' ')
+        var prose = kept.join('\n').split(/\n[ \t]*\n/).map(function (body) {
+            var runs = Array.from(body.matchAll(/`+/g)), next = [], shortNext = [], last = Object.create(null);
+            for (var i = runs.length - 1; i >= 0; i--) {
+                var length = runs[i][0].length;
+                next[i] = last[length] === undefined ? -1 : last[length];
+                shortNext[i] = last[length-1] === undefined ? -1 : last[length-1];
+                last[length] = i;
+            }
+            var parts = [], cursor = 0;
+            for (var n = 0; n < runs.length; n++) {
+                var start = runs[n].index, slashes = 0;
+                for (var j = start - 1; j >= 0 && body[j] === '\\'; j--) slashes++;
+                var escaped = slashes % 2, size = runs[n][0].length - escaped;
+                var close = escaped ? shortNext[n] : next[n];
+                if (!size || close < 0) continue;
+                start += escaped;
+                parts.push(body.slice(cursor, start), ' ');
+                cursor = runs[close].index + runs[close][0].length;
+                n = close;
+            }
+            parts.push(body.slice(cursor));
+            return parts.join('');
+        }).join('\n\n')
             .replace(/<!--[\s\S]*?-->/g, ' ').replace(/<(code|pre)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
         return (prose.match(/[\u4e00-\u9fff]/g) || []).length;
     }

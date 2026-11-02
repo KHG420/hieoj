@@ -6,6 +6,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT"); // Date in the past
 $cache_time=2;
 $OJ_CACHE_SHARE=false;
 require_once('./include/db_info.inc.php');
+require_once('./include/navigation.inc.php');
+$statusAdventureQuery = isset($_GET['cid']) || isset($OJ_ON_SITE_CONTEST_ID) ? '' : oj_adventure_query(oj_adventure_origin($_GET), false);
 $editorial_prompt_key = $OJ_NAME.'_editorial_prompt_'.($_SESSION[$OJ_NAME.'_user_id'] ?? '');
 $editorial_prompt = $_SESSION[$editorial_prompt_key] ?? null;
 unset($_SESSION[$editorial_prompt_key]);
@@ -52,7 +54,7 @@ if($OJ_TEMPLATE!="classic")
         "btn btn-secondary"  // 22: 新增状态
     );
 
-$str2="";
+$str2=$statusAdventureQuery;
 $lock=false;
 $lock_time=date("Y-m-d H:i:s",time());
 $sql="WHERE solution.problem_id>0 ";
@@ -328,7 +330,7 @@ for ($i=0;$i<$rows_cnt;$i++){
         }
         $view_status[$i][3].="</div></a>";
     }else{
-        $view_status[$i][3]= "<div class=center><a href='problem.php?id=".$row['problem_id']."'>".$row['problem_id']."</a></div>";
+        $view_status[$i][3]= "<div class=center><a href='problem.php?id=".$row['problem_id'].htmlspecialchars($statusAdventureQuery,ENT_QUOTES,'UTF-8')."'>".$row['problem_id']."</a></div>";
     }
 
     if ($row['contest_id']>0) {
@@ -338,7 +340,7 @@ for ($i=0;$i<$rows_cnt;$i++){
 
         $view_status[$i][4].="</div></a>";
     }else{
-        $view_status[$i][4]= "<div class=center><a href='problem.php?id=".$row['problem_id']."'>".$oj_title."</a></div>";
+        $view_status[$i][4]= "<div class=center><a href='problem.php?id=".$row['problem_id'].htmlspecialchars($statusAdventureQuery,ENT_QUOTES,'UTF-8')."'>".$oj_title."</a></div>";
     }
     switch($row['result']){
         case 4:
@@ -467,7 +469,7 @@ for ($i=0;$i<$rows_cnt;$i++){
                 if ($row['contest_id']>0) {
                     $view_status[$i][8].= "/<a target=_self href=\"submitpage.php?cid=".$row['contest_id']."&pid=".$row['num']."&sid=".$row['solution_id']."\">Edit</a>";
                 }else{
-                    $view_status[$i][8].= "/<a target=_self href=\"submitpage.php?id=".$row['problem_id']."&sid=".$row['solution_id']."\">Edit</a>";
+                    $view_status[$i][8].= "/<a target=_self href=\"submitpage.php?id=".$row['problem_id']."&sid=".$row['solution_id'].htmlspecialchars($statusAdventureQuery,ENT_QUOTES,'UTF-8')."\">Edit</a>";
                 }
             }
         }

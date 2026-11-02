@@ -5,7 +5,23 @@ require_once('./include/cache_start.php');
 require_once('./include/db_info.inc.php');
 require_once('./include/setlang.php');
 $view_title= "Welcome To Online Judge";
-require_once("./include/check_post_key.php");
+$view_errors = '';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    $view_errors = '请从修改资料页面提交申请。';
+} elseif (!isset($_SESSION[$OJ_NAME.'_user_id'])) {
+    http_response_code(401);
+    $view_errors = '登录已过期，请<a href="loginpage.php">重新登录</a>后提交申请。';
+} elseif (!is_string($_POST['postkey'] ?? null) || !isset($_SESSION[$OJ_NAME.'_postkey'])
+    || !hash_equals($_SESSION[$OJ_NAME.'_postkey'], $_POST['postkey'])) {
+    http_response_code(403);
+    $view_errors = '页面凭证已失效，请返回修改资料页面，刷新后重新提交。';
+}
+if ($view_errors !== '') {
+    require 'template/'.$OJ_TEMPLATE.'/error.php';
+    exit;
+}
 require_once("./include/my_func.inc.php");
 if(
     (isset($OJ_EXAM_CONTEST_ID)&&$OJ_EXAM_CONTEST_ID>0)||
@@ -18,14 +34,20 @@ if(
 
 $user_id=$_SESSION[$OJ_NAME.'_'.'user_id'];
 
-$type = trim($_POST['type']);
+$type = is_string($_POST['type'] ?? null) ? trim($_POST['type']) : '';
 if (strcmp($type, "class") == 0) {
 
-    $xueYuan = trim($_POST['xueYuan']);
-    $school = trim($_POST['school']);
-    $reason = trim($_POST['reason']);
+    $xueYuan = is_string($_POST['xueYuan'] ?? null) ? trim($_POST['xueYuan']) : '';
+    $school = is_string($_POST['school'] ?? null) ? trim($_POST['school']) : '';
+    $reason = is_string($_POST['reason'] ?? null) ? trim($_POST['reason']) : '';
     $sql = "SELECT `xueYuan`,`school` FROM `users` WHERE `user_id`=?";
     $result = pdo_query($sql, $user_id);
+    if (!$result) {
+        http_response_code(503);
+        $view_errors = '当前资料读取失败，请稍后重试。';
+        require 'template/'.$OJ_TEMPLATE.'/error.php';
+        exit;
+    }
     $row = $result[0];
 
     if (strlen($reason) > 100 || strlen($reason) < 1) {
@@ -37,16 +59,33 @@ if (strcmp($type, "class") == 0) {
         exit(0);
     }
 
-    if (strcmp($row['xueYuan'], $xueYuan) != 0) {
-        $sql = "insert INTO `modify`(`user_id`,`content`,`thing`,`reason`,`time`)
-            VALUES(?,?,?,?,now())";
-        pdo_query($sql, $user_id, $xueYuan, "xueYuan", $reason);
-    }
-
+    $changes = array();
+    if ($xueYuan !== '' && strcmp($row['xueYuan'], $xueYuan) != 0) $changes['xueYuan'] = $xueYuan;
     if ($school != "" && strcmp($row['school'], $school) != 0) {
-        $sql = "insert INTO `modify`(`user_id`,`content`,`thing`,`reason`,`time`)
-            VALUES(?,?,?,?,now())";
-        pdo_query($sql, $user_id, $school, "school", $reason);
+        $changes['school'] = $school;
+    }
+    if (!$changes) {
+        http_response_code(400);
+        $view_errors = '没有需要修改的内容，请填写与当前资料不同的学院或专业班级。';
+        require 'template/'.$OJ_TEMPLATE.'/error.php';
+        exit;
+    }
+    try {
+        $dbh->beginTransaction();
+        foreach ($changes as $thing => $content) {
+            $sql = 'INSERT INTO `modify`(user_id,content,thing,reason,time) VALUES(?,?,?,?,NOW())';
+            if (pdo_query($sql, $user_id, $content, $thing, $reason) === false) {
+                throw new RuntimeException('Profile change request insert failed');
+            }
+        }
+        $dbh->commit();
+    } catch (Throwable $e) {
+        if ($dbh->inTransaction()) $dbh->rollBack();
+        error_log('Profile change request could not be saved.');
+        http_response_code(503);
+        $view_errors = '申请保存失败，请稍后重新提交；本次申请尚未提交成功。';
+        require 'template/'.$OJ_TEMPLATE.'/error.php';
+        exit;
     }
     $str = "提交成功，等待审核通过。";
 

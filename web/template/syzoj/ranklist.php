@@ -31,6 +31,8 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
   <div class="oj-card">
     <p><?php echo $rankRange === 'year' ? '统计范围：'.$rankSince.' 至 '.date('Y-m-d').'。按范围内通过的不同题目数排名，同题重复通过只计一次。' : '统计范围：全部历史记录。'; ?></p>
     <form class="oj-filter" action="ranklist.php" method="get">
+      <?php if ($ojAdventureOrigin) { ?><input type="hidden" name="from_adventure" value="<?php echo $ojAdventureOrigin; ?>"><?php } ?>
+      <?php if ($navProblemId) { ?><input type="hidden" name="from_problem" value="<?php echo $navProblemId; ?>"><?php } ?>
       <div class="f"><label for="rank-range">统计范围</label><select id="rank-range" name="range" onchange="this.form.submit()"><option value="year" <?php if($rankRange==='year') echo 'selected'; ?>>最近一年</option><option value="all" <?php if($rankRange==='all') echo 'selected'; ?>>全部时间</option></select></div>
       <div class="f">
         <label for="rank-xy">学院</label>
@@ -108,7 +110,7 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
     <?php
     $currentPage = intdiv(max(0,$start),$page_size);
     $pageCount = (int)ceil($view_total/$page_size);
-    $qs = '&range='.$rankRange.($prefix?'&prefix='.urlencode($prefix):'').($xy?'&xy='.urlencode($xy):'').($school?'&school='.urlencode($school):'').($nj?'&nj='.urlencode($nj):'');
+    $qs = html_entity_decode($navQuery, ENT_QUOTES, 'UTF-8').'&range='.$rankRange.($prefix?'&prefix='.urlencode($prefix):'').($xy?'&xy='.urlencode($xy):'').($school?'&school='.urlencode($school):'').($nj?'&nj='.urlencode($nj):'');
     if($currentPage>0){ ?><a href="<?php echo htmlspecialchars("ranklist.php?start=".(($currentPage-1)*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>">上一页</a><?php }
     for($p=max(0,$currentPage-2);$p<min($pageCount,$currentPage+3);$p++){ ?><a class="<?php echo $p===$currentPage?'active':''; ?>" href="<?php echo htmlspecialchars("ranklist.php?start=".($p*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>" <?php if($p===$currentPage) echo 'aria-current="page"'; ?>><?php echo ($p*$page_size+1).'–'.min(($p+1)*$page_size,$view_total); ?></a><?php }
     if($currentPage+1<$pageCount){ ?><a href="<?php echo htmlspecialchars("ranklist.php?start=".(($currentPage+1)*$page_size).$qs,ENT_QUOTES,"UTF-8"); ?>">下一页</a><?php } ?>

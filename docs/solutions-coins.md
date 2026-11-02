@@ -20,9 +20,12 @@
 - `solutions.php?problem_id=1000&write=1`：通过本题后使用的独立编写页。
 - `solutions.php?tab=mine`：自己的题解及审核状态。
 - `solutions.php?id=1`：题解正文或按题目解锁入口，标题与返回链接始终指向该题解所属题目。
-- `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏提供入口。
+- `solutions.php?tab=review`：仅管理员可访问的审核队列，后台侧栏、右上角个人菜单和管理员自己的“我的主页”均提供入口。
+- 有待审核题解时，管理员个人菜单和两个“审核题解”入口显示红点；全部通过或驳回后，刷新或切换页面即清除题解红点。审核入口始终保留。管理员整页 HTML 不使用页面缓存，以免沿用旧提醒；普通用户的页面缓存保持原规则。个人菜单还沿用注册、资料修改等原有待办提醒，因此题解审核清空后，其他待办仍可能使个人菜单保留红点。
+- 金币统一归入顶部「排名」：内部固定展示「刷题排名 / 金币榜单 / 我的金币」，切换金币榜单与明细时仍保留题目及冒险来源。
 - `coins.php`：金币榜单。
 - `coins.php?tab=history`：自己的余额和金币流水。
+- 从「我的题解」或审核队列进入详情后，可返回原列表页码；审核后也返回原队列页码。题目相关返回链接与模块内标签分开呈现。
 
 ## 数据与并发
 
@@ -63,13 +66,37 @@ WHERE trigger_schema=DATABASE() AND trigger_name LIKE 'coin_solution_accepted_%'
 
 ## 验证
 
+题解审核导航可用现有 PHP CLI（需 PDO SQLite）执行，不连接业务数据库、不创建真实投稿：
+
+```sh
+php web/tests/editorial_navigation_test.php
+```
+
+该测试覆盖两个快捷入口、待审数量从 2 到 1 再到 0 时的红点、角色与主页归属限制、管理员缓存刷新、普通用户缓存保留，以及未安装题解表时的导航降级。
+
 仅在本地隔离测试环境执行；HTTP 测试创建随机用户、题目、投稿及会话，结束后清理这些数据。
 
 ```sh
 docker compose exec -T --user www-data web php /home/judge/src/web/tests/editorial_test.php --fixtures
 ```
 
-该测试涵盖实际 MariaDB 判题奖励、历史标记、重复与并发 AC、投稿资格、匿名访问、CSRF、审核与驳回、按题目付费、通过后免费阅读、未来题解自动包含、同题多篇并发解锁、不同题目竞争余额、事务失败回滚、正文防泄露、HTML 转义、可见性、金币对账及列表分页。
+该测试涵盖实际 MariaDB 判题奖励、历史标记、重复与并发 AC、投稿资格、匿名访问、CSRF、审核与驳回、按题目付费、通过后免费阅读、未来题解自动包含、同题多篇并发解锁、不同题目竞争余额、事务失败回滚、正文缩进保留、正文防泄露、HTML 转义、可见性、金币对账及列表分页。
+
+草稿清理与缩进渲染的隔离回归不需要数据库和浏览器，直接运行：
+
+```sh
+node web/tests/editorial_draft_test.mjs
+```
+
+它用最小 DOM/存储替身执行真实的 `editorial-editor.js`，覆盖首行缩进、末尾换行、CRLF 正文提交后草稿被清除、正文或标题不同时保留较新草稿、格式不一致时保留，以及站内 Marked 对保留缩进的正文仍解析为代码块、裁掉缩进则退化为普通段落。
+
+解释字数的前端与渲染器对照检查：
+
+```sh
+node web/tests/editorial_prose_test.mjs
+```
+
+题解投稿的解释至少 120 个汉字。Markdown 计数排除围栏代码块、连续缩进代码、嵌套引用／列表中的代码、行内代码和 HTML 注释。普通段落的缩进续行仍计入；行内代码按相同长度的反引号配对，可跨普通换行，但不跨空白段落。前端检查与 PHP／HTTP 回归共用 `editorial_prose_cases.json`，并以站内 Marked 的渲染结果核对预期字数。字数只做基础校验，解释质量由管理员审核，审核通过才奖励 10 金币。
 
 迁移测试单独创建临时数据库，验证历史 AC 排除、未来 AC 奖励、幂等复跑与重判防重；只在隔离数据库容器中执行：
 
@@ -81,9 +108,9 @@ docker compose exec -T db sh /tmp/editorial-migration.sh
 ## Markdown 编写体验（2026-09-14）
 
 - 标题、加粗、列表、链接、代码语言、代码块、公式及主动插入的题解模板；桌面对照预览，手机默认单栏编辑，可切换预览与专注模式。
-- 正文格式 `content_format` 为 `plain` 或 `markdown`。旧记录和省略格式的旧调用默认 `plain`；新编写表单显式提交 `markdown`。预览和授权后的正式阅读共用渲染器。
+- 正文格式 `content_format` 为 `plain` 或 `markdown`。旧记录和省略格式的旧调用默认 `plain`；新编写表单显式提交 `markdown`。预览和授权后的正式阅读共用渲染器。正文按原样保存，首行缩进、代码缩进和行尾空白都不会被裁剪，只把 CRLF 统一为 LF；以缩进代码块开头的 Markdown 因此在审核和阅读时仍是代码块。
 - Markdown 复用站内 Marked、KaTeX 0.12.0 和 Ace。作者 HTML 转义，渲染结果按允许的元素与属性过滤，链接仅允许 HTTP(S)/mailto；公式禁用 trust；代码通过文本节点高亮。图片显示为链接，不自动请求外部图片。访问控制仍由服务端完成，未授权响应没有正文。
-- 本机草稿按站点、账号、题目区分，保存在浏览器 localStorage，不跨设备同步。输入后自动保存，提供恢复、保存状态和下载。多个标签页发生冲突时暂停覆盖，由作者选择。存储失败时提示下载，离开时提醒。提交失败保留正文，成功后只清理与该篇内容相符的草稿。
+- 本机草稿按站点、账号、题目区分，保存在浏览器 localStorage，不跨设备同步。输入后自动保存，提供恢复、保存状态和下载。多个标签页发生冲突时暂停覆盖，由作者选择。存储失败时提示下载，离开时提醒。提交失败保留正文，成功后只清理与该篇内容相符的草稿；清除判断与服务端保存规则一致（正文只把 CRLF/CR 归一化为 LF、不裁剪首尾空白，标题按 trim 后比较，格式必须相同），因此带首行缩进或末尾换行的草稿也能正确清除，而其他标签页保存的较新草稿不会被误删。
 - 无 JavaScript 时仍可提交原始正文；Markdown 文章保留安全的源文本作为降级展示。
 - `css/fonts/KaTeX_*.woff2` 来自官方 npm `katex@0.12.0`，与站内现有 JS/CSS 版本一致；许可证同目录保存。补齐这些字体以避免公式字体 404。
 
@@ -111,3 +138,13 @@ docker compose exec -T db sh -c 'MYSQL_PWD="$(cat /run/oj-secrets/root-password)
 - 洛谷题解规范：https://help.luogu.com.cn/rules/academic/solution-standard
 - GitHub 代码排版：https://docs.github.com/zh/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks
 - StackEdit：https://stackedit.io/app
+
+## 模块职责
+
+- `web/include/editorial.inc.php` 负责投稿资格、题解可见性、审核与解锁事务。
+- `web/include/coins.inc.php` 负责余额、扣费和奖励流水；金币可用性只检查金币表与触发器，不因可选题解表缺失而关闭。
+- `web/include/transactional_db.inc.php` 在现有 PDO 连接上执行抛异常的查询。题解审核及解锁仍由外层事务统一提交，金币助手不提前提交事务；流水失败时余额与题解状态一并回滚。
+- `web/include/practice.inc.php` 集中公开题边界；题解和冒险应用相同规则。
+- `web/template/syzoj/ranking-nav.php` 为刷题排名、金币榜单和金币明细提供同一组导航。
+
+原有 `editorial_db`、`editorial_query`、`editorial_balance`、`editorial_adventure_reward` 调用仍可用，内部委托给对应模块。本次没有修改数据库结构、奖励金额、唯一约束或判题触发器。

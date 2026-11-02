@@ -150,7 +150,7 @@ try {
     $nav='&from_problem='.$pids[0];
     $mineNav=ed_http('/solutions.php?tab=mine'.$nav,0);
     ed_check(str_contains($mineNav,'href="solutions.php?problem_id='.$pids[0].'"') && str_contains($mineNav,'另一道题的题解'),'Source navigation preserves the problem without filtering my editorials');
-    ed_check(str_contains($mineNav,'coins.php?tab=ranking&amp;from_problem='.$pids[0]),'My editorials carries context to coins');
+    ed_check(str_contains($mineNav,'coins.php?tab=history&amp;from_problem='.$pids[0]),'My editorials carries context to coins');
     $coinNav=ed_http('/coins.php?tab=ranking'.$nav,0);
     ed_check(str_contains($coinNav,'href="solutions.php?problem_id='.$pids[0].'"') && str_contains($coinNav,'coins.php?tab=history&amp;from_problem='.$pids[0]),'Coins keeps problem and history navigation');
     ed_check(str_contains(ed_http('/coins.php?tab=history'.$nav,0),'coins.php?tab=ranking&amp;from_problem='.$pids[0]),'History keeps context on return to ranking');
@@ -206,6 +206,27 @@ try {
     ed_check(str_contains(ed_http('/solutions.php?tab=mine',0),'下一页'),'Editorial pagination available');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine&page=2',0),'上一页'),'Second page works');
     ed_check(str_contains(ed_http('/solutions.php?tab=mine'.$nav,0),'page=2&amp;from_problem='.$pids[0]),'Pagination retains source without filtering the global list');
+    $minePage2=ed_http('/solutions.php?tab=mine&page=2',0);
+    preg_match('/class="ed-row-title" href="([^"]+)"/', $minePage2, $detailLink);
+    ed_check(isset($detailLink[1]) && str_contains($detailLink[1], 'tab=mine&amp;page=2'), 'My editorial detail retains its list and page');
+    $detail=ed_http('/'.html_entity_decode($detailLink[1], ENT_QUOTES, 'UTF-8'),0);
+    ed_check(str_contains($detail,'返回我的题解') && str_contains($detail,'solutions.php?tab=mine&amp;page=2'), 'Detail returns to the original page of my editorials');
+    $reviewPage2=ed_http('/solutions.php?tab=review&page=2',3);
+    preg_match('/class="ed-row-title" href="([^"]+)"/', $reviewPage2, $reviewLink);
+    ed_check(isset($reviewLink[1]), 'Review page two has a pending fixture');
+    ed_http('/'.html_entity_decode($reviewLink[1], ENT_QUOTES, 'UTF-8'),3,array('action'=>'review','postkey'=>$key,'decision'=>'rejected','note'=>'导航回归'),303,'solutions.php?tab=review&page=2');
+    $origin='&from_adventure=route';
+    $originList=ed_http('/solutions.php?problem_id='.$pids[0].$origin,0);
+    ed_check(str_contains($originList,'返回今日冒险 · 算法远征') && str_contains($originList,'coins.php?tab=history&amp;from_problem='.$pids[0].'&amp;from_adventure=route'), 'Editorials retain Adventure context when opening coins');
+    $originCoins=ed_http('/coins.php?tab=history'.$nav.$origin,0);
+    ed_check(str_contains($originCoins,'aria-label="排名导航"') && str_contains($originCoins,'>刷题排名</a>') && str_contains($originCoins,'>我的金币</a>'), 'Coins belong to the ranking module');
+    ed_check(str_contains($originCoins,'problem.php?id='.$pids[0].'&amp;from_adventure=route') && str_contains($originCoins,'返回今日冒险 · 算法远征'), 'Coins retain both the problem and Adventure return paths');
+    // Coin access must not depend on optional editorial storage being installed.
+    editorial_query('RENAME TABLE problem_editorial TO editorial_navigation_unavailable');
+    try {
+        ed_check(coin_ready() && !editorial_ready(), 'Coin readiness is independent of editorial readiness');
+        ed_check(str_contains(ed_http('/coins.php?tab=history',0),'金币收支'), 'Coin history remains available without editorial tables');
+    } finally { editorial_query('RENAME TABLE editorial_navigation_unavailable TO problem_editorial'); }
     // New Markdown posts retain their format; legacy calls remain plain text.
     $writePath='/solutions.php?problem_id='.$pids[1].'&write=1';
     $compose=ed_http($writePath,0);
@@ -223,6 +244,34 @@ try {
     ed_check(str_contains($mdBody,'data-content-format="markdown"') && str_contains($mdBody,editorial_escape($md)) && !str_contains($mdBody,'<script>bad()'),'Body safely escaped before client rendering');
     ed_check(str_contains($mdBody,'data-submitted-draft='),'Successful submit signals matching draft cleanup');
     ed_check(!str_contains(ed_http('/solutions.php?id='.$mdId,0),'data-submitted-draft='),'Draft cleanup signal consumed once');
+    // Leading indentation belongs to the body: an indented Markdown code block or
+    // plain text typed with a leading indent must reach the reviewer unchanged.
+    // Each fixture also carries an explanation so it stays valid once the
+    // submission threshold rejects code-only posts.
+    $indentExplanation='解题时先明确输入与输出的含义，再根据数据范围选择合适的算法。对于这个示例，程序从主函数开始执行，按照题目要求完成计算并返回正常退出状态。分析正确性时，需要说明每一步操作保持了什么条件，以及结束时为什么能够得到目标结果。实现过程中还要检查最小输入、最大输入和特殊边界，避免遗漏空数据或重复数据。最后分别统计执行次数与额外存储量，给出时间复杂度和空间复杂度，并用具体样例逐步核对运行过程。';
+    $indented="    int main() {\n        return 0;\n    }\n\n".$indentExplanation."\n";
+    ed_http($writePath,0,array('action'=>'submit','title'=>'缩进保留','content'=>$indented,'content_format'=>'markdown','postkey'=>$key),303);
+    $indentedId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedId))===$indented,'Leading indentation survives submission');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId,0),editorial_escape($indented)),'Author view keeps the indented body');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedId.'&tab=review',3),editorial_escape($indented)),'Reviewer view keeps the indented body');
+    $indentedPlain="  纯文本首行缩进\n    第二行更深\n\n".$indentExplanation."\n";
+    ed_http($writePath,0,array('action'=>'submit','title'=>'纯文本缩进','content'=>$indentedPlain,'content_format'=>'plain','postkey'=>$key),303);
+    $indentedPlainId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($indentedPlainId))===$indentedPlain,'Plain body keeps its leading indentation');
+    ed_check(str_contains(ed_http('/solutions.php?id='.$indentedPlainId.'&tab=review',3),editorial_escape($indentedPlain)),'Reviewer sees plain indentation');
+    $mixedEndings="\t第一行\r\n    第二行\r\n\r".$indentExplanation."\r\n";
+    $normalizedEndings=str_replace(array("\r\n","\r"),"\n",$mixedEndings);
+    ed_http($writePath,0,array('action'=>'submit','title'=>'换行归一化','content'=>$mixedEndings,'content_format'=>'plain','postkey'=>$key),303);
+    $lineEndingId=(int)ed_value('SELECT MAX(id) FROM problem_editorial WHERE user_id=?',array($a));
+    ed_check(ed_value('SELECT content FROM problem_editorial WHERE id=?',array($lineEndingId))===$normalizedEndings,'CRLF and CR normalize without trimming tabs, spaces or the final newline');
+    ed_ac($b,$pids[1]);
+    foreach(array($indentedId=>$indented,$indentedPlainId=>$indentedPlain) as $indentId=>$indentBody) {
+        ed_http('/solutions.php?id='.$indentId.'&tab=review',3,array('action'=>'review','postkey'=>$key,'decision'=>'approved'),303);
+        ed_http('/solutions.php?id='.$indentId,1,array('action'=>'unlock','postkey'=>$key),303);
+        ed_check(str_contains(ed_http('/solutions.php?id='.$indentId,1),editorial_escape($indentBody)),'Approved article preserves indentation for a passed reader');
+    }
+    ed_http($writePath,0,array('action'=>'submit','title'=>'空白正文','content'=>"   \n\t  ",'content_format'=>'markdown','postkey'=>$key),400);
     $legacy=ed_http('/solutions.php?id='.$id,0);
     ed_check(str_contains($legacy,'data-content-format="plain"') && !str_contains($legacy,'editorial-markdown.js'),'Legacy article not reinterpreted');
     ed_http('/solutions.php?id='.$mdId,1,null,404);
@@ -256,6 +305,11 @@ try {
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'列表内代码','content'=>"- ~~~cpp\n  // ".str_repeat('注',200)."\n  ~~~",'content_format'=>'markdown'),400);
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'跨行行内代码','content'=>'`'.str_repeat('注',200)."\n".str_repeat('注',200).'`','content_format'=>'markdown'),400);
     ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'段落续行达标','content'=>"说明\n    ".str_repeat('解',editorial_min_prose()),'content_format'=>'markdown'),303);
+    // Shared with the real editor/Marked comparison in editorial_prose_test.mjs.
+    foreach (json_decode(file_get_contents(__DIR__.'/editorial_prose_cases.json'),true,512,JSON_THROW_ON_ERROR) as $case) {
+        ed_check(editorial_effective_length($case['content'],'markdown')===$case['expected'], 'Prose count: '.$case['name']);
+        ed_http($thresholdPath,0,array('action'=>'submit','postkey'=>$key,'title'=>'解释字数回归','content'=>$case['content'],'content_format'=>'markdown'),$case['expected']>=editorial_min_prose() ? 303 : 400);
+    }
     // References are live AC code, with the same problem-level access and payment.
     editorial_query("INSERT INTO problem(title,defunct,in_date) VALUES(?,'N',NOW())",array($prefix.'备用题解'));
     $refPid=(int)editorial_db()->lastInsertId(); $pids[]=$refPid;
@@ -280,6 +334,11 @@ try {
     editorial_query('UPDATE solution SET result=4 WHERE solution_id=?',array($refSid));
     $refHtml=ed_http($refPath,0);
     ed_check(str_contains($refHtml,'没有思路讲解') && str_contains($refHtml,'<code>'.editorial_escape($refCode).'</code>'),'Passed reader sees the exact escaped reference code');
+    ed_check(str_contains($refHtml,'href="solutions.php?problem_id='.$refPid.'&amp;write=1"'),'Passed readers can write the first editorial from the AC reference page');
+    $refOriginHtml=ed_http($refPath.'&from_adventure=route',0);
+    ed_check(str_contains($refOriginHtml,'href="solutions.php?problem_id='.$refPid.'&amp;from_adventure=route&amp;write=1"'),'The first editorial link preserves Adventure context');
+    preg_match('/href="([^"]+)"[^>]*>我来写一篇图文题解<\/a>/', $refOriginHtml, $referenceWriteLink);
+    ed_check(isset($referenceWriteLink[1]) && str_contains($referenceWriteLink[1], 'from_adventure=route'), 'The prominent reference-code invitation preserves Adventure context');
     ed_check(!str_contains($refHtml,'LATER_REFERENCE_') && !str_contains($refHtml,"<script>alert('reference')"),'Only one reference, with no executable HTML');
     ed_check(!str_contains(ed_http($refPath),'REFERENCE_'.$prefix),'Anonymous reference body is withheld');
     ed_check(!str_contains(ed_http($refPath,2),'REFERENCE_'.$prefix),'Unpaid reference body is withheld');

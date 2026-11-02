@@ -199,10 +199,10 @@ body.oj-desktop .oj-pd-side .oj-empty { padding:8px 0 !important; font-size:13px
         <div class="oj-info-row"><span class="l">提交 / 通过</span><span class="v"><?php echo $row['submit']; ?> / <?php echo $row['accepted']; ?></span></div>
 
         <div class="oj-pd-btns">
-          <a class="oj-btn oj-btn-primary" href="<?php echo $pr_flag ? "submitpage.php?id=$id" : "submitpage.php?cid=$cid&pid=$pid&langmask=$langmask"; ?>">提交代码</a>
+          <a class="oj-btn oj-btn-primary" href="<?php echo $pr_flag ? "submitpage.php?id=$id".$ojAdventureQuery : "submitpage.php?cid=$cid&pid=$pid&langmask=$langmask"; ?>">提交代码</a>
         </div>
         <nav class="oj-side-actions" aria-label="题目操作">
-          <a href="<?php echo $pr_flag ? "status.php?problem_id=$id" : "status.php?problem_id=$PID[$pid]&cid=$cid"; ?>"><i class="file icon" aria-hidden="true"></i>提交记录</a>
+          <a href="<?php echo $pr_flag ? "status.php?problem_id=$id".$ojAdventureQuery : "status.php?problem_id=$PID[$pid]&cid=$cid"; ?>"><i class="file icon" aria-hidden="true"></i>提交记录</a>
           <?php if($pr_flag){ ?>
           <a href="problemstatus.php?id=<?php echo $id; ?>"><i class="signal icon" aria-hidden="true"></i>统计</a>
           <a href="discuss.php?pid=<?php echo $id; ?>"><i class="clipboard icon" aria-hidden="true"></i><?php echo $MSG_BBS; ?></a>
@@ -210,7 +210,7 @@ body.oj-desktop .oj-pd-side .oj-empty { padding:8px 0 !important; font-size:13px
           <a href="contest.php?cid=<?php echo $cid; ?>"><i class="arrow left icon" aria-hidden="true"></i>返回比赛</a>
           <?php } ?>
           <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>
-          <a href="solutions.php?problem_id=<?php echo intval($id); ?>"><i class="book icon" aria-hidden="true"></i>查看 / 提交题解</a>
+          <a href="solutions.php?problem_id=<?php echo intval($id).$ojAdventureQuery; ?>"><i class="book icon" aria-hidden="true"></i>查看 / 提交题解</a>
           <?php } ?>
         </nav>
         <?php if($pr_flag && !isset($OJ_ON_SITE_CONTEST_ID)){ ?>

@@ -32,7 +32,7 @@
       <input type="text" disabled value="<?php echo htmlentities($row['xueYuan'],ENT_QUOTES,"UTF-8")?>">
     </div>
     <form action="modify2.php" method="post">
-      <?php require_once('./include/set_post_key.php');?>
+      <?php require('./include/set_post_key.php');?>
       <input type="hidden" name="type" value="name">
       <div class="oj-field">
         <label>申请修改姓名（留空表示不改）</label>
@@ -45,7 +45,7 @@
       <button class="oj-btn oj-btn-primary" type="submit">提交姓名修改申请</button>
     </form>
     <form action="modify2.php" method="post" style="margin-top:16px">
-      <?php require_once('./include/set_post_key.php');?>
+      <?php require('./include/set_post_key.php');?>
       <input type="hidden" name="type" value="class">
       <div class="oj-field">
         <label>申请修改学院</label>
@@ -82,7 +82,7 @@
   <div class="oj-card">
     <h2>修改邮箱</h2>
     <form action="modify2.php" method="post">
-      <?php require_once('./include/set_post_key.php');?>
+      <?php require('./include/set_post_key.php');?>
       <input type="hidden" name="type" value="email">
       <div class="oj-field">
         <label>新邮箱</label>
@@ -100,7 +100,7 @@
   <div class="oj-card">
     <h2>修改联系方式</h2>
     <form action="modify2.php" method="post">
-      <?php require_once('./include/set_post_key.php');?>
+      <?php require('./include/set_post_key.php');?>
       <input type="hidden" name="type" value="other">
       <div class="oj-field">
         <label>手机号</label>
@@ -117,7 +117,7 @@
   <div class="oj-card">
     <h2>修改密码</h2>
     <form action="modify.php" method="post">
-      <?php require_once('./include/set_post_key.php');?>
+      <?php require('./include/set_post_key.php');?>
       <div class="oj-field">
         <label>原密码</label>
         <input name="opassword" type="password" required>

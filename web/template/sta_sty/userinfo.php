@@ -26,7 +26,16 @@
             }
         }
     </style>
-<div class="oj-page-heading"><h1>用户主页</h1><?php if (isset($_SESSION[$OJ_NAME.'_user_id']) && $_SESSION[$OJ_NAME.'_user_id'] === $user) { ?><a class="ui basic button" href="adventure.php?tab=memoir">我的解题回忆录</a><?php } ?></div>
+<div class="oj-page-heading"><h1>用户主页</h1>
+<?php if (isset($_SESSION[$OJ_NAME.'_user_id']) && $_SESSION[$OJ_NAME.'_user_id'] === $user) { ?>
+    <div class="oj-page-actions">
+        <a class="ui basic button" href="adventure.php?tab=memoir">我的解题回忆录</a>
+        <?php if (isset($_SESSION[$OJ_NAME.'_administrator'])) { ?>
+        <a class="ui primary button oj-editorial-review-link" href="solutions.php?tab=review" aria-label="审核题解<?php if (!empty($oj_editorial_pending)) echo '，'.$oj_editorial_pending.'篇待审核'; ?>" title="<?php echo (int)($oj_editorial_pending ?? 0); ?> 篇待审核题解">审核题解<?php if (!empty($oj_editorial_pending)) { ?> <span class="ui red empty circular label oj-editorial-dot" aria-hidden="true"></span><?php } ?></a>
+        <?php } ?>
+    </div>
+<?php } ?>
+</div>
 <?php
 $sql="SELECT COUNT(distinct date_format(time,'%Y-%m-%d')) as days FROM `loginlog` WHERE user_id=?";
 $result = pdo_query( $sql, $user);

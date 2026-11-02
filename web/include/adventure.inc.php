@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/knowledge_graph.inc.php';
+require_once __DIR__.'/practice.inc.php';
 
 function adv_escape($value) {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -8,10 +9,7 @@ function adv_escape($value) {
 // Adventure is always a public practice surface, even for administrators.
 function adv_public_problems() {
     return pdo_query("SELECT p.problem_id id,p.title,p.source,p.accepted,p.submit FROM problem p
-        WHERE p.defunct='N' AND NOT EXISTS (
-            SELECT 1 FROM contest_problem cp JOIN contest c ON c.contest_id=cp.contest_id
-            WHERE cp.problem_id=p.problem_id AND (c.private=1 OR (c.defunct='N' AND c.end_time>NOW()))
-        ) ORDER BY p.problem_id");
+        WHERE ".practice_public_sql()." ORDER BY p.problem_id");
 }
 
 function adv_results($user) {

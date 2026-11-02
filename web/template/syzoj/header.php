@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__.'/../../include/navigation.inc.php';
+$ojAdventureOrigin = isset($_GET['cid']) || isset($OJ_ON_SITE_CONTEST_ID) ? '' : oj_adventure_origin($_GET);
+$ojAdventureQuery = oj_adventure_query($ojAdventureOrigin);
 $show_title = isset($show_title) ? $show_title : ''; // 若未传递，默认空字符串
 $url=basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 if ($url === '') $url = 'index.php';
@@ -20,6 +23,26 @@ if($OJ_ONLINE){
     require_once($path_fix.'include/online.php');
     $on = new online();
 }
+$oj_admin_pending = 0;
+$oj_editorial_pending = 0;
+if (isset($_SESSION[$OJ_NAME.'_user_id'], $_SESSION[$OJ_NAME.'_administrator'])) {
+    require_once __DIR__.'/../../include/cache_layer.php';
+    $oj_admin_pending = cache_get('admin_badge_'.$OJ_NAME);
+    if ($oj_admin_pending === false) {
+        $oj_changes = pdo_query('SELECT COUNT(id) AS num FROM `modify` WHERE status=0');
+        $oj_registrations = pdo_query('SELECT COUNT(*) AS num FROM users WHERE register_num=0');
+        $oj_admin_pending = (int)($oj_changes[0]['num'] ?? 0) + (int)($oj_registrations[0]['num'] ?? 0);
+        cache_set('admin_badge_'.$OJ_NAME, $oj_admin_pending, 10);
+    }
+    // Read pending reviews on each administrator page, including after a review.
+    // A deployment without the optional editorial tables must still render its navigation.
+    try {
+        $oj_pending_rows = pdo_query("SELECT COUNT(*) AS num FROM problem_editorial WHERE status='pending'");
+        $oj_editorial_pending = (int)($oj_pending_rows[0]['num'] ?? 0);
+    } catch (PDOException $e) {
+        $oj_editorial_pending = 0;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -31,6 +54,7 @@ if($OJ_ONLINE){
     <meta name="viewport" content="<?php echo (in_array($url, array('index.php', 'loginpage.php', 'registerpage.php', 'lostpassword.php', 'lostpassword2.php', 'modifypage.php'), true) || !empty($OJ_ADVENTURE_VIEWPORT) || !empty($OJ_EDITORIAL_VIEWPORT)) ? 'width=device-width, initial-scale=1' : 'width=1200'; ?>">
     <title><?php echo $show_title ?></title>
     <?php include("template/$OJ_TEMPLATE/css.php");?>
+    <link rel="stylesheet" href="<?php echo $path_fix; ?>template/syzoj/css/module-navigation.css?v=20261028.2">
     <script src="<?php echo $OJ_CDN_URL?>/include/jquery-latest.js"></script>
 </head>
 <?php
@@ -53,7 +77,7 @@ if ($OJ_WHITE_BLACK) { ?>
         <a class="header item" href="index.php" style="padding: 0 0.82vw 0 0.82vw;"><span
                     style="font-family: 'Exo 2'; font-size: 1.5em; font-weight: 600;"><?php echo $OJ_NAME?></span></a>
         <a class="item <?php if ($url=="index.php"||$url=="index1.php") echo "active";?>" href="index.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="home icon"></i> <?php echo $MSG_HOME?></a>
-        <a class="item <?php if ($url=="problemset.php") echo "active";?>"
+        <a class="item <?php if (in_array($url, array("problemset.php","problem.php","submitpage.php","solutions.php"), true)) echo "active";?>"
 	   href="<?php echo $path_fix?>problemset.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="list icon"></i><?php echo $MSG_PROBLEMS?> </a>
 	<a class="item <?php if ($url=="category.php") echo "active";?>"
            href="<?php echo $path_fix?>category.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="globe icon"></i><?php echo $MSG_SOURCE?></a>
@@ -61,8 +85,9 @@ if ($OJ_WHITE_BLACK) { ?>
                     class="calendar icon"></i> <?php echo $MSG_CONTEST?></a>
         <a class="item <?php if ($url=="status.php") echo "active";?>" href="<?php echo $path_fix?>status.php"  style="padding: 0 0.82vw 0 0.82vw;"><i
                     class="tasks icon"></i><?php echo $MSG_STATUS?></a>
-        <a class="item <?php if ($url=="ranklist.php") echo "active";?>"
+        <a class="item <?php if (in_array($url, array("ranklist.php", "coins.php"), true)) echo "active";?>"
            href="<?php echo $path_fix?>ranklist.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="signal icon"></i> <?php echo $MSG_RANKLIST?></a>
+        <a class="item <?php if (in_array($url, array('adventure.php','hunt.php'), true)) echo 'active'; ?>" href="<?php echo $path_fix; ?>adventure.php"<?php if (in_array($url, array('adventure.php','hunt.php'), true)) echo ' aria-current="page"'; ?> style="padding: 0 0.82vw;"><i class="compass icon" aria-hidden="true"></i>今日冒险</a>
 	<a class="item <?php if ($url=="knowledge_graph.php") echo "active";?>"
 	   href="<?php echo $path_fix?>knowledge_graph.php"  style="padding: 0 0.82vw 0 0.82vw;"><i class="share alternate icon"></i><?php echo "知识地图"?> </a>
 
@@ -79,19 +104,20 @@ if ($OJ_WHITE_BLACK) { ?>
             <?php if(isset($_SESSION[$OJ_NAME.'_'.'user_id'])) { ?>
                 <!--                <a href="--><?php //echo $path_fix?><!--userinfo.php?user=--><?php //echo $_SESSION[$OJ_NAME.'_'.'user_id']?><!--"-->
                 <!--                    style="color: inherit; ">-->
-                <div class="ui simple dropdown item oj-account-menu" tabindex="0" aria-label="个人菜单" aria-haspopup="true">
+                <div class="ui simple dropdown item oj-account-menu" tabindex="0" aria-label="个人菜单<?php if ($oj_editorial_pending > 0) echo '，有'.$oj_editorial_pending.'篇题解待审核'; elseif ($oj_admin_pending > 0) echo '，有待处理事项'; ?>" aria-haspopup="true">
                     <?php echo $_SESSION[$OJ_NAME.'_'.'user_id']; ?>
+                    <?php if ($oj_admin_pending > 0 || $oj_editorial_pending > 0) { ?><span class="ui red empty circular label oj-account-attention" aria-hidden="true"></span><?php } ?>
                     <i class="dropdown icon"></i>
                     <div class="menu">
                         <a class="item" href="<?php echo $path_fix?>userinfo.php?user=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="user icon"></i>我的主页</a>
                         <a class="item" href="<?php echo $path_fix?>status.php?user_id=<?php echo $_SESSION[$OJ_NAME.'_'.'user_id']?>"><i
                                     class="file icon"></i>我的提交</a>
+                        <?php if (isset($_SESSION[$OJ_NAME.'_administrator'])) { ?>
+                        <a class="item oj-editorial-review-link" href="<?php echo $path_fix?>solutions.php?tab=review" aria-label="审核题解<?php if ($oj_editorial_pending > 0) echo '，'.$oj_editorial_pending.'篇待审核'; ?>" title="<?php echo $oj_editorial_pending; ?> 篇待审核题解"><i class="check icon" aria-hidden="true"></i>审核题解<?php if ($oj_editorial_pending > 0) { ?> <span class="ui red empty circular label oj-editorial-dot" aria-hidden="true"></span><?php } ?></a>
+                        <?php } ?>
                         <a class="item" href="<?php echo $path_fix?>solutions.php?tab=mine"><i class="book icon"></i>我的题解</a>
                         <a class="item" href="<?php echo $path_fix?>lab.php?tab=mine"><i class="university icon"></i>我的申请与反馈</a>
-                        <a class="item" href="<?php echo $path_fix?>coins.php?tab=history"><i class="trophy icon"></i>我的金币</a>
-                        <a class="item" href="<?php echo $path_fix?>adventure.php"><i class="compass icon"></i>今日冒险</a>
-                        <a class="item" href="<?php echo $path_fix?>adventure.php?tab=memoir"><i class="history icon"></i>解题回忆录</a>
                         <a class="item" href="<?php echo $path_fix?>modifypage.php"><i
                                     class="edit icon"></i><?php echo $MSG_REG_INFO;?></a>
                         <?php if ($OJ_SaaS_ENABLE){ ?>
@@ -101,22 +127,10 @@ if ($OJ_WHITE_BLACK) { ?>
                         <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])||isset($_SESSION[$OJ_NAME.'_'.'contest_creator'])||isset($_SESSION[$OJ_NAME.'_'.'problem_editor'])){ ?>
                             <a class="item" href="admin/" style="position:relative;"><i class="settings icon"></i><?php echo $MSG_ADMIN;?>
                                 <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
-                                    // 性能优化：徽标计数缓存 10 秒，避免管理员每页 2 次 COUNT
-                                    require_once(dirname(__FILE__)."/../../include/cache_layer.php");
-                                    $num = cache_get("admin_badge_".$OJ_NAME);
-                                    if($num===false){
-                                        $sql = "SELECT COUNT(id) as num FROM `modify` WHERE `status`=0";
-                                        $num_result = pdo_query($sql);
-                                        $num = $num_result[0]['num'];
-                                        $sql = "SELECT COUNT(*) as num FROM `users` WHERE `register_num`=0";
-                                        $num_result = pdo_query($sql);
-                                        $num += $num_result[0]['num'];
-                                        cache_set("admin_badge_".$OJ_NAME, $num, 10);
-                                    }
-                                    if ($num > 0) {
+                                    if ($oj_admin_pending > 0) {
                                         echo "<div style='background-color: red; color: white; position:absolute; top:0px; right:15px; border-radius: 50px; width: 15px;height: 15px;'>"
                                             ."<div style='text-align: center; line-height: 15px;'>"
-                                            .$num
+                                            .$oj_admin_pending
                                             ."</div>"
                                             ."</div>";
                                     }
@@ -144,15 +158,6 @@ if ($OJ_WHITE_BLACK) { ?>
                     <?php } ?>
                 </div>
             <?php } ?>
-            <?php if(isset($_SESSION[$OJ_NAME.'_'.'administrator'])){
-                if ($num > 0) {
-                    echo "<div style='background-color: red; color: white; position:absolute; top:1px; right:15px; border-radius: 50px; width: 20px;height: 20px;'>"
-                        ."<div style='text-align: center; line-height: 20px;'>"
-                        .$num
-                        ."</div>"
-                        ."</div>";
-                }
-            } ?>
         </div>
     </div>
 </div>
@@ -162,11 +167,15 @@ if ($OJ_WHITE_BLACK) { ?>
     <a class="oj-back-link" id="back_to_contest" href="<?php echo $path_fix; ?>contest.php?cid=<?php echo intval($_GET['cid']); ?>"><i class="arrow left icon" aria-hidden="true"></i>返回竞赛题目列表</a>
 <?php } ?>
 <?php
-$desktop_titles = array('index.php'=>'主页', 'problemset.php'=>'题库', 'status.php'=>'提交状态', 'ranklist.php'=>'排名', 'contest.php'=>'竞赛与作业');
+$desktop_titles = array('index.php'=>'主页', 'problemset.php'=>'题库', 'status.php'=>'提交状态', 'ranklist.php'=>'排名', 'coins.php'=>'排名', 'contest.php'=>'竞赛与作业');
 if (isset($desktop_titles[$url]) && !isset($_GET['cid'])) {
     echo '<div class="oj-page-heading"><h1>'.$desktop_titles[$url].'</h1>';
-    if ($url === 'ranklist.php') echo '<div class="oj-page-actions"><a class="ui basic button" href="coins.php">金币榜单</a></div>';
     if ($url === 'index.php') echo '<div class="oj-page-actions"><a class="ui primary button" href="problemset.php">开始练习</a><a class="ui basic button" href="knowledge_graph.php">探索知识地图</a></div>';
     echo '</div>';
 }
 ?>
+<?php if ($ojAdventureOrigin && in_array($url, array('problem.php','submitpage.php','status.php','coins.php','ranklist.php'), true)) { ?>
+<nav class="oj-task-context" aria-label="返回冒险"><a href="<?php echo $path_fix; ?>adventure.php?tab=<?php echo $ojAdventureOrigin; ?>"><i class="arrow left icon" aria-hidden="true"></i>返回今日冒险 · <?php echo oj_adventure_tabs()[$ojAdventureOrigin]; ?></a></nav>
+<?php } ?>
+<?php if ($url === 'ranklist.php' && !empty($navProblemId)) { ?><nav class="oj-task-context" aria-label="返回题目与题解"><a href="problem.php?id=<?php echo $navProblemId.$ojAdventureQuery; ?>">返回题目 P<?php echo $navProblemId; ?></a><a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>">本题题解</a></nav><?php } ?>
+<?php if (in_array($url, array('ranklist.php','coins.php'), true)) require __DIR__.'/ranking-nav.php'; ?>

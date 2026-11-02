@@ -9,7 +9,7 @@ function show_editorial_prompt(solution_id) {
     var prompt = document.getElementById('editorial-reward-prompt');
     if (!problem || !prompt || Number(solution_id) <= editorial_prompt_solution) return;
     document.getElementById('editorial-reward-problem').textContent = 'P' + problem;
-    document.getElementById('editorial-reward-link').href = 'solutions.php?problem_id=' + problem + '&write=1';
+    document.getElementById('editorial-reward-link').href = 'solutions.php?problem_id=' + problem + '&write=1' + (typeof editorial_prompt_return === 'string' ? editorial_prompt_return : '');
     prompt.hidden = false;
     editorial_prompt_solution = Number(solution_id);
 }

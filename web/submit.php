@@ -1,6 +1,7 @@
 <?php session_start();
 
 require_once("include/db_info.inc.php");
+require_once("include/navigation.inc.php");
 if (!isset($_SESSION[$OJ_NAME.'_'.'user_id'])){
     $view_errors= "<a href='loginpage.php'>$MSG_Login</a>";
     require("template/".$OJ_TEMPLATE."/error.php");
@@ -305,6 +306,10 @@ else if(file_exists($file))
 $statusURI="status.php?user_id=".$_SESSION[$OJ_NAME.'_'.'user_id'];
 if (isset($cid))
     $statusURI.="&cid=$cid";
+
+if (!isset($cid) && !isset($OJ_ON_SITE_CONTEST_ID)) {
+    $statusURI .= oj_adventure_query(oj_adventure_origin($_POST), false);
+}
 
 if(!$test_run){
     // A one-use hint for this submission, never for an older accepted solution.

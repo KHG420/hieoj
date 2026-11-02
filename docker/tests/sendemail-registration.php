@@ -127,15 +127,28 @@ function se_run($root, array $options)
     $env['SE_CURL_JOURNAL'] = $root . '/curl-' . $sequence . '.log';
     $env['SE_CACHE_DIR'] = $root . '/cache';
     $env['SE_CACHE_JOURNAL'] = $root . '/cache-' . $sequence . '.log';
+    $env['SE_POST_DATA'] = json_encode($options['post'] ?? array());
+    $env['SE_REQUEST_METHOD'] = isset($options['post']) ? 'POST' : 'GET';
+    $env['SE_VCODE'] = !empty($options['vcode']) ? '1' : '0';
+    $env['SE_TEST_DB'] = $root . '/users.sqlite';
+    $env['SE_STATUS_FILE'] = $root . '/status-' . $sequence;
+    $endpoint = $options['endpoint'] ?? 'sendemail.php';
+    $extensions = array();
+    if ($endpoint !== 'sendemail.php') {
+        foreach (array('pdo', 'pdo_sqlite') as $extension) {
+            $file = ini_get('extension_dir') . '/' . $extension . '.so';
+            if (is_file($file)) array_push($extensions, '-d', 'extension=' . $file);
+        }
+    }
 
     $exit = 0;
     list($stdout, $stderr) = se_run_php(
-        array(PHP_BINARY, '-n',
+        array_merge(array(PHP_BINARY, '-n'), $extensions, array(
             '-d', 'session.save_path=' . $root . '/sessions',
             '-d', 'session.gc_probability=0',
             '-d', 'error_reporting=E_ALL',
             '-d', 'auto_prepend_file=' . $root . '/prepend.php',
-            $root . '/sendemail.php'),
+            $root . '/' . $endpoint)),
         $root,
         $env,
         $exit
@@ -144,6 +157,7 @@ function se_run($root, array $options)
     return array(
         'session_id' => $id,
         'exit' => $exit,
+        'status' => is_file($env['SE_STATUS_FILE']) ? (int)file_get_contents($env['SE_STATUS_FILE']) : null,
         'stdout' => $stdout,
         'stderr' => $stderr,
         'log' => is_file($errlog) ? (string)file_get_contents($errlog) : '',
@@ -401,6 +415,11 @@ function cache_set($key, $val, $ttl = 60)
 $__seEmail = getenv('SE_GET_EMAIL');
 $_GET = array('email' => is_string($__seEmail) ? $__seEmail : '');
 $_SERVER['REQUEST_METHOD'] = 'GET';
+$_POST = json_decode(getenv('SE_POST_DATA') ?: '[]', true);
+$_SERVER['REQUEST_METHOD'] = getenv('SE_REQUEST_METHOD') ?: 'GET';
+register_shutdown_function(function () {
+    file_put_contents(getenv('SE_STATUS_FILE'), (string)(http_response_code() ?: 200));
+});
 $__seRemote = getenv('SE_REMOTE_ADDR');
 $_SERVER['REMOTE_ADDR'] = is_string($__seRemote) && $__seRemote !== '' ? $__seRemote : '127.0.0.1';
 $__seSession = getenv('SE_SESSION_ID');

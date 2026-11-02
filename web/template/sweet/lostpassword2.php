@@ -26,6 +26,7 @@
       <!-- Main component for a primary marketing message or call to action -->
       <div class="jumbotron">
  <form action=lostpassword2.php method=post>
+<?php require_once('./include/set_post_key.php'); ?>
 <center>
 <table algin=center>
 <tr><td><?php echo $MSG_USER_ID?>:<td><input name="user_id" type="text" size=20></td></tr>

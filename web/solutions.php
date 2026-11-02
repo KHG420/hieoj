@@ -4,6 +4,9 @@ $OJ_CACHE_SHARE = false;
 require_once './include/db_info.inc.php';
 require_once './include/setlang.php';
 require_once './include/editorial.inc.php';
+require_once './include/navigation.inc.php';
+$adventureOrigin = isset($OJ_ON_SITE_CONTEST_ID) ? '' : oj_adventure_origin($_GET);
+$adventureQuery = oj_adventure_query($adventureOrigin, false);
 header('Cache-Control: private, no-store');
 if (isset($OJ_ON_SITE_CONTEST_ID)) { header('Location: contest.php?cid='.intval($OJ_ON_SITE_CONTEST_ID)); exit; }
 $user = $_SESSION[$OJ_NAME.'_user_id'] ?? null;
@@ -42,16 +45,16 @@ elseif ($ready) {
                 $contentInput = is_string($_POST['content'] ?? null) ? $_POST['content'] : '';
                 $newId = editorial_submit($user,$problemId,$titleInput,$contentInput,$formatInput);
                 $_SESSION[$OJ_NAME.'_editorial_submitted'] = (int)$newId;
-                header('Location: solutions.php?id='.$newId, true, 303); exit;
+                header('Location: solutions.php?id='.$newId.$adventureQuery, true, 303); exit;
             } elseif ($action === 'unlock' && $id) {
                 editorial_unlock($user,$id,$admin);
-                header('Location: solutions.php?id='.$id, true, 303); exit;
+                header('Location: solutions.php?id='.$id.($tab !== 'published' ? '&tab='.$tab : '').($page > 1 ? '&page='.$page : '').$adventureQuery, true, 303); exit;
             } elseif ($action === 'unlock' && $problemId && $tab === 'published' && !$writing) {
                 editorial_unlock($user,0,$admin,$problemId);
-                header('Location: solutions.php?problem_id='.$problemId, true, 303); exit;
+                header('Location: solutions.php?problem_id='.$problemId.$adventureQuery, true, 303); exit;
             } elseif ($action === 'review' && $admin && $id && $tab === 'review') {
                 editorial_review($user,$id,is_string($_POST['decision'] ?? null) ? $_POST['decision'] : '',is_string($_POST['note'] ?? null) ? $_POST['note'] : '');
-                header('Location: solutions.php?tab=review'.($returnProblemId ? '&from_problem='.$returnProblemId : ''), true, 303); exit;
+                header('Location: solutions.php?tab=review'.($returnProblemId ? '&from_problem='.$returnProblemId : '').($page > 1 ? '&page='.$page : '').$adventureQuery, true, 303); exit;
             } else { http_response_code(400); throw new DomainException('无效操作，请使用页面中的按钮。'); }
         }
     } catch (DomainException $e) { if (http_response_code() < 400) http_response_code(400); $error = $e->getMessage(); }
@@ -108,7 +111,7 @@ if (!$navProblemId && $ready && $returnProblemId) {
     try { if (editorial_problem($returnProblemId)) $navProblemId = $returnProblemId; }
     catch (Throwable $e) { error_log('Editorial navigation failed: '.$e->getMessage()); }
 }
-$navQuery = $navProblemId ? '&amp;from_problem='.$navProblemId : '';
+$navQuery = ($navProblemId ? '&amp;from_problem='.$navProblemId : '').oj_adventure_query($adventureOrigin);
 $heading = $contextProblemId ? 'P'.$contextProblemId.' · '.($article ? $article['problem_title'] : $problem['title']).' · 题解' : ($tab === 'mine' ? '我的题解' : ($tab === 'review' ? '题解审核' : '题解'));
 $show_title = editorial_escape($heading).' - '.editorial_escape($OJ_NAME);
 $OJ_EDITORIAL_VIEWPORT = true;

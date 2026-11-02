@@ -15,11 +15,14 @@
         if(session_status()===PHP_SESSION_NONE) @session_start();
         // 登录态检测：此时 db_info 可能尚未加载（$OJ_NAME 未定义），通过扫描会话键后缀判断
         $session_logged_in=false;
+        $session_administrator=false;
         foreach((array)$_SESSION as $sk=>$sv){
-            if(substr($sk,-8)==='_user_id' && !empty($sv)){ $session_logged_in=true; break; }
+            if(substr($sk,-8)==='_user_id' && !empty($sv)) $session_logged_in=true;
+            if(substr($sk,-14)==='_administrator') $session_administrator=true;
         }
-        // POST 请求不做页面缓存
-        if(isset($_SERVER['REQUEST_METHOD'])&&$_SERVER['REQUEST_METHOD']=='POST'){
+        // 管理员也不读写整页缓存，避免新投稿或审核完成后继续显示旧红点。
+        if((isset($_SERVER['REQUEST_METHOD'])&&$_SERVER['REQUEST_METHOD']=='POST')
+            || ($session_logged_in && $session_administrator)){
                 ob_start();
         }else{
                 $sid=(isset($OJ_NAME)?$OJ_NAME:"").$_SERVER["HTTP_HOST"];

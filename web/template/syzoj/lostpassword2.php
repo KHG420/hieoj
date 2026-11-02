@@ -16,7 +16,7 @@
     <?php require_once('./include/set_post_key.php');?>
     <div class="oj-field">
       <label>用户名（学号）</label>
-      <input name="user_id" type="text" required>
+      <input name="user_id" type="text" value="<?php echo htmlspecialchars($lost_user_id, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); ?>" required>
     </div>
     <div class="oj-field">
       <label>邮箱收到的重置密钥</label>
@@ -31,6 +31,6 @@
     <?php }?>
     <button class="oj-btn" type="submit">重置密码</button>
   </form>
-  <p class="oj-hint">重置后密码将设置为上述密钥，请登录后立即修改。</p>
+  <p class="oj-hint">密钥已发送至注册邮箱，3 分钟内有效，成功使用后失效。重置后密码将设置为上述密钥，请登录后立即修改。</p>
 </div>
 <?php include("template/$OJ_TEMPLATE/footer.php");?>

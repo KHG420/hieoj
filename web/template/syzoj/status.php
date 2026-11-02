@@ -15,6 +15,7 @@
 
         <!-- <form action="" class="ui mini form" method="get" role="form" id="form"> -->
         <form id=simform class="ui mini form" action="status.php" method="get">
+            <?php if ($ojAdventureOrigin) { ?><input type="hidden" name="from_adventure" value="<?php echo $ojAdventureOrigin; ?>"><?php } ?>
             <div class="inline fields" style="margin-bottom: 25px; white-space: nowrap; ">
                 <label for="status-problem_id" style="font-size: 1.2em; margin-right: 1px; "><?php echo $MSG_PROBLEM_ID?>：</label>
                 <div class="field"><input id="status-problem_id" name="problem_id" style="width: 100px; " type="text" value="<?php echo  htmlspecialchars($problem_id, ENT_QUOTES) ?>"></div>
@@ -197,6 +198,7 @@
         </div>
 
         <script>
+            var editorial_prompt_return = <?php echo json_encode(oj_adventure_query($ojAdventureOrigin, false)); ?>;
             var editorial_prompt_problems = <?php echo json_encode((object)$view_editorial_prompts); ?>;
             var i = 0;
             var oj_can_view_runtime = <?php echo (isset($_SESSION[$OJ_NAME.'_source_browser']) || isset($_SESSION[$OJ_NAME.'_administrator'])) ? 'true' : 'false'; ?>;
@@ -212,6 +214,6 @@
                 } ?>
                 ''];
         </script>
-        <script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=20261022" ></script>
+        <script src="template/<?php echo $OJ_TEMPLATE?>/auto_refresh.js?v=20261028" ></script>
 
 <?php include("template/$OJ_TEMPLATE/footer.php");

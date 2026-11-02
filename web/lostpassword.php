@@ -1,54 +1,52 @@
 <?php
-        require_once('./include/db_info.inc.php');
-        require_once('./include/setlang.php');
-        $view_title= "Welcome To Online Judge";
+require_once './include/db_info.inc.php';
+require_once './include/setlang.php';
+require_once './include/const.inc.php';
+require_once './include/my_func.inc.php';
+header('Cache-Control: private, no-store');
+$view_title = '找回密码';
+$lost_user_id = is_string($_POST['user_id'] ?? null) ? trim($_POST['user_id']) : '';
+$lost_email = is_string($_POST['email'] ?? null) ? trim($_POST['email']) : '';
 
-require_once("./include/const.inc.php");
-require_once("./include/my_func.inc.php");
-$lost_user_id=isset($_POST['user_id'])?$_POST['user_id']:'';
-$lost_email=isset($_POST['email'])?$_POST['email']:'';
-    if(isset($_POST['vcode']))$vcode=trim($_POST['vcode']);
-    if($lost_user_id&&($vcode!= $_SESSION[$OJ_NAME.'_'."vcode"]||$vcode==""||$vcode==null) ){
-                echo "<script language='javascript'>\n";
-                echo "alert('Verify Code Wrong!');\n";
-                echo "history.go(-1);\n";
-                echo "</script>";
-                exit(0);
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
+    $view_errors = '';
+    $vcode = is_string($_POST['vcode'] ?? null) ? trim($_POST['vcode']) : '';
+    if (!is_string($_POST['postkey'] ?? null) || !isset($_SESSION[$OJ_NAME.'_postkey'])
+        || !hash_equals($_SESSION[$OJ_NAME.'_postkey'], $_POST['postkey'])) {
+        http_response_code(403);
+        $view_errors = '页面凭证已失效，请返回找回密码页面后重试。';
+    } elseif (!empty($OJ_VCODE) && ($vcode === '' || !isset($_SESSION[$OJ_NAME.'_vcode'])
+        || !hash_equals((string)$_SESSION[$OJ_NAME.'_vcode'], $vcode))) {
+        http_response_code(400);
+        $view_errors = '图形验证码错误，请刷新验证码后重试。';
+    } elseif ($lost_user_id === '' || !filter_var($lost_email, FILTER_VALIDATE_EMAIL) || strlen($lost_email) > 100) {
+        http_response_code(400);
+        $view_errors = '请填写学号和有效的注册邮箱。';
+    } else {
+        $rows = pdo_query('SELECT email FROM users WHERE user_id=?', $lost_user_id);
+        if (!$rows || strcasecmp((string)$rows[0]['email'], $lost_email) !== 0) {
+            http_response_code(400);
+            $view_errors = '学号与注册邮箱不匹配，请核对后重试。';
+        } else {
+            $password_reset_email = (string)$rows[0]['email'];
+            $password_reset_code = bin2hex(random_bytes(8));
+            ob_start();
+            require './sendemail.php';
+            $send_message = trim(ob_get_clean());
+            if ($send_email_ok) {
+                // Only a provider-confirmed send creates a usable, short-lived key.
+                $_SESSION[$OJ_NAME.'_lost_user_id'] = $lost_user_id;
+                $_SESSION[$OJ_NAME.'_lost_key'] = $password_reset_code;
+                $_SESSION[$OJ_NAME.'_lost_expires'] = time() + 180;
+                require 'template/'.$OJ_TEMPLATE.'/lostpassword2.php';
+                exit;
+            }
+            http_response_code(503);
+            $view_errors = htmlspecialchars($send_message ?: '邮件发送失败，请稍后重试。', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        }
     }
-  if((function_exists('get_magic_quotes_gpc')&&get_magic_quotes_gpc())){
-        $lost_user_id=stripslashes($lost_user_id);
-        $lost_email=stripslashes($lost_email);
-  }
-  $sql="SELECT `email` FROM `users` WHERE `user_id`=?";
-                $result=pdo_query($sql,$lost_user_id);
-                $row = !empty($result[0]) ? $result[0] : null;
- if($row && $row['email']==$lost_email&&strpos($lost_email,'@')){
-   $_SESSION[$OJ_NAME.'_'.'lost_user_id']=$lost_user_id;
-   $_SESSION[$OJ_NAME.'_'.'lost_key']=getToken(16);
-
-  
-	require_once "include/email.class.php";
-	//******************** 配置信息 ********************************
-	$smtpserver = "smtp.126.com";//SMTP服务器
-	$smtpserverport =25;//SMTP服务器端口
-	$smtpusermail = "zjicm_oj_system@126.com";//SMTP服务器的用户邮箱
-	$smtpemailto = $row['email'];//发送给谁
-	$smtpuser = "zjicm_oj_system@126.com";//SMTP服务器的用户帐号
-	$smtppass = "hustoj2015";//SMTP服务器的用户密码
-	$mailtitle = "OJ系统密码重置激活";//邮件主题
-	$mailcontent = "$lost_user_id:\n您好！\n您在OJ系统选择了找回密码服务,为了验证您的身份,请将下面字串输入口令重置页面以确认身份:".$_SESSION[$OJ_NAME.'_'.'lost_key']."\n\n\n浙江传媒学院在线评测系统";//邮件内容
-	$mailtype = "TXT";//邮件格式（HTML/TXT）,TXT为文本邮件
-	//************************ 配置信息 ****************************
-	$smtp = new smtp($smtpserver,$smtpserverport,true,$smtpuser,$smtppass);//这里面的一个true是表示使用身份验证,否则不使用身份验证.
-	$smtp->debug =false;//是否显示发送的调试信息
-	$state = $smtp->sendmail($smtpemailto, $smtpusermail, $mailtitle, $mailcontent, $mailtype);
-        require("template/".$OJ_TEMPLATE."/lostpassword2.php");
-
- }else{
-
-/////////////////////////Template
-   require("template/".$OJ_TEMPLATE."/lostpassword.php");
-
+    require 'template/'.$OJ_TEMPLATE.'/error.php';
+    exit;
 }
-/////////////////////////Common foot
-?>
+
+require 'template/'.$OJ_TEMPLATE.'/lostpassword.php';
