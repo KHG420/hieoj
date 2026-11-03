@@ -82,15 +82,21 @@ if ($rankRange === 'year') {
 $solvedColumn = $rankRange === 'year' ? 'a.period_solved' : 'a.solved';
 $submitColumn = $rankRange === 'year' ? 'a.period_submit' : 'a.submit';
 $where .= " AND a.defunct='N' AND $submitColumn>0";
+// Reuse the filtered annual population for pagination instead of grouping all
+// submissions a second time. The window is evaluated before the page LIMIT.
+// user_id breaks otherwise identical ties consistently on adjacent pages.
+$rankTotalColumn = $rankRange === 'year' ? ',COUNT(*) OVER() AS rank_total' : '';
 $subquery = "SELECT a.user_id,a.school,a.nick,$solvedColumn solved,$submitColumn submit,a.reg_time
-    FROM $rankSource $where ORDER BY solved DESC,submit,a.reg_time LIMIT $rank,$page_size";
+    $rankTotalColumn FROM $rankSource $where ORDER BY solved DESC,submit,a.reg_time,a.user_id LIMIT $rank,$page_size";
 $similarityPeriod = $rankRange === 'year' ? ' AND b.in_date>=? AND b.in_date<=NOW() AND b.problem_id>0' : '';
-$sql = "SELECT t.user_id,t.school,t.nick,t.solved,t.submit,IFNULL(SUM(c.sim),0) sim_num
+$rankTotalResult = $rankRange === 'year' ? ',MAX(t.rank_total) AS rank_total' : '';
+$sql = "SELECT t.user_id,t.school,t.nick,t.solved,t.submit,IFNULL(SUM(c.sim),0) sim_num $rankTotalResult
     FROM ($subquery) t LEFT JOIN solution b ON t.user_id=b.user_id $similarityPeriod
     LEFT JOIN sim c ON b.solution_id=c.s_id GROUP BY t.user_id,t.school,t.nick,t.solved,t.submit,t.reg_time
-    ORDER BY t.solved DESC,t.submit,t.reg_time";
+    ORDER BY t.solved DESC,t.submit,t.reg_time,t.user_id";
 $queryParams = array_merge($periodParams,$where_params,$periodParams);
 $result = mysql_query_cache($sql,...$queryParams);
+$view_total = isset($result[0]['rank_total']) ? intval($result[0]['rank_total']) : null;
 if($result) $rows_cnt=count($result);
 else $rows_cnt=0;
 $view_rank=Array();
@@ -125,10 +131,14 @@ for ( $i=0;$i<$rows_cnt;$i++ ) {
     }
 }
 
-$sql = "SELECT count(1) as `mycount` FROM $rankSource $where";
-$result = mysql_query_cache($sql,...array_merge($periodParams,$where_params));
-$row=$result[0];
-$view_total=$row['mycount'];
+// An empty/out-of-range page has no row to carry the window total. All-time
+// counts are cheap and continue to use the existing users-only query.
+if ($view_total === null) {
+    $sql = "SELECT count(1) as `mycount` FROM $rankSource $where";
+    $result = mysql_query_cache($sql,...array_merge($periodParams,$where_params));
+    $row=$result[0];
+    $view_total=$row['mycount'];
+}
 
 $xueYuan = academic_directory_colleges();
 
