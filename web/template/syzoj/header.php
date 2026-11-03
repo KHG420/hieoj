@@ -55,7 +55,9 @@ if (isset($_SESSION[$OJ_NAME.'_user_id'], $_SESSION[$OJ_NAME.'_administrator']))
     <title><?php echo $show_title ?></title>
     <?php include("template/$OJ_TEMPLATE/css.php");?>
     <link rel="stylesheet" href="<?php echo $path_fix; ?>template/syzoj/css/module-navigation.css?v=20261028.2">
+    <?php if (!isset($OJ_LOAD_LEGACY_JS) || $OJ_LOAD_LEGACY_JS) { ?>
     <script src="<?php echo $OJ_CDN_URL?>/include/jquery-latest.js"></script>
+    <?php } ?>
 </head>
 <?php
 if ($OJ_WHITE_BLACK) { ?>

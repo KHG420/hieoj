@@ -1,4 +1,4 @@
-<?php include("template/$OJ_TEMPLATE/header.php"); ?>
+<?php $OJ_LOAD_LEGACY_JS=false; include("template/$OJ_TEMPLATE/header.php"); ?>
 <link rel="stylesheet" href="template/syzoj/css/editorial.css?v=3">
 <div class="ed-page">
   <nav class="oj-task-context" aria-label="题目来源">

@@ -1,4 +1,4 @@
-<?php $OJ_EDITORIAL_VIEWPORT=true; $show_title="$MSG_RANKLIST - $OJ_NAME"; ?>
+<?php $OJ_EDITORIAL_VIEWPORT=true; $OJ_LOAD_LEGACY_JS=false; $OJ_CSS_BUNDLE='oj-ranking.css'; $show_title="$MSG_RANKLIST - $OJ_NAME"; ?>
 <?php include("template/$OJ_TEMPLATE/header.php");?>
 <?php
 // 安全修复：回显参数统一转义
@@ -117,26 +117,26 @@ $prefix_e = htmlentities($prefix, ENT_QUOTES, "UTF-8");
   </nav>
 </div>
 <script>
-$(function(){
-  var xy = <?php echo json_encode($xy)?>, nj = <?php echo json_encode($nj)?>, school = <?php echo json_encode($school)?>;
-  function loadClass(){
-    var qnj = nj; if(qnj!=="") qnj = "20"+qnj;
-    $.ajax({ url: "getClass.php", data: { nj: qnj, xy: xy }, dataType: "json",
-      success: function(data){
-        var sel = $("#oj_class_sel");
-        sel.empty();
-        sel.append("<option value=''>全部</option>");
-        if(data && data.length){
-          for (var i=0;i<data.length;i++){
-            var v = data[i].value !== undefined ? data[i].value : data[i];
-            if(v===null || v===undefined) continue;
-            sel.append("<option value='"+$("<div>").text(v).html()+"'"+(v===school?" selected":"")+">"+$("<div>").text(v).html()+"</option>");
-          }
-        }
+(() => {
+  const xy = <?php echo json_encode($xy)?>, nj = <?php echo json_encode($nj)?>, school = <?php echo json_encode($school)?>;
+  // The unfiltered endpoint returns [] without querying the database.
+  if (!xy && !nj) return;
+  const query = new URLSearchParams({nj: nj ? '20' + nj : '', xy});
+  fetch('getClass.php?' + query, {credentials: 'same-origin'})
+    .then(response => { if (!response.ok) throw new Error('Class lookup failed'); return response.json(); })
+    .then(data => {
+      if (!Array.isArray(data)) return;
+      const select = document.getElementById('oj_class_sel');
+      const options = [new Option('全部', '')];
+      for (const item of data) {
+        const value = item && typeof item === 'object' ? item.value : item;
+        if (value === null || value === undefined) continue;
+        const text = String(value);
+        options.push(new Option(text, text, false, text === school));
       }
-    });
-  }
-  loadClass();
-});
+      select.replaceChildren(...options);
+    })
+    .catch(() => {}); // Preserve the server-rendered selection on lookup failure.
+})();
 </script>
 <?php include("template/$OJ_TEMPLATE/footer.php");?>

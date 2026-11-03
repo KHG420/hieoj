@@ -1,4 +1,4 @@
-<?php $show_title = '今日冒险 - '.$OJ_NAME; $OJ_ADVENTURE_VIEWPORT = true; include "template/$OJ_TEMPLATE/header.php"; ?>
+<?php $OJ_LOAD_LEGACY_JS=false; $show_title = '今日冒险 - '.$OJ_NAME; $OJ_ADVENTURE_VIEWPORT = true; include "template/$OJ_TEMPLATE/header.php"; ?>
 <link rel="stylesheet" href="template/syzoj/css/adventure.css?v=20260914.2">
 <div class="adv-page">
   <header class="adv-heading"><div><h1>今日冒险</h1><p>重逢一道旧题，走一段新路。今天的进步，从这里开始。</p></div></header>

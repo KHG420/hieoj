@@ -1,4 +1,4 @@
-<?php include("template/$OJ_TEMPLATE/header.php"); ?>
+<?php $OJ_LOAD_LEGACY_JS=false; include("template/$OJ_TEMPLATE/header.php"); ?>
 <link rel="stylesheet" href="template/syzoj/css/editorial.css?v=2">
 <div class="ed-page">
   <?php if ($navProblemId) { ?><nav class="oj-task-context" aria-label="返回题目与题解"><a href="problem.php?id=<?php echo $navProblemId.$ojAdventureQuery; ?>">返回题目 P<?php echo $navProblemId; ?></a><a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>">本题题解</a></nav><?php } ?>

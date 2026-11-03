@@ -1,4 +1,4 @@
-<?php $show_title="知识地图 - $OJ_NAME"; ?>
+<?php $OJ_LOAD_LEGACY_JS=false; $show_title="知识地图 - $OJ_NAME"; ?>
 <?php include("template/$OJ_TEMPLATE/header.php"); ?>
 <link rel="stylesheet" href="template/syzoj/css/knowledge-graph.css?v=20260913.5">
 

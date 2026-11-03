@@ -1,6 +1,8 @@
 </div>
 </div>
+<?php if (!isset($OJ_LOAD_LEGACY_JS) || $OJ_LOAD_LEGACY_JS) { ?>
 <script src="<?php echo $OJ_CDN_URL.$path_fix."template/$OJ_TEMPLATE"?>/css/semantic.min.js" defer></script>
+<?php } ?>
 <footer>
     <style>
     .footer {
