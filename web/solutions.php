@@ -111,6 +111,14 @@ if (!$navProblemId && $ready && $returnProblemId) {
     try { if (editorial_problem($returnProblemId)) $navProblemId = $returnProblemId; }
     catch (Throwable $e) { error_log('Editorial navigation failed: '.$e->getMessage()); }
 }
+$canWriteEditorial = false;
+if ($ready && $user && $navProblemId) {
+    try {
+        $canWriteEditorial = $problem && $problemId === $navProblemId
+            ? (bool)$passed
+            : editorial_problem($navProblemId) && editorial_passed($user,$navProblemId);
+    } catch (Throwable $e) { error_log('Editorial writing entry failed: '.$e->getMessage()); }
+}
 $navQuery = ($navProblemId ? '&amp;from_problem='.$navProblemId : '').oj_adventure_query($adventureOrigin);
 $heading = $contextProblemId ? 'P'.$contextProblemId.' · '.($article ? $article['problem_title'] : $problem['title']).' · 题解' : ($tab === 'mine' ? '我的题解' : ($tab === 'review' ? '题解审核' : '题解'));
 $show_title = editorial_escape($heading).' - '.editorial_escape($OJ_NAME);

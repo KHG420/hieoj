@@ -11,9 +11,10 @@
     <?php if($navProblemId){ ?>
 
     <a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>" <?php if(!$id && $tab==='published' && !$writing) echo 'aria-current="page"'; ?>>本题题解</a>
-    <?php if($writing && $passed){ ?><a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>&amp;write=1" aria-current="page">编写题解</a><?php } ?>
+    <?php if($canWriteEditorial){ ?><a href="solutions.php?problem_id=<?php echo $navProblemId.$ojAdventureQuery; ?>&amp;write=1"<?php if($writing) echo ' aria-current="page"'; ?>>编写题解</a><?php } ?>
     <?php } ?>
     <a href="solutions.php?tab=mine<?php echo $navQuery; ?>" <?php if($tab==='mine') echo 'aria-current="page"'; ?>>我的题解</a>
+    <?php if($tab==='mine' && $user && !$canWriteEditorial){ ?><a href="problemset.php">选题写题解</a><?php } ?>
     <?php if($admin){ ?><a href="solutions.php?tab=review<?php echo $navQuery; ?>" <?php if($tab==='review') echo 'aria-current="page"'; ?>>管理员审核</a><?php } ?>
   </nav>
   <?php if(!$ready){ ?><div class="ed-notice">题解模块暂未开放，请稍后再来。</div><?php } ?>
@@ -21,7 +22,7 @@
   <?php if($ready && $article){ ?>
     <article class="ed-panel">
       <h2 class="ed-article-title"><?php echo editorial_escape($article['title']); ?></h2>
-      <?php if($reference){ ?><div class="ed-notice"><p>这道题还没有人写题解，下面是系统自动抓取的一份 AC 代码，<strong>没有思路讲解</strong>，只能看写法。</p><?php if($passed){ ?><a class="ui primary button" href="solutions.php?problem_id=<?php echo intval($problemId).$ojAdventureQuery; ?>&amp;write=1">我来写一篇图文题解</a><?php } ?><p class="ed-meta">写题解请说明关键思路及为什么可行、算法步骤、时间与空间复杂度；代码之外的解释至少 <?php echo editorial_min_prose(); ?> 个汉字。审核通过后获得 10 金币。</p></div>
+      <?php if($reference){ ?><div class="ed-notice"><p>这道题还没有人写题解，下面是系统自动抓取的一份 AC 代码，<strong>没有思路讲解</strong>，只能看写法。</p><p class="ed-meta">写题解请说明关键思路及为什么可行、算法步骤、时间与空间复杂度；代码之外的解释至少 <?php echo editorial_min_prose(); ?> 个汉字。审核通过后获得 10 金币。</p></div>
       <?php } else { ?><p class="ed-meta">作者 <?php echo editorial_escape($article['user_id']); ?> · <?php echo editorial_escape($article['created_at']); ?> · <?php echo $statusNames[$article['status']]; ?></p><?php } ?>
       <?php if($canRead){ ?>
         <?php if($reference){ ?><div class="ed-markdown"><pre class="ed-code-shell"><code><?php echo editorial_escape($article['content']); ?></code></pre></div>
@@ -51,16 +52,13 @@
     <?php include 'template/syzoj/editorial-editor.php'; ?>
   <?php } elseif($ready && (!$error || $rows || $problem)){ ?>
     <section class="ed-panel" aria-label="题解列表">
-      <?php if(!$rows){ ?><div class="ed-empty"><h2><?php echo $tab==='review' ? '暂时没有待审核题解' : ($tab==='mine' ? '你还没有提交题解' : '本题暂无已审核题解'); ?></h2><p><?php echo $tab==='review' ? '新提交的题解会出现在这里。' : '通过题目后，在题目页面进入题解，分享你的解题思路。'; ?></p></div><?php } ?>
+      <?php if(!$rows){ ?><div class="ed-empty"><h2><?php echo $tab==='review' ? '暂时没有待审核题解' : ($tab==='mine' ? '你还没有提交题解' : '本题暂无已审核题解'); ?></h2><p><?php echo $tab==='review' ? '新提交的题解会出现在这里。' : '选择一道已通过的公开题目，分享解题思路。审核通过后可获得 10 金币。'; ?></p>
+        <?php if($tab==='mine' && $user){ ?><a class="ui primary button" href="<?php echo $canWriteEditorial ? 'solutions.php?problem_id='.$navProblemId.$ojAdventureQuery.'&amp;write=1' : 'problemset.php'; ?>"><?php echo $canWriteEditorial ? '编写题解' : '选题写题解'; ?></a><?php } ?>
+      </div><?php } ?>
       <?php foreach($rows as $item){ ?><div class="ed-row"><div><a class="ed-row-title" href="solutions.php?id=<?php echo intval($item['id']).($tab!=='published' ? '&amp;tab='.$tab : '').($page > 1 ? '&amp;page='.$page : '').($returnProblemId && $navProblemId ? $navQuery : $ojAdventureQuery); ?>"><?php echo editorial_escape($item['title']); ?></a><p class="ed-meta">P<?php echo intval($item['problem_id']).' · '.editorial_escape($item['problem_title']); ?></p><p class="ed-meta"><?php echo editorial_escape($item['user_id']).' · '.editorial_escape($item['created_at']); ?></p></div><span class="ed-status"><?php echo $statusNames[$item['status']]; ?></span></div><?php } ?>
     </section>
     <?php if($page>1 || $hasNext){ ?><nav class="ed-pagination" aria-label="题解分页"><?php if($page>1){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page-1; ?><?php echo $navQuery; ?>">上一页</a><?php } ?><span>第 <?php echo $page; ?> 页</span><?php if($hasNext){ ?><a class="ui basic button" href="solutions.php?tab=<?php echo $tab; ?>&amp;problem_id=<?php echo $problemId; ?>&amp;page=<?php echo $page+1; ?><?php echo $navQuery; ?>">下一页</a><?php } ?></nav><?php } ?>
   <?php } ?>
-    <?php if($ready && !$writing && $problem && $tab==='published'){ ?><section class="ed-panel ed-write-invite"><div><h2>分享你的解题思路</h2>
-      <p class="ed-meta"><?php echo $passed ? '支持 Markdown、代码和公式。审核通过后公开，奖励 10 金币。' : '通过这道题目后即可提交题解。'; ?></p></div>
-      <?php if($passed){ ?><a class="ui primary button" href="solutions.php?problem_id=<?php echo $problemId.$ojAdventureQuery; ?>&amp;write=1">编写题解</a>
-      <?php } elseif(!$user){ ?><a href="loginpage.php">请先登录</a><?php } else { ?><a href="problem.php?id=<?php echo $problemId.$ojAdventureQuery; ?>">去完成题目</a><?php } ?>
-    </section><?php } ?>
 </div>
 <?php if($loadMarkdown){ ?>
 <link rel="stylesheet" href="template/syzoj/css/katex.min.css">
