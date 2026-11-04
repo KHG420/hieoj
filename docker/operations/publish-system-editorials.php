@@ -220,8 +220,8 @@ function system_editorial_publish($batch, $apply) {
                 if (hrtime(true) >= $deadline) throw new RuntimeException('发布批次超过 30 秒预算。');
                 system_editorial_execute($db, "INSERT INTO problem_editorial
                     (problem_id,user_id,title,content,content_format,status,review_note,reviewer,reviewed_at)
-                    VALUES(?,?,?,?,'markdown','approved',?,NULL,NOW())",
-                    array($article->problem_id,$user,$article->title,$article->content,'system-publish:'.$batch->batch_id));
+                    VALUES(?,?,?,?,'markdown','approved','',NULL,NOW())",
+                    array($article->problem_id,$user,$article->title,$article->content));
                 $insertId = (int)$db->lastInsertId();
                 foreach ($result['articles'] as &$entry) {
                     if ($entry['problem_id'] === $article->problem_id) $entry['id'] = $insertId;
