@@ -95,8 +95,27 @@ $sql = "SELECT t.user_id,t.school,t.nick,t.solved,t.submit,IFNULL(SUM(c.sim),0) 
     LEFT JOIN sim c ON b.solution_id=c.s_id GROUP BY t.user_id,t.school,t.nick,t.solved,t.submit,t.reg_time
     ORDER BY t.solved DESC,t.submit,t.reg_time,t.user_id";
 $queryParams = array_merge($periodParams,$where_params,$periodParams);
-$result = mysql_query_cache($sql,...$queryParams);
-$view_total = isset($result[0]['rank_total']) ? intval($result[0]['rank_total']) : null;
+// Keep public ranking data for one minute instead of the general five-second
+// query cache. Render the viewer's menu and review notifications on every visit.
+// SQL and bound parameters include the period, filters and page; rows and their
+// pagination total share one entry so they always expire together.
+$rankCacheKey = 'ranklist:data:v1:'.hash('sha256', serialize(array($OJ_NAME, $_SERVER['HTTP_HOST'] ?? '', $sql, $queryParams)));
+$rankData = cache_get($rankCacheKey);
+if ($rankData === false) {
+    $result = pdo_query($sql,...$queryParams);
+    $view_total = isset($result[0]['rank_total']) ? intval($result[0]['rank_total']) : null;
+    // Empty/out-of-range pages have no row to carry the window total. All-time
+    // counts remain a cheap users-only query.
+    if ($view_total === null) {
+        $countSql = "SELECT count(1) as `mycount` FROM $rankSource $where";
+        $countResult = pdo_query($countSql,...array_merge($periodParams,$where_params));
+        $view_total = $countResult[0]['mycount'];
+    }
+    $rankData = array('rows'=>$result, 'total'=>$view_total);
+    if (is_array($result) && is_numeric($view_total)) cache_set($rankCacheKey, $rankData, 60);
+}
+$result = $rankData['rows'];
+$view_total = $rankData['total'];
 if($result) $rows_cnt=count($result);
 else $rows_cnt=0;
 $view_rank=Array();
@@ -129,15 +148,6 @@ for ( $i=0;$i<$rows_cnt;$i++ ) {
         $text = ($avg_sim >= 50) ? "style='color: red'" : "";
         $view_rank[$i][7] = "<div class='center' $text>" . htmlentities($row['sim_num'] . '%', ENT_QUOTES, "UTF-8") . "</div>";
     }
-}
-
-// An empty/out-of-range page has no row to carry the window total. All-time
-// counts are cheap and continue to use the existing users-only query.
-if ($view_total === null) {
-    $sql = "SELECT count(1) as `mycount` FROM $rankSource $where";
-    $result = mysql_query_cache($sql,...array_merge($periodParams,$where_params));
-    $row=$result[0];
-    $view_total=$row['mycount'];
 }
 
 $xueYuan = academic_directory_colleges();

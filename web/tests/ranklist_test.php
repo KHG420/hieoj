@@ -35,7 +35,10 @@ PHP
     );
     file_put_contents($root.'/include/memcache.php', <<<'PHP'
 <?php
-function mysql_query_cache($sql,...$args) {
+// Exercise the controller's real SQL independently of its cross-request cache.
+function cache_get($key) { return false; }
+function cache_set($key,$value,$ttl) { return true; }
+function pdo_query($sql,...$args) {
     global $db,$queries;
     $queries++;
     // Match MySQL's default backslash escaping for bound LIKE patterns.
