@@ -24,6 +24,8 @@ $targetId = '';
 $user = null;
 $values = array('nick' => '', 'school' => '', 'xueYuan' => '', 'email' => '');
 $balance = null;
+$password = '';
+$confirmPassword = '';
 
 if ($requestMethod === 'POST') {
     require_once("../include/check_post_key.php");
@@ -31,12 +33,19 @@ if ($requestMethod === 'POST') {
     foreach (array('nick','school','xueYuan','email') as $field) {
         if (isset($_POST[$field]) && is_string($_POST[$field])) $values[$field] = trim($_POST[$field]);
     }
+    foreach (array('passwd', 'confirm_password') as $field) {
+        if (isset($_POST[$field]) && !is_string($_POST[$field])) $errors[] = '密码格式不正确，请重新输入。';
+    }
+    $password = isset($_POST['passwd']) && is_string($_POST['passwd']) ? $_POST['passwd'] : '';
+    $confirmPassword = isset($_POST['confirm_password']) && is_string($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
 } else {
     $targetId = isset($_GET['user_id']) && is_string($_GET['user_id']) ? trim($_GET['user_id']) : '';
 }
 
 if ($targetId !== '') {
-    $rows = user_edit_query('SELECT user_id,nick,school,xueYuan,email,reg_time,accesstime,defunct,register_num FROM users WHERE user_id=?', array($targetId));
+    $rows = user_edit_query("SELECT user_id,nick,school,xueYuan,email,reg_time,accesstime,defunct,register_num,
+        EXISTS (SELECT 1 FROM privilege WHERE privilege.user_id=users.user_id AND rightstr='administrator') AS password_protected
+        FROM users WHERE user_id=?", array($targetId));
     if ($rows === false) {
         $errors[] = '用户资料读取失败，请稍后重试。';
     } elseif (!$rows) {
@@ -68,11 +77,35 @@ if ($requestMethod === 'POST' && $user) {
             $errors[] = '邮箱格式不正确，请检查后重试。';
         }
     }
+    $changePassword = $password !== '' || $confirmPassword !== '';
+    if ($changePassword) {
+        if ($user['password_protected']) {
+            $errors[] = '管理员账号的密码请由本人在个人设置中修改。';
+        } elseif ($password === '' || $confirmPassword === '') {
+            $errors[] = '修改密码时，请同时填写密码和确认密码。';
+        } elseif ($password !== $confirmPassword) {
+            $errors[] = '两次输入的密码不一致，请重新输入。';
+        } elseif (strlen($password) < 6) {
+            $errors[] = '密码至少需要 6 位。';
+        }
+    }
     if (!$errors) {
-        $updated = user_edit_query('UPDATE users SET nick=?,school=?,xueYuan=?,email=? WHERE user_id=?',
-            array($values['nick'], $values['school'], $values['xueYuan'], $values['email'], $targetId));
+        $sql = 'UPDATE users SET nick=?,school=?,xueYuan=?,email=?';
+        $args = array($values['nick'], $values['school'], $values['xueYuan'], $values['email']);
+        if ($changePassword) {
+            $sql .= ',password=?';
+            $args[] = pwGen($password);
+        }
+        $sql .= ' WHERE user_id=?';
+        $args[] = $targetId;
+        if ($changePassword) {
+            $sql .= " AND user_id NOT IN (SELECT user_id FROM privilege WHERE rightstr='administrator')";
+        }
+        $updated = user_edit_query($sql, $args);
         if ($updated === false) {
             $errors[] = '用户资料保存失败，请稍后重试。';
+        } elseif ($changePassword && $updated === 0) {
+            $errors[] = '用户不存在或已成为管理员，本次修改未保存，请刷新后重试。';
         } else {
             // Return to the user picker/list with the success notice.
             header('Location: user_info_edit.php?saved=1', true, 303);
@@ -203,10 +236,27 @@ if (isset($OJ_LANG)) require_once("../lang/$OJ_LANG.php");
                                     </div>
                                 </div>
                             </div>
+
+                            <hr>
+                            <h4>登录密码</h4>
+                            <p class="text-muted" id="user-password-help"><?php echo $user['password_protected'] ? '管理员账号的密码请由本人在个人设置中修改。' : '两项留空则保留原密码。修改时至少填写 6 位，并再次输入相同密码。'; ?></p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="user-password">密码</label>
+                                        <input type="password" id="user-password" name="passwd" class="form-control" autocomplete="new-password" minlength="6" aria-describedby="user-password-help"<?php echo $user['password_protected'] ? ' disabled' : ''; ?>>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="user-confirm-password">确认密码</label>
+                                        <input type="password" id="user-confirm-password" name="confirm_password" class="form-control" autocomplete="new-password" minlength="6" aria-describedby="user-password-help"<?php echo $user['password_protected'] ? ' disabled' : ''; ?>>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-footer">
                             <button type="submit" class="btn btn-primary">保存修改</button>
-                            <a class="btn btn-link" href="changepass.php">修改密码请用「修改密码」</a>
                         </div>
                     </form>
                 </div>
@@ -250,5 +300,14 @@ if (isset($OJ_LANG)) require_once("../lang/$OJ_LANG.php");
     document.getElementById('menu2').classList.add("menu-open");
     document.getElementById('a33').classList.remove("bg-primary");
     document.getElementById('a33').classList.add("bg-secondary");
+    const password = document.getElementById('user-password');
+    const confirmPassword = document.getElementById('user-confirm-password');
+    if (password && confirmPassword) {
+        function validatePasswords() {
+            confirmPassword.setCustomValidity(password.value === confirmPassword.value ? '' : '两次输入的密码不一致。');
+        }
+        password.addEventListener('input', validatePasswords);
+        confirmPassword.addEventListener('input', validatePasswords);
+    }
 </script>
 </body>

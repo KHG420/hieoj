@@ -23,6 +23,7 @@
   <li><a class='btn btn-primary' href="news_list.php" target="main"><b><?php echo $MSG_NEWS.$MSG_LIST?></b></a><?php echo $MSG_HELP_NEWS_LIST?>
   <li><a class='btn btn-primary' href="news_add_page.php" target="main"><b><?php echo $MSG_ADD.$MSG_NEWS?></b></a><?php echo $MSG_HELP_ADD_NEWS?>
   <li><a class='btn btn-primary' href="user_list.php" target="main"><b><?php echo $MSG_USER.$MSG_LIST?></b></a><?php echo $MSG_HELP_USER_LIST?>
+  <li><a class='btn btn-primary' href="user_info_edit.php" target="main"><b>修改用户信息</b></a>修改姓名、学院、班级、邮箱和密码
   <li><a class='btn btn-primary' href="user_set_ip.php" target="main"><b><?php echo $MSG_SET_LOGIN_IP?></b></a><?php echo $MSG_SET_LOGIN_IP?>
     <li><a class='btn btn-primary' href="adduser.php" target="main" title="添加用户"><b>添加用户*</b></a>添加新用户，初始密码为123456
     <li><a class='btn btn-primary' href="categorylist.php" target="main" title="添加用户"><b>分类列表*</b></a>添加或调整问题分类
@@ -55,7 +56,7 @@
             } ?>
         </a>审核用户提交的注册申请
         <?php }
-  if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])||isset( $_SESSION[$OJ_NAME.'_'.'password_setter'] )){?>
+  if (!isset($_SESSION[$OJ_NAME.'_'.'administrator']) && isset($_SESSION[$OJ_NAME.'_'.'password_setter'])){?>
   <li><a class='btn btn-primary' href="changepass.php" target="main"><b><?php echo $MSG_SETPASSWORD?></b></a><?php echo $MSG_HELP_SETPASSWORD?>
   <?php }
   if (isset($_SESSION[$OJ_NAME.'_'.'administrator'])){?>

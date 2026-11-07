@@ -1,4 +1,13 @@
-<?php require_once("admin-header.php");?>
+<?php
+require_once("../include/db_info.inc.php");
+if (isset($_SESSION[$OJ_NAME.'_administrator'])) {
+    $targetId = $_POST['user_id'] ?? $_GET['user_id'] ?? '';
+    $location = 'user_info_edit.php';
+    if (is_string($targetId) && trim($targetId) !== '') $location .= '?user_id='.rawurlencode(trim($targetId));
+    header('Location: '.$location, true, 303);
+    exit;
+}
+require_once("admin-header.php");?>
 <?php if (!(isset($_SESSION[$OJ_NAME.'_'.'administrator'])|| isset($_SESSION[$OJ_NAME.'_'.'password_setter']) )){
 	echo "<a href='../loginpage.php'>Please Login First!</a>";
 	exit(1);
